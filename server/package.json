@@ -11,7 +11,9 @@
     "prisma:generate": "npx prisma generate",
     "prisma:studio": "npx prisma studio",
     "seed": "ts-node prisma/seed.ts",
-    "prisma:seed": "node --loader ts-node/esm prisma/seed.ts"
+    "prisma:seed": "node --loader ts-node/esm prisma/seed.ts",
+    "migrate:deploy": "prisma migrate deploy",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
