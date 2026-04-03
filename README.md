@@ -1,6 +1,7 @@
 # Fulanand ERP — Setup Guide
 
 ## Tech Stack
+
 - Frontend: React 18 + TypeScript + Vite + Tailwind CSS
 - Backend: Node.js + Express + TypeScript + Prisma
 - Database: PostgreSQL
@@ -10,6 +11,7 @@
 ## Quick Start
 
 ### Step 1 — Database setup
+
 ```bash
 # Make sure PostgreSQL is running
 brew services start postgresql@14   # Mac (Homebrew)
@@ -21,6 +23,7 @@ CREATE DATABASE fulanand_erp;
 ```
 
 ### Step 2 — Backend
+
 ```bash
 cd server
 npm install
@@ -42,6 +45,7 @@ npm run dev
 ```
 
 ### Step 3 — Frontend
+
 ```bash
 cd client
 npm install
@@ -70,21 +74,21 @@ npm run dev
 
 ## API Endpoints
 
-| Method | URL | Description |
-|--------|-----|-------------|
-| GET | /api/customers | List customers |
-| POST | /api/customers | Create customer |
-| GET | /api/customers/search?q= | Search |
-| GET | /api/items | List items |
-| POST | /api/items | Create item |
-| GET | /api/batches | List batches |
-| POST | /api/batches | Create batch |
-| GET | /api/agents | List agents |
-| POST | /api/agents | Create agent |
-| GET | /api/hsn | List HSN codes |
-| GET | /api/invoices | List invoices |
-| POST | /api/invoices | Create invoice + deduct stock |
-| PUT | /api/invoices/:id/cancel | Cancel + reverse stock |
+| Method | URL                      | Description                   |
+| ------ | ------------------------ | ----------------------------- |
+| GET    | /api/customers           | List customers                |
+| POST   | /api/customers           | Create customer               |
+| GET    | /api/customers/search?q= | Search                        |
+| GET    | /api/items               | List items                    |
+| POST   | /api/items               | Create item                   |
+| GET    | /api/batches             | List batches                  |
+| POST   | /api/batches             | Create batch                  |
+| GET    | /api/agents              | List agents                   |
+| POST   | /api/agents              | Create agent                  |
+| GET    | /api/hsn                 | List HSN codes                |
+| GET    | /api/invoices            | List invoices                 |
+| POST   | /api/invoices            | Create invoice + deduct stock |
+| PUT    | /api/invoices/:id/cancel | Cancel + reverse stock        |
 
 ---
 
@@ -142,7 +146,7 @@ IGST = Tax    (inter-state)
 ---
 
 ## Print — Half A4
-- 2 copies per A4 sheet
+
+- 1 copies per A4 sheet
 - Checkboxes: Original / Duplicate / Triplicate / Delivery Challan
 - Cut line between copies
-- `window.print()` with `@page { size: A4; margin: 5mm }`

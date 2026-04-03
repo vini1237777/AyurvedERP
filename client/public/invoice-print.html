@@ -1,0 +1,620 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Invoice — Fulanand Ayurved</title>
+    <style>
+      @page {
+        size: A4 portrait;
+        margin: 6mm;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        color: #000;
+        background: #fff;
+      }
+      @media screen {
+        body {
+          background: #cbd5e1;
+          padding: 12px;
+        }
+        .screen-bar {
+          background: #1e293b;
+          color: #fff;
+          padding: 10px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-radius: 8px;
+          margin-bottom: 10px;
+          font-family: Arial, sans-serif;
+        }
+        .copy-bar {
+          background: #fff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          padding: 8px 14px;
+          margin-bottom: 10px;
+          display: flex;
+          gap: 20px;
+          flex-wrap: wrap;
+          align-items: center;
+          font-family: Arial, sans-serif;
+        }
+        .copy-label {
+          font-size: 13px;
+          color: #475569;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+        }
+        .copy-cb {
+          width: 16px;
+          height: 16px;
+          accent-color: #2563eb;
+        }
+        .btn {
+          border: none;
+          padding: 7px 16px;
+          border-radius: 7px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          font-family: Arial, sans-serif;
+        }
+        .btn-print {
+          background: #2563eb;
+          color: #fff;
+        }
+        .btn-dl {
+          background: #059669;
+          color: #fff;
+        }
+        .btn-back {
+          background: rgba(255, 255, 255, 0.15);
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        .page-wrapper {
+          background: #fff;
+          max-width: 210mm;
+          margin: 0 auto;
+          box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+        .cut-line {
+          text-align: center;
+          padding: 4px 0;
+          font-size: 10px;
+          color: #94a3b8;
+          border-top: 1px dashed #94a3b8;
+          background: #f8fafc;
+        }
+      }
+      @media print {
+        .screen-bar,
+        .copy-bar {
+          display: none !important;
+        }
+        .page-wrapper {
+          box-shadow: none;
+        }
+        .half-page {
+          height: 141mm;
+          overflow: hidden;
+          page-break-after: always;
+        }
+        .cut-line {
+          border-top: 1px dashed #666;
+          margin: 1mm 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="screen-bar">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <button class="btn btn-back" onclick="window.close()">← Back</button>
+        <span style="font-weight: 700; font-size: 14px">Invoice Preview</span>
+        <span style="font-size: 12px; color: #94a3b8" id="inv-label"></span>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button class="btn btn-print" onclick="window.print()">🖨 Print</button>
+        <button class="btn btn-dl" id="btn-dl" onclick="downloadPDF()">
+          ⬇ Download PDF
+        </button>
+      </div>
+    </div>
+
+    <div class="copy-bar">
+      <span style="font-size: 12px; font-weight: 600; color: #374151"
+        >Select Copies:</span
+      >
+      <label class="copy-label"
+        ><input
+          class="copy-cb"
+          type="checkbox"
+          id="cb-customer"
+          checked
+          onchange="renderAll()"
+        />
+        Original For Buyer</label
+      >
+      <label class="copy-label"
+        ><input
+          class="copy-cb"
+          type="checkbox"
+          id="cb-transport"
+          onchange="renderAll()"
+        />
+        Duplicate For Transporter</label
+      >
+      <label class="copy-label"
+        ><input
+          class="copy-cb"
+          type="checkbox"
+          id="cb-supplier"
+          onchange="renderAll()"
+        />
+        Triplicate For Supplier</label
+      >
+      <label class="copy-label"
+        ><input
+          class="copy-cb"
+          type="checkbox"
+          id="cb-challan"
+          onchange="renderAll()"
+        />
+        Delivery Challan</label
+      >
+    </div>
+
+    <div class="page-wrapper">
+      <div id="print-area"></div>
+    </div>
+
+    <script>
+      const raw = localStorage.getItem("fulanand_print_data");
+      const D = raw ? JSON.parse(raw) : null;
+      const COPIES = [
+        { id: "cb-customer", label: "Original For Buyer" },
+        { id: "cb-transport", label: "Duplicate For Transporter" },
+        { id: "cb-supplier", label: "Triplicate For Supplier" },
+        { id: "cb-challan", label: "Delivery Challan" },
+      ];
+
+      function r2(v) {
+        return Math.round(v * 100) / 100;
+      }
+      function fmt(n) {
+        return new Intl.NumberFormat("en-IN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(n || 0);
+      }
+      function toWords(n) {
+        if (!n) return "Zero";
+        const a = [
+          "",
+          "One",
+          "Two",
+          "Three",
+          "Four",
+          "Five",
+          "Six",
+          "Seven",
+          "Eight",
+          "Nine",
+          "Ten",
+          "Eleven",
+          "Twelve",
+          "Thirteen",
+          "Fourteen",
+          "Fifteen",
+          "Sixteen",
+          "Seventeen",
+          "Eighteen",
+          "Nineteen",
+        ];
+        const b = [
+          "",
+          "",
+          "Twenty",
+          "Thirty",
+          "Forty",
+          "Fifty",
+          "Sixty",
+          "Seventy",
+          "Eighty",
+          "Ninety",
+        ];
+        function w(num) {
+          if (num < 20) return a[num];
+          if (num < 100)
+            return (
+              b[Math.floor(num / 10)] + (num % 10 ? " " + a[num % 10] : "")
+            );
+          if (num < 1000)
+            return (
+              a[Math.floor(num / 100)] +
+              " Hundred" +
+              (num % 100 ? " " + w(num % 100) : "")
+            );
+          if (num < 100000)
+            return (
+              w(Math.floor(num / 1000)) +
+              " Thousand" +
+              (num % 1000 ? " " + w(num % 1000) : "")
+            );
+          if (num < 10000000)
+            return (
+              w(Math.floor(num / 100000)) +
+              " Lakh" +
+              (num % 100000 ? " " + w(num % 100000) : "")
+            );
+          return (
+            w(Math.floor(num / 10000000)) +
+            " Crore" +
+            (num % 10000000 ? " " + w(num % 10000000) : "")
+          );
+        }
+        const int = Math.floor(n),
+          dec = Math.round((n - int) * 100);
+        return (
+          "Rupee " + w(int) + (dec ? " and " + w(dec) + " Paise" : "") + " Only"
+        );
+      }
+
+      function buildHsnMap(rows, taxType) {
+        const map = {};
+        rows
+          .filter((r) => r.itemName && parseFloat(r.qty) > 0)
+          .forEach((row) => {
+            if (!row.hsn) return;
+            const taxable = r2(row.basicAmt - row.discAmt),
+              tax = row.taxAmt;
+            if (!map[row.hsn])
+              map[row.hsn] = {
+                taxable: 0,
+                cgst: 0,
+                sgst: 0,
+                igst: 0,
+                gst: row.gst,
+              };
+            map[row.hsn].taxable = r2(map[row.hsn].taxable + taxable);
+            if (taxType === "CGST_SGST") {
+              map[row.hsn].cgst = r2(map[row.hsn].cgst + r2(tax / 2));
+              map[row.hsn].sgst = r2(map[row.hsn].sgst + r2(tax / 2));
+            } else map[row.hsn].igst = r2(map[row.hsn].igst + tax);
+          });
+        return map;
+      }
+
+      function getExp(row) {
+        if (!row._batches) return "";
+        const b = row._batches.find(
+          (b) =>
+            b.id === row.batchId ||
+            b.no === row.batchNo ||
+            b.batchNo === row.batchNo,
+        );
+        return b ? b.expiryDate || b.exp || "" : "";
+      }
+
+      function renderInvoice(copyLabel) {
+        if (!D)
+          return '<p style="padding:20px;text-align:center;color:#999">No data.</p>';
+        const {
+          customer,
+          rows,
+          invoiceNo,
+          invoiceDate,
+          terms,
+          taxType,
+          totDisc,
+          totTaxable,
+          totCgst,
+          totSgst,
+          totIgst,
+          totTax,
+          grand,
+        } = D;
+        const filled = (rows || []).filter(
+          (r) => r.itemName && parseFloat(r.qty) > 0,
+        );
+        const hsnMap = buildHsnMap(rows || [], taxType);
+        const emptyCount = Math.max(0, 8 - filled.length);
+        const B = "1px solid #000";
+
+        // Filled item rows — only vertical column borders
+        const itemRows = filled
+          .map((row) => {
+            const vc = `border-left:${B};border-right:${B};border-top:none;border-bottom:none;padding:2px 3px;font-size:8px`;
+            return `<tr>
+      <td style="${vc};text-align:center">${row.hsn || ""}</td>
+      <td style="${vc}">${row.itemName || ""}</td>
+      <td style="${vc};text-align:center">${fmt(row.mrp || 0)}</td>
+      <td style="${vc};text-align:center">${fmt(parseFloat(row.price) || 0)}</td>
+      <td style="${vc};text-align:center">${row.disc || "0"}</td>
+      <td style="${vc};text-align:center">${row.sDis || "0"}</td>
+      <td style="${vc};text-align:center">${row.qty || ""}</td>
+      <td style="${vc};text-align:center">${row.free || "0"}</td>
+      <td style="${vc};text-align:center">${row.batchNo || ""}</td>
+      <td style="${vc};text-align:center">${getExp(row)}</td>
+      <td style="${vc};text-align:center">${row.gst || "0"}</td>
+      <td style="${vc};text-align:center;font-weight:bold">${fmt(row.netValue || 0)}</td>
+    </tr>`;
+          })
+          .join("");
+
+        // Empty rows — only vertical borders
+        const emptyRows = Array.from({ length: emptyCount })
+          .map(() => {
+            const vc = `border-left:${B};border-right:${B};border-top:none;border-bottom:none;padding:0;height:16px`;
+            return `<tr>${Array.from({ length: 12 })
+              .map(() => `<td style="${vc}"></td>`)
+              .join("")}</tr>`;
+          })
+          .join("");
+
+        // HSN rows — plain text no borders
+        const hsnRows = Object.entries(hsnMap)
+          .map(
+            ([hsn, v]) => `
+    <tr style="font-size:7px">
+      <td style="padding:1px 4px">${hsn}</td>
+      <td style="padding:1px 4px">${fmt(v.taxable)}</td>
+      <td style="padding:1px 4px">${taxType === "CGST_SGST" ? v.gst / 2 : 0} %</td>
+      <td style="padding:1px 4px">${fmt(v.sgst)}</td>
+      <td style="padding:1px 4px">${taxType === "CGST_SGST" ? v.gst / 2 : 0} %</td>
+      <td style="padding:1px 4px">${fmt(v.cgst)}</td>
+      <td style="padding:1px 4px">0.00 %</td>
+      <td style="padding:1px 4px">0.00</td>
+    </tr>`,
+          )
+          .join("");
+
+        return `
+<div style="font-family:Arial,sans-serif;padding:5px 7px;color:#000;width:100%;box-sizing:border-box">
+
+<!-- ═══ HEADER ═══ -->
+<table style="width:100%;border-collapse:collapse;table-layout:fixed;">
+  <colgroup>
+    <col style="width:23.35%;">
+    <col style="width:16.67%;">
+    <col style="width:16.67%;">
+  </colgroup>
+
+  <tr>
+    <td colspan="2" style="border-top:${B};border-bottom:${B};border-left:${B};border-right:none;text-align:center;font-size:10px;font-weight:bold;letter-spacing:2px;padding:3px;">
+      GST INVOICE
+    </td>
+    <td style="border:${B};border-left:none;text-align:right;font-size:8px;font-weight:bold;padding:3px 5px;white-space:nowrap;">
+      ${copyLabel}
+    </td>
+  </tr>
+
+  <tr>
+    <td style="border:${B};border-top:none;vertical-align:top;padding:4px 5px;font-weight:bold;">
+  <div style="font-weight:bold;font-size:11px">FULANAND AYURVED</div>
+  <div style="font-size:6.5px;margin-top:1px">RAJMANE PLOT, PLOT NO 48 DHAVALVES, TASGAON TASGAON</div>
+  <div style="font-size:6.5px">MOB.8668446400</div>
+  <div style="font-size:6.5px"><b>GSTIN NO.</b> 27AZVPB8817G2ZW</div>
+  <div style="font-size:6.5px"><b>PAN NO.</b> AZVPB8817G</div>
+  <div style="font-size:6.5px"><b>DL NO.</b> ,</div>
+</td>
+
+<td style="border:${B};border-top:none;border-left:none;vertical-align:top;padding:4px 5px;font-weight:bold;">
+  <div style="font-size:7px;font-style:italic"><b style="font-style:normal">TO - ${customer?.name || ""}</b></div>
+  <div style="font-size:6.5px;font-style:italic">${customer?.address || ""}</div>
+  <div style="font-size:6.5px;font-style:italic"><b style="font-style:normal">State :</b></div>
+  <div style="font-size:6.5px;font-style:italic"><b style="font-style:normal">Contact No. -</b> ${customer?.mobile || ""}</div>
+  <div style="font-size:6.5px;font-style:italic"><b style="font-style:normal">GSTIN -</b> ${customer?.gstin || ""}</div>
+  <div style="font-size:6.5px;font-style:italic"><b style="font-style:normal">DL NO.</b> ,</div>
+</td>
+
+    <td style="border:${B};border-top:none;border-left:none;vertical-align:top;padding:4px 5px;">
+      <div style="font-size:7px;margin-bottom:6px">State Code: <b>${customer?.stateCode || ""}</b></div>
+      <div style="font-size:7.5px;margin-bottom:5px">INVOICE NO. <b>${invoiceNo}</b></div>
+      <div style="font-size:7.5px;margin-bottom:5px">INVOICE DATE: <b>${invoiceDate}</b></div>
+      <div style="font-size:7.5px">TERMS : <b>${terms}</b></div>
+    </td>
+  </tr>
+</table>
+
+
+<!-- ═══ ITEMS TABLE ═══ -->
+<table style="width:100%;border-collapse:collapse;margin-top:-1px">
+  <thead>
+    <tr>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:7%">HSN Code</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:left;width:22%">ITEM DESCRIPTION</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:6%">MRP</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:5%">Rate</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:5%">Dis %</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:5%">S Dis %</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:5%">QTY</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:4%">Free</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:7%">Batch</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:6%">Exp</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:5%">GST %</th>
+      <th style="border:${B};padding:3px 3px;font-size:8px;text-align:center;width:8%">TOTAL</th>
+    </tr>
+  </thead>
+  <tbody>
+    ${itemRows}
+    ${emptyRows}
+  </tbody>
+</table>
+
+<!-- ═══ FOOTER ═══ -->
+<!-- Row 1: HSN Summary (left) + Totals (right) — outer border only -->
+<table style="width:100%;border-collapse:collapse;margin-top:-1px">
+  <tr>
+
+    <!-- LEFT: HSN/SAC plain text — no inner borders -->
+    <td style="border:${B};border-bottom:0;width:58%;vertical-align:top;padding:4px 5px">
+      <table style="width:100%;border-collapse:collapse;font-size:7px">
+        <tr>
+          <td style="padding:1px 4px;font-weight:bold">HSN/SAC</td>
+          <td style="padding:1px 4px;font-weight:bold">Taxable</td>
+          <td style="padding:1px 4px;font-weight:bold">SGST %</td>
+          <td style="padding:1px 4px;font-weight:bold">Amt.</td>
+          <td style="padding:1px 4px;font-weight:bold">CGST %</td>
+          <td style="padding:1px 4px;font-weight:bold">Amt.</td>
+          <td style="padding:1px 4px;font-weight:bold">A.Tax %</td>
+          <td style="padding:1px 4px;font-weight:bold">Amt.</td>
+        </tr>
+        ${hsnRows}
+      </table>
+    </td>
+
+    <!-- RIGHT: Totals plain text — no inner borders, right-aligned values -->
+    <td style="border:${B};border-left:none;border-bottom:none;width:42%;vertical-align:top;padding:4px 6px">
+      <table style="width:100%;border-collapse:collapse;font-size:7px">
+        <tr><td style="padding:1px 2px">Total Dis. Amount</td><td style="text-align:right;padding:1px 2px">${fmt(totDisc)}</td></tr>
+        <tr><td style="padding:1px 2px">Total Amount Before Tax</td><td style="text-align:right;padding:1px 2px">${fmt(totTaxable)}</td></tr>
+        <tr><td style="padding:1px 2px">Add: SGST</td><td style="text-align:right;padding:1px 2px">${fmt(totSgst || 0)}</td></tr>
+        <tr><td style="padding:1px 2px">Add: CGST</td><td style="text-align:right;padding:1px 2px">${fmt(totCgst || 0)}</td></tr>
+        <tr><td style="padding:1px 2px">Add: IGST</td><td style="text-align:right;padding:1px 2px">${fmt(totIgst || 0)}</td></tr>
+        <tr><td style="padding:1px 2px">Add: Additional Tax</td><td style="text-align:right;padding:1px 2px">0.00</td></tr>
+      </table>
+    </td>
+  </tr>
+
+  <!-- ITC Line — full width -->
+  <tr style="border-right:${B}">
+    <td colspan="1" style="border-bottom:${B};border-right:${B};border-left:${B};border-top:0 !important;font-style:italic;font-size:6.5px;padding:2px 5px">
+      Input Tax Credit is Not Available to a taxable person against this copy
+    </td>
+  </tr>
+
+
+
+  <tr style="border:${B}">
+<td style="border:${B}; width:58%; vertical-align:top; padding:0;">
+  <table style="width:100%; height:100%; border-collapse:collapse; margin:0;">
+        <tr style="border-bottom:${B}">
+
+        <td colspan="1" style="border:none;border-right:none;font-size:6.5px;padding:2px 5px;width:58%;vertical-align:middle">
+      <b>Bill Amount in Words :</b> ${toWords(grand)}
+    </td>
+  </tr>
+      <td colspan="1" style="border:none;border-top:none;padding:3px 5px">
+      <table style="width:100%;border-collapse:collapse">
+        <tr>
+          <td style="font-size:6.5px;vertical-align:top;width:50%">
+            <b>Bank Detail:</b><br>
+            UCO BANK, TASGAON<br>
+            IFSC-UCB40003225<br>
+            ACC NO-22250610000311
+          </td>
+          <td style="vertical-align:top;text-align:right;width:50%">
+            <div style="font-weight:bold;font-size:9px">For &nbsp; FULANAND AYURVED</div>
+            <div style="font-size:7px;margin-top:18px">Auth. Signatory</div>
+          </td>
+        </tr>
+      </table>
+      </table>
+    </td>
+    </td>
+
+    <!-- RIGHT: Totals plain text — no inner borders, right-aligned values -->
+  <td style="border-top:none;border-left:none;width:42%;padding:0;vertical-align:top;">
+  <table style="width:100%;height:100%;border-collapse:collapse;font-size:7px;margin:0;">
+    <tr>
+      <td style="padding:4px;font-weight:bold;border-bottom:${B};">Total Tax Amount : GST</td>
+      <td style="text-align:right;padding:4px;font-weight:bold;border-bottom:${B};">${fmt(totTax)}</td>
+    </tr>
+    <tr>
+      <td style="padding:2px;font-weight:bold;border-bottom:${B};">Total Amount After Tax</td>
+      <td style="text-align:right;padding:4px;font-weight:bold;border-bottom:${B};">${fmt(grand)}</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;font-weight:bold;font-size:12px;">Total Amount</td>
+      <td style="text-align:right;padding:4px;font-weight:bold;">${fmt(grand)}</td>
+    </tr>
+  </table>
+</td>
+  </tr>
+
+ 
+</table>
+
+</div>`;
+      }
+
+      function renderAll() {
+        const area = document.getElementById("print-area");
+        const selected = COPIES.filter((c) => {
+          const el = document.getElementById(c.id);
+          return el && el.checked;
+        });
+        if (!selected.length) {
+          area.innerHTML =
+            '<div style="text-align:center;padding:32px;color:#94a3b8;font-size:13px;font-family:Arial">Select at least one copy type above</div>';
+          return;
+        }
+        let html = "";
+        for (let i = 0; i < selected.length; i += 2) {
+          const pair = selected.slice(i, i + 2);
+          pair.forEach((copy, idx) => {
+            html += `<div class="half-page">${renderInvoice(copy.label)}</div>`;
+            if (idx === 0 && pair.length === 2)
+              html += `<div class="cut-line">✂ Cut Here</div>`;
+          });
+        }
+        area.innerHTML = html;
+      }
+
+      async function downloadPDF() {
+        const btn = document.getElementById("btn-dl");
+        btn.disabled = true;
+        btn.textContent = "⏳ Generating...";
+        if (!window.html2pdf) {
+          await new Promise((res, rej) => {
+            const s = document.createElement("script");
+            s.src =
+              "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js";
+            s.onload = res;
+            s.onerror = rej;
+            document.head.appendChild(s);
+          });
+        }
+        const invNo = D ? D.invoiceNo : "invoice",
+          cust = D?.customer?.name || "customer";
+        const fname = `INV-${invNo}_${cust.replace(/[^a-zA-Z0-9]/g, "_")}.pdf`;
+        const el = document.getElementById("print-area").cloneNode(true);
+        await html2pdf()
+          .set({
+            margin: [4, 4, 4, 4],
+            filename: fname,
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          })
+          .from(el)
+          .save();
+        btn.disabled = false;
+        btn.textContent = "⬇ Download PDF";
+      }
+
+      window.addEventListener("DOMContentLoaded", () => {
+        if (D) {
+          const el = document.getElementById("inv-label");
+          if (el) el.textContent = `Invoice #${D.invoiceNo}`;
+        }
+        renderAll();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  mobile    String?
+  gstin     String?
+  pan       String?
+  stateCode String   @default("27")
+  state     String   @default("Maharashtra")
+  bank      String?
+  ifsc      String?
+  account   String?
+  createdAt DateTime @default(now())
+}
+
+model Customer {
+  id        Int       @id @default(autoincrement())
+  name      String
+  gstin     String?
+  pan       String?
+  dlNo      String?
+  state     String    @default("Maharashtra")
+  stateCode String    @default("27")
+  address   String?
+  city      String?
+  pincode   String?
+  mobile    String?
+  phone     String?
+  email     String?
+  balance   Float     @default(0)
+  isActive  Boolean   @default(true)
+  invoices  Invoice[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  salesReturns SalesReturn[]
+}
+
+model Agent {
+  id        Int       @id @default(autoincrement())
+  name      String
+  mobile    String?
+  isActive  Boolean   @default(true)
+  invoices  Invoice[]
+  createdAt DateTime  @default(now())
+}
+
+model TaxSlab {
+  id    Int    @id @default(autoincrement())
+  name  String
+  rate  Float
+  items Item[]
+}
+
+model HsnCode {
+  id          Int     @id @default(autoincrement())
+  code        String  @unique
+  description String?
+  gstRate     Float
+  items       Item[]
+}
+
+model Item {
+  id            Int           @id @default(autoincrement())
+  name          String
+  shortName     String?
+  hsnId         Int
+  hsn           HsnCode       @relation(fields: [hsnId], references: [id])
+  taxSlabId     Int
+  taxSlab       TaxSlab       @relation(fields: [taxSlabId], references: [id])
+  unit          String        @default("Pcs")
+  altUnit       String?
+  altFactor     Float         @default(1)
+  maintainBatch Boolean       @default(true)
+  isActive      Boolean       @default(true)
+  batches       Batch[]
+  invoiceItems  InvoiceItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Batch {
+  id            Int           @id @default(autoincrement())
+  itemId        Int
+  item          Item          @relation(fields: [itemId], references: [id])
+  batchNo       String
+  expiryDate    String?
+  mfgDate       String?
+  purchasePrice Float?
+  salePrice     Float?
+  mrp           Float?
+  openingQty    Float         @default(0)
+  currentQty    Float         @default(0)
+  invoiceItems  InvoiceItem[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Invoice {
+  id                Int           @id @default(autoincrement())
+  invoiceNo         Int           @unique
+  invoiceDate       DateTime
+  dueDate           DateTime?
+  terms             String        @default("Credit")
+  customerId        Int
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  agentId           Int?
+  agent             Agent?        @relation(fields: [agentId], references: [id])
+  customerGstin     String?
+  customerState     String
+  customerStateCode String
+  taxType           String        @default("CGST_SGST")
+  totalDiscount     Float         @default(0)
+  totalTaxable      Float         @default(0)
+  cgstAmt           Float         @default(0)
+  sgstAmt           Float         @default(0)
+  igstAmt           Float         @default(0)
+  totalTax          Float         @default(0)
+  grandTotal        Float         @default(0)
+  roundOff          Float         @default(0)
+  status            String        @default("SAVED")
+  items             InvoiceItem[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  salesReturns      SalesReturn[]
+}
+
+model InvoiceItem {
+  id              Int               @id @default(autoincrement())
+  invoiceId       Int
+  invoice         Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  itemId          Int
+  item            Item              @relation(fields: [itemId], references: [id])
+  batchId         Int?
+  batch           Batch?            @relation(fields: [batchId], references: [id])
+  itemName        String
+  hsnCode         String
+  mrp             Float?
+  rate            Float
+  qty             Float
+  altQty          Float             @default(0)
+  freeQty         Float             @default(0)
+  per             String            @default("Pcs")
+  basicAmt        Float
+  discPercent     Float             @default(0)
+  discAmt         Float             @default(0)
+  taxableAmt      Float
+  gstPercent      Float
+  taxAmt          Float
+  returnedQty     Float             @default(0)
+  netValue        Float
+  createdAt       DateTime          @default(now())
+  salesReturnItem SalesReturnItem[]
+}
+
+model SalesReturn {
+  id           Int               @id @default(autoincrement())
+  returnNo     Int               @unique
+  invoiceId    Int
+  invoice      Invoice           @relation(fields: [invoiceId], references: [id])
+  customerId   Int
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  reason       String?
+  totalTaxable Float             @default(0)
+  totalTax     Float             @default(0)
+  totalCredit  Float             @default(0)
+  createdAt    DateTime          @default(now())
+  items        SalesReturnItem[]
+}
+
+model SalesReturnItem {
+  id            Int         @id @default(autoincrement())
+  salesReturnId Int
+  salesReturn   SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  invoiceItemId Int
+  qty           Float
+  rate          Float
+  discPercent   Float
+  gstPercent    Float
+  taxableAmt    Float
+  taxAmt        Float
+  netValue      Float
+  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id])
+}
