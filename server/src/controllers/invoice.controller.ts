@@ -124,7 +124,7 @@ export const create = async (req: Request, res: Response) => {
       calcedRows.reduce((s: number, r: any) => s + r.taxAmt, 0),
     );
     const cgstAmt = taxType === "CGST_SGST" ? r2(totalTax / 2) : 0;
-    const sgstAmt = taxType === "CGST_SGST" ? r2(totalTax / 2) : 0;
+    const sgstAmt = taxType === "CGST_SGST" ? r2(totalTax - cgstAmt) : 0;
     const igstAmt = taxType === "IGST" ? totalTax : 0;
     const grandTotal = r2(totalTaxable + totalTax);
 
