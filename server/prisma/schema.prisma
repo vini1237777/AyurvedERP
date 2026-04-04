@@ -23,26 +23,25 @@ model Company {
 }
 
 model Customer {
-  id        Int       @id @default(autoincrement())
-  name      String
-  gstin     String?
-  pan       String?
-  dlNo      String?
-  state     String    @default("Maharashtra")
-  stateCode String    @default("27")
-  address   String?
-  city      String?
-  pincode   String?
-  mobile    String?
-  phone     String?
-  email     String?
-  balance   Float     @default(0)
-  isActive  Boolean   @default(true)
-  invoices  Invoice[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
+  id           Int           @id @default(autoincrement())
+  name         String
+  gstin        String?
+  pan          String?
+  dlNo         String?
+  state        String        @default("Maharashtra")
+  stateCode    String        @default("27")
+  address      String?
+  city         String?
+  pincode      String?
+  mobile       String?
+  phone        String?
+  email        String?
+  balance      Float         @default(0)
+  isActive     Boolean       @default(true)
+  invoices     Invoice[]
   salesReturns SalesReturn[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Agent {
@@ -107,7 +106,7 @@ model Batch {
 
 model Invoice {
   id                Int           @id @default(autoincrement())
-  invoiceNo         Int           @unique
+  invoiceNo         String        @unique   // FA-01, FA-02...
   invoiceDate       DateTime
   dueDate           DateTime?
   terms             String        @default("Credit")
@@ -129,9 +128,9 @@ model Invoice {
   roundOff          Float         @default(0)
   status            String        @default("SAVED")
   items             InvoiceItem[]
+  salesReturns      SalesReturn[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
-  salesReturns      SalesReturn[]
 }
 
 model InvoiceItem {
@@ -182,6 +181,7 @@ model SalesReturnItem {
   salesReturnId Int
   salesReturn   SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
   invoiceItemId Int
+  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id])
   qty           Float
   rate          Float
   discPercent   Float
@@ -189,5 +189,4 @@ model SalesReturnItem {
   taxableAmt    Float
   taxAmt        Float
   netValue      Float
-  invoiceItem   InvoiceItem @relation(fields: [invoiceItemId], references: [id])
 }
