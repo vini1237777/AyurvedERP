@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { customerApi, itemApi, agentApi, invoiceApi } from "../../utils/api";
 import { fmt, fmtInt, COMPANY, SELLER_STATE } from "../../utils/invoice.utils";
@@ -79,7 +80,7 @@ function ItemSearch({
       const rect = inputRef.current.getBoundingClientRect();
       setPos({
         top: rect.bottom + 2,
-        left: rect.left + window.scrollX,
+        left: rect.left,
         width: Math.max(rect.width, 300),
       });
     }
@@ -163,7 +164,20 @@ export default function SaleEntry() {
     () => new Date().toISOString().split("T")[0],
   );
   const [terms, setTerms] = useState("Credit");
-  const [invoiceNo] = useState(2140);
+  const [invoiceNo, setInvoiceNo] = useState("FA-01");
+
+  // Load next invoice number on mount
+  useEffect(() => {
+    const base = (
+      import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+    ).trim();
+    fetch(`${base}/invoices/next-no`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.invoiceNo) setInvoiceNo(d.invoiceNo);
+      })
+      .catch(() => {});
+  }, []);
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [partySearch, setPartySearch] = useState("");
@@ -367,7 +381,6 @@ export default function SaleEntry() {
             </div>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-1.5 ml-1 flex items-center gap-1">
-            <span className="text-xs text-blue-400 font-medium">INV-</span>
             <span className="text-sm font-bold text-blue-700">{invoiceNo}</span>
           </div>
         </div>
@@ -595,7 +608,10 @@ export default function SaleEntry() {
             </span>
           </div>
 
-          <div className="overflow-x-auto">
+          <div
+            className="overflow-x-auto"
+            style={{ overflowX: "auto", overflowY: "visible" }}
+          >
             <table className="w-full" style={{ minWidth: 1280 }}>
               <thead>
                 <tr className="bg-slate-50/80 border-b border-slate-100">
