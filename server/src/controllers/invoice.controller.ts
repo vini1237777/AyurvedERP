@@ -3,7 +3,6 @@ import prisma from "../utils/prisma";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
-// ── FA-01, FA-02... format ────────────────────────────────────────────────────
 async function getNextInvoiceNo(): Promise<string> {
   const last = await prisma.invoice.findFirst({
     orderBy: { createdAt: "desc" },
