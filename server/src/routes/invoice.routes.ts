@@ -3,6 +3,7 @@ import * as inv from "../controllers/invoice.controller";
 
 const r = Router();
 
+r.get("/next-no", inv.getNextNo);
 r.get("/", inv.getAll);
 r.get("/returns/all", inv.getAllReturns);
 r.get("/returns/:id", inv.getReturnById);
