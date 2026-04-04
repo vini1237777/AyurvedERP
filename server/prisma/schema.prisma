@@ -36,6 +36,7 @@ model Customer {
   mobile       String?
   phone        String?
   email        String?
+  category     String?
   balance      Float         @default(0)
   isActive     Boolean       @default(true)
   invoices     Invoice[]
@@ -69,22 +70,25 @@ model HsnCode {
 }
 
 model Item {
-  id            Int           @id @default(autoincrement())
-  name          String
-  shortName     String?
-  hsnId         Int
-  hsn           HsnCode       @relation(fields: [hsnId], references: [id])
-  taxSlabId     Int
-  taxSlab       TaxSlab       @relation(fields: [taxSlabId], references: [id])
-  unit          String        @default("Pcs")
-  altUnit       String?
-  altFactor     Float         @default(1)
-  maintainBatch Boolean       @default(true)
-  isActive      Boolean       @default(true)
-  batches       Batch[]
-  invoiceItems  InvoiceItem[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id             Int                 @id @default(autoincrement())
+  name           String
+  shortName      String?
+  hsnId          Int
+  hsn            HsnCode             @relation(fields: [hsnId], references: [id])
+  taxSlabId      Int
+  taxSlab        TaxSlab             @relation(fields: [taxSlabId], references: [id])
+  unit           String              @default("Pcs")
+  altUnit        String?
+  altFactor      Float               @default(1)
+  mrp            Float?
+  rate           Float?
+  maintainBatch  Boolean             @default(true)
+  isActive       Boolean             @default(true)
+  batches        Batch[]
+  invoiceItems   InvoiceItem[]
+  categoryPrices ItemCategoryPrice[]
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
 }
 
 model Batch {
@@ -106,7 +110,7 @@ model Batch {
 
 model Invoice {
   id                Int           @id @default(autoincrement())
-  invoiceNo         String        @unique   // FA-01, FA-02...
+  invoiceNo         String        @unique
   invoiceDate       DateTime
   dueDate           DateTime?
   terms             String        @default("Credit")
@@ -189,4 +193,16 @@ model SalesReturnItem {
   taxableAmt    Float
   taxAmt        Float
   netValue      Float
+}
+
+model ItemCategoryPrice {
+  id        Int      @id @default(autoincrement())
+  itemId    Int
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  category  String
+  price     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, category])
 }

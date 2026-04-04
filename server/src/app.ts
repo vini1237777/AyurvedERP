@@ -9,6 +9,7 @@ import agentRoutes from "./routes/agent.routes";
 import invoiceRoutes from "./routes/invoice.routes";
 import hsnRoutes from "./routes/hsn.routes";
 import reportRoutes from "./routes/report.routes";
+import categoryPriceRoutes from "./routes/categoryprice.routes";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ app.use("/api/agents", agentRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/hsn", hsnRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/category-prices", categoryPriceRoutes);
 
 app.get("/", (_req, res) => {
   res.json({ message: "Fulanand ERP API running", version: "1.0.0" });

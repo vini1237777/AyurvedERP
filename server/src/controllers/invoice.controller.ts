@@ -3,17 +3,20 @@ import prisma from "../utils/prisma";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
+// ── FA-01, FA-02... format ────────────────────────────────────────────────────
 async function getNextInvoiceNo(): Promise<string> {
-  const last = await prisma.invoice.findFirst({
-    orderBy: { createdAt: "desc" },
+  // Only FA- invoices (not SP- imported history)
+  // Use createdAt desc to avoid string-sort issues (FA-0099 > FA-0100 alphabetically)
+  const faInvoices = await prisma.invoice.findMany({
+    where: { invoiceNo: { startsWith: "FA-" } },
+    select: { invoiceNo: true },
   });
-  if (!last?.invoiceNo) return "FA-01";
-  const lastNo = String(last.invoiceNo);
-  if (lastNo.startsWith("FA-")) {
-    const num = parseInt(lastNo.replace("FA-", "")) || 0;
-    return `FA-${String(num + 1).padStart(2, "0")}`;
-  }
-  return "FA-01";
+  if (!faInvoices.length) return "FA-01";
+  // Parse all numbers and take the max
+  const maxNum = Math.max(
+    ...faInvoices.map((i) => parseInt(i.invoiceNo.replace("FA-", ""), 10) || 0),
+  );
+  return `FA-${String(maxNum + 1).padStart(4, "0")}`;
 }
 
 async function getNextReturnNo(): Promise<number> {
@@ -36,28 +39,48 @@ export const getNextNo = async (_req: Request, res: Response) => {
 // ── getAll ───────────────────────────────────────────────────────────────────
 export const getAll = async (req: Request, res: Response) => {
   try {
-    const { from, to, customerId } = req.query;
+    const { from, to, customerId, page, limit } = req.query;
+
+    const pageNum = parseInt(String(page || "1"), 10);
+    const limitNum = parseInt(String(limit || "0"), 10); // 0 = no limit
+
+    const where = {
+      ...(from && to
+        ? {
+            invoiceDate: {
+              gte: new Date(String(from)),
+              lte: new Date(String(to)),
+            },
+          }
+        : {}),
+      ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
+      status: { not: "CANCELLED" },
+    };
+
     const invoices = await prisma.invoice.findMany({
-      where: {
-        ...(from && to
-          ? {
-              invoiceDate: {
-                gte: new Date(String(from)),
-                lte: new Date(String(to)),
-              },
-            }
-          : {}),
-        ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
-        status: { not: "CANCELLED" },
-      },
+      where,
       include: {
         customer: true,
         agent: true,
         items: { include: { batch: true } },
       },
       orderBy: { createdAt: "desc" },
+      ...(limitNum > 0
+        ? { skip: (pageNum - 1) * limitNum, take: limitNum }
+        : {}),
     });
-    res.json(invoices);
+
+    if (limitNum > 0) {
+      const total = await prisma.invoice.count({ where });
+      res.json({
+        data: invoices,
+        total,
+        page: pageNum,
+        hasMore: pageNum * limitNum < total,
+      });
+    } else {
+      res.json(invoices);
+    }
   } catch (err) {
     console.error("getAll invoices error:", err);
     res.status(500).json({ error: "Failed to fetch invoices" });
@@ -124,7 +147,7 @@ export const create = async (req: Request, res: Response) => {
       calcedRows.reduce((s: number, r: any) => s + r.taxAmt, 0),
     );
     const cgstAmt = taxType === "CGST_SGST" ? r2(totalTax / 2) : 0;
-    const sgstAmt = taxType === "CGST_SGST" ? r2(totalTax - cgstAmt) : 0;
+    const sgstAmt = taxType === "CGST_SGST" ? r2(totalTax - cgstAmt) : 0; // avoids 1-paisa rounding gap
     const igstAmt = taxType === "IGST" ? totalTax : 0;
     const grandTotal = r2(totalTaxable + totalTax);
 
@@ -138,13 +161,7 @@ export const create = async (req: Request, res: Response) => {
           return res
             .status(400)
             .json({ error: `Batch not found for ${row.itemName}` });
-        const required =
-          (parseFloat(row.qty) || 0) + (parseFloat(row.freeQty) || 0);
-        if (batch.currentQty < required) {
-          return res.status(400).json({
-            error: `Insufficient stock for ${row.itemName} (Batch: ${batch.batchNo}). Available: ${batch.currentQty}`,
-          });
-        }
+        // Allow negative stock — client takes orders even without stock
       }
     }
 

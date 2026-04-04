@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
 import { fmt } from "../../utils/invoice.utils";
@@ -12,6 +12,7 @@ interface ReturnRow {
   hsnCode: string;
   batchNo: string;
   originalQty: number;
+  originalTaxable: number;
   returnedQty: number;
   availableQty: number;
   returnQty: string;
@@ -26,17 +27,22 @@ interface ReturnRow {
 
 function calcReturnRow(row: ReturnRow): ReturnRow {
   const qty = parseFloat(row.returnQty) || 0;
-  const taxable = r2(row.rate * qty * (1 - row.disc / 100));
+  const taxablePerUnit =
+    row.originalQty > 0 ? row.originalTaxable / row.originalQty : 0;
+  const taxable = r2(taxablePerUnit * qty);
   const taxAmt = r2((taxable * row.gst) / 100);
   const netValue = r2(taxable + taxAmt);
   return { ...row, taxable, taxAmt, netValue };
 }
 
+const PAGE = 50;
+
 export default function SaleReturn() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState<"select" | "return">("select");
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [allInvoices, setAll] = useState<Invoice[]>([]);
+  const [visible, setVisible] = useState(PAGE);
   const [search, setSearch] = useState("");
   const [selectedInv, setSelectedInv] = useState<Invoice | null>(null);
   const [returnRows, setReturnRows] = useState<ReturnRow[]>([]);
@@ -45,26 +51,53 @@ export default function SaleReturn() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     invoiceApi
       .getAll()
-      .then((data) => setInvoices(data))
+      .then((data) => setAll(data))
       .catch(() => setError("Failed to load invoices"))
       .finally(() => setLoading(false));
   }, []);
+
+  // Infinite scroll — load more when sentinel visible
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) setVisible((v) => v + PAGE);
+      },
+      { threshold: 0.1 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [step, search]);
+
+  // Reset visible count on search change
+  useEffect(() => {
+    setVisible(PAGE);
+  }, [search]);
+
+  const filtered = allInvoices.filter(
+    (i) =>
+      String(i.invoiceNo).toLowerCase().includes(search.toLowerCase()) ||
+      i.customer?.name?.toLowerCase().includes(search.toLowerCase()),
+  );
+  const shown = filtered.slice(0, visible);
 
   function selectInvoice(inv: Invoice) {
     const rows = (inv.items || []).map((item: any) => {
       const returnedQty = Number(item.returnedQty || 0);
       const availableQty = Number(item.qty) - returnedQty;
-
       return {
         invoiceItemId: item.id,
         itemName: item.itemName,
         hsnCode: item.hsnCode,
         batchNo: item.batch?.batchNo || "",
         originalQty: Number(item.qty),
+        originalTaxable: Number(item.taxableAmt || 0),
         returnedQty,
         availableQty,
         returnQty: "",
@@ -77,16 +110,13 @@ export default function SaleReturn() {
         selected: false,
       };
     });
-
     setSelectedInv(inv);
     setReturnRows(rows);
     setError("");
-
     if (!rows.length) {
       setError("This invoice has no items to return");
       return;
     }
-
     setStep("return");
   }
 
@@ -94,11 +124,9 @@ export default function SaleReturn() {
     setReturnRows((p) =>
       p.map((r, i) => {
         if (i !== idx) return r;
-
         const nextSelected = !r.selected;
         const nextQty =
           nextSelected && r.availableQty > 0 ? String(r.availableQty) : "";
-
         return calcReturnRow({
           ...r,
           selected: nextSelected,
@@ -112,15 +140,9 @@ export default function SaleReturn() {
     setReturnRows((p) =>
       p.map((r, i) => {
         if (i !== idx) return r;
-
         const qty = parseFloat(val) || 0;
         if (qty > r.availableQty) return r;
-
-        return calcReturnRow({
-          ...r,
-          returnQty: val,
-          selected: qty > 0,
-        });
+        return calcReturnRow({ ...r, returnQty: val, selected: qty > 0 });
       }),
     );
   }
@@ -129,14 +151,12 @@ export default function SaleReturn() {
     (r) => r.selected && parseFloat(r.returnQty) > 0,
   );
   const calcedSelected = selectedRows.map((r) => calcReturnRow(r));
-
   const totTaxable = r2(calcedSelected.reduce((s, r) => s + r.taxable, 0));
   const totTax = r2(calcedSelected.reduce((s, r) => s + r.taxAmt, 0));
   const totCredit = r2(totTaxable + totTax);
-
   const taxType: TaxType = (selectedInv?.taxType as TaxType) || "CGST_SGST";
   const totCgst = taxType === "CGST_SGST" ? r2(totTax / 2) : 0;
-  const totSgst = taxType === "CGST_SGST" ? r2(totTax / 2) : 0;
+  const totSgst = taxType === "CGST_SGST" ? r2(totTax - totCgst) : 0;
   const totIgst = taxType === "IGST" ? totTax : 0;
 
   async function handleSave() {
@@ -144,15 +164,12 @@ export default function SaleReturn() {
       setError("No invoice selected");
       return;
     }
-
     if (!selectedRows.length) {
       setError("Select at least one item to return");
       return;
     }
-
     setSaving(true);
     setError("");
-
     try {
       await invoiceApi.createReturn(selectedInv.id, {
         reason,
@@ -161,7 +178,6 @@ export default function SaleReturn() {
           qty: parseFloat(r.returnQty),
         })),
       });
-
       setDone(true);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to process return");
@@ -216,12 +232,6 @@ export default function SaleReturn() {
   }
 
   if (step === "select") {
-    const filtered = invoices.filter(
-      (i) =>
-        String(i.invoiceNo).includes(search) ||
-        i.customer?.name?.toLowerCase().includes(search.toLowerCase()),
-    );
-
     return (
       <div className="min-h-screen bg-[#f8fafc]">
         <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4 sticky top-0 z-50 shadow-sm">
@@ -240,7 +250,6 @@ export default function SaleReturn() {
             </div>
           </div>
         </div>
-
         <div className="max-w-3xl mx-auto px-6 py-6">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className="px-5 py-4 border-b border-slate-100">
@@ -251,7 +260,6 @@ export default function SaleReturn() {
                 className={`${inp} w-full px-4 py-2.5`}
               />
             </div>
-
             {loading ? (
               <div className="flex items-center justify-center py-16">
                 <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -261,54 +269,63 @@ export default function SaleReturn() {
                 No invoices found
               </div>
             ) : (
-              <div className="divide-y divide-slate-50">
-                {filtered.map((inv: any) => (
-                  <div
-                    key={inv.id}
-                    onClick={() => selectInvoice(inv)}
-                    className="px-5 py-4 cursor-pointer hover:bg-blue-50/40 transition-colors flex items-center justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono font-bold text-blue-700 text-sm">
-                          #{inv.invoiceNo}
-                        </span>
-                        <span className="text-sm font-semibold text-slate-800">
-                          {inv.customer?.name}
-                        </span>
-                        <span
-                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            inv.status === "SAVED"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-red-50 text-red-600"
-                          }`}
-                        >
-                          {inv.status}
-                        </span>
+              <>
+                <div className="divide-y divide-slate-50">
+                  {shown.map((inv: any) => (
+                    <div
+                      key={inv.id}
+                      onClick={() => selectInvoice(inv)}
+                      className="px-5 py-4 cursor-pointer hover:bg-blue-50/40 transition-colors flex items-center justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono font-bold text-blue-700 text-sm">
+                            #{inv.invoiceNo}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-800">
+                            {inv.customer?.name}
+                          </span>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded-full font-medium ${inv.status === "SAVED" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+                          >
+                            {inv.status}
+                          </span>
+                        </div>
+                        <div className="flex gap-4 mt-1 text-xs text-slate-400">
+                          <span>
+                            {new Date(inv.invoiceDate).toLocaleDateString(
+                              "en-IN",
+                            )}
+                          </span>
+                          <span>{inv.items?.length || 0} items</span>
+                          <span>
+                            {inv.taxType === "CGST_SGST" ? "CGST+SGST" : "IGST"}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex gap-4 mt-1 text-xs text-slate-400">
-                        <span>
-                          {new Date(inv.invoiceDate).toLocaleDateString(
-                            "en-IN",
-                          )}
-                        </span>
-                        <span>{inv.items?.length || 0} items</span>
-                        <span>
-                          {inv.taxType === "CGST_SGST" ? "CGST+SGST" : "IGST"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-base font-bold text-slate-800">
-                        ₹{fmt(inv.grandTotal)}
-                      </div>
-                      <div className="text-xs text-slate-400 mt-0.5">
-                        Select →
+                      <div className="text-right">
+                        <div className="text-base font-bold text-slate-800">
+                          ₹{fmt(inv.grandTotal)}
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">
+                          Select →
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                {/* Infinite scroll sentinel */}
+                <div
+                  ref={sentinelRef}
+                  className="py-2 text-center text-xs text-slate-400"
+                >
+                  {shown.length < filtered.length
+                    ? "Loading more..."
+                    : shown.length > PAGE
+                      ? `Showing all ${filtered.length}`
+                      : ""}
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -335,7 +352,6 @@ export default function SaleReturn() {
             </div>
           </div>
         </div>
-
         <div className="flex items-center gap-2.5">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-1.5 rounded-lg">
@@ -395,7 +411,6 @@ export default function SaleReturn() {
               {selectedRows.length} item(s) selected
             </span>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full table-fixed" style={{ minWidth: 980 }}>
               <thead>
@@ -424,26 +439,18 @@ export default function SaleReturn() {
                   ))}
                 </tr>
               </thead>
-
               <tbody>
                 {returnRows.map((row, idx) => {
                   const calc = calcReturnRow(row);
-
                   return (
                     <tr
                       key={row.invoiceItemId}
-                      className={`border-b border-slate-50 transition-colors ${
-                        row.selected ? "bg-red-50/30" : "hover:bg-slate-50/40"
-                      }`}
+                      className={`border-b border-slate-50 transition-colors ${row.selected ? "bg-red-50/30" : "hover:bg-slate-50/40"}`}
                     >
                       <td className="px-3 py-2.5">
                         <div
                           onClick={() => row.availableQty > 0 && toggleRow(idx)}
-                          className={`w-5 h-5 rounded border-2 cursor-pointer flex items-center justify-center transition-all ${
-                            row.selected
-                              ? "bg-red-500 border-red-500"
-                              : "border-slate-300 bg-white"
-                          } ${row.availableQty <= 0 ? "opacity-40 cursor-not-allowed" : ""}`}
+                          className={`w-5 h-5 rounded border-2 cursor-pointer flex items-center justify-center transition-all ${row.selected ? "bg-red-500 border-red-500" : "border-slate-300 bg-white"} ${row.availableQty <= 0 ? "opacity-40 cursor-not-allowed" : ""}`}
                         >
                           {row.selected && (
                             <span className="text-white text-xs font-bold leading-none">
@@ -452,31 +459,24 @@ export default function SaleReturn() {
                           )}
                         </div>
                       </td>
-
                       <td className="px-3 py-2.5 text-sm font-medium text-slate-800">
                         {row.itemName}
                       </td>
-
                       <td className="px-3 py-2.5 text-xs text-slate-500">
                         {row.hsnCode}
                       </td>
-
                       <td className="px-3 py-2.5 text-xs font-mono text-blue-700">
                         {row.batchNo || "-"}
                       </td>
-
                       <td className="px-3 py-2.5 text-sm text-slate-600 text-center">
                         {row.originalQty}
                       </td>
-
                       <td className="px-3 py-2.5 text-sm text-slate-600 text-center">
                         {row.returnedQty}
                       </td>
-
                       <td className="px-3 py-2.5 text-sm font-semibold text-slate-700 text-center">
                         {row.availableQty}
                       </td>
-
                       <td className="px-3 py-2.5" style={{ width: 90 }}>
                         <input
                           type="number"
@@ -488,31 +488,21 @@ export default function SaleReturn() {
                           disabled={row.availableQty <= 0}
                           className="border text-center border-slate-200 rounded-md text-xs w-full px-2 py-1.5 outline-none focus:border-red-400 bg-white disabled:bg-slate-100"
                         />
-                        {parseFloat(row.returnQty) > row.availableQty && (
-                          <div className="text-xs text-red-500 mt-0.5">
-                            Max: {row.availableQty}
-                          </div>
-                        )}
                       </td>
-
                       <td className="px-3 py-2.5 text-xs text-slate-600 text-center">
                         ₹{fmt(row.rate)}
                       </td>
-
                       <td className="px-3 py-2.5 text-xs text-slate-600 text-center">
                         {row.disc}%
                       </td>
-
                       <td className="px-3 py-2.5 text-xs text-slate-600 text-center">
                         {row.gst}%
                       </td>
-
                       <td className="px-3 py-2.5 text-xs text-slate-600 text-center">
                         {row.selected && calc.taxable > 0
                           ? `₹${fmt(calc.taxable)}`
                           : "—"}
                       </td>
-
                       <td className="px-3 py-2.5 text-sm font-bold text-red-600 text-center">
                         {row.selected && calc.netValue > 0
                           ? `₹${fmt(calc.netValue)}`
@@ -538,7 +528,6 @@ export default function SaleReturn() {
               className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 w-full px-3 py-2.5 resize-none h-20"
             />
           </div>
-
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-4">
               Credit Note Summary
@@ -550,7 +539,6 @@ export default function SaleReturn() {
                   ₹{fmt(totTaxable)}
                 </span>
               </div>
-
               {taxType === "CGST_SGST" ? (
                 <>
                   <div className="flex justify-between">
@@ -574,14 +562,12 @@ export default function SaleReturn() {
                   </span>
                 </div>
               )}
-
               <div className="flex justify-between">
                 <span className="text-slate-500">Total Tax</span>
                 <span className="font-medium text-slate-700">
                   ₹{fmt(totTax)}
                 </span>
               </div>
-
               <div className="border-t border-slate-100 pt-3 flex justify-between items-baseline">
                 <span className="font-bold text-slate-800 text-base">
                   Total Credit
@@ -591,7 +577,6 @@ export default function SaleReturn() {
                 </span>
               </div>
             </div>
-
             <button
               onClick={handleSave}
               disabled={saving || !selectedRows.length}

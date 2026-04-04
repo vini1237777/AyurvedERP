@@ -66,6 +66,8 @@ export interface Item {
   maintainBatch: boolean;
   isActive: boolean;
   batches: Batch[];
+  mrp?: number;
+  rate?: number;
 }
 
 // ─── Invoice Types ────────────────────────────────────────────────────────────
@@ -172,6 +174,8 @@ export interface ItemFormData {
   altUnit: string;
   altFactor: string;
   maintainBatch: boolean;
+  mrp: string;
+  rate: string;
 }
 
 export interface BatchFormData {

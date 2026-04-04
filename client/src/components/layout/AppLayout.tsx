@@ -27,6 +27,17 @@ const NAV = [
       { path: "/reports/sale-register", icon: "", label: "Sale Register" },
       { path: "/reports/gst", icon: "", label: "GST Report" },
       { path: "/reports/stock", icon: "", label: "Stock Report" },
+
+      {
+        path: "/reports/item-category",
+        icon: "",
+        label: "Item Report",
+      },
+      {
+        path: "/reports/customer-category",
+        icon: "",
+        label: "Customer Report",
+      },
     ],
   },
 ];

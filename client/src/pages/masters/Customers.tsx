@@ -199,21 +199,16 @@ export default function CustomerMaster() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50">
-                      {[
-                        "Name",
-                        "GSTIN",
-                        "State",
-                        "Mobile",
-                        "Balance",
-                        "Actions",
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
-                        >
-                          {h}
-                        </th>
-                      ))}
+                      {["Name", "GSTIN", "State", "Mobile", "Actions"].map(
+                        (h) => (
+                          <th
+                            key={h}
+                            className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
+                          >
+                            {h}
+                          </th>
+                        ),
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -244,14 +239,6 @@ export default function CustomerMaster() {
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600">
                           {c.mobile || "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span
-                            className={`text-sm font-semibold ${c.balance < 0 ? "text-red-600" : "text-emerald-600"}`}
-                          >
-                            ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
-                            {c.balance < 0 ? "Dr." : "Cr."}
-                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">

@@ -13,7 +13,7 @@ export const saleRegister = async (req: Request, res: Response) => {
           ? {
               invoiceDate: {
                 gte: new Date(String(from)),
-                lte: new Date(String(to)),
+                lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
               },
             }
           : {}),
@@ -44,7 +44,7 @@ export const gstReport = async (req: Request, res: Response) => {
           ? {
               invoiceDate: {
                 gte: new Date(String(from)),
-                lte: new Date(String(to)),
+                lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
               },
             }
           : {}),

@@ -758,7 +758,6 @@ export default function SaleEntry() {
                           placeholder="0"
                         />
                       </td>
-
                       <td className="px-2 py-1.5">
                         <input
                           value={row.qty}
@@ -791,6 +790,7 @@ export default function SaleEntry() {
                           placeholder="0"
                         />
                       </td>
+
                       <td className="px-2 py-1.5">
                         <input
                           value={row.gst || ""}

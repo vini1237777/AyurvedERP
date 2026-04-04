@@ -25,11 +25,17 @@ const EMPTY: BatchFormData = {
   openingQty: "0",
 };
 
+type SortKey = "name" | "batchNo" | "expiry" | "stock" | "price";
+type StockFilter = "all" | "full" | "updated" | "low" | "critical" | "out";
+
 export default function BatchMaster() {
   const [batches, setBatches] = useState<(Batch & { item: Item })[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Batch | null>(null);
   const [form, setForm] = useState<BatchFormData>(EMPTY);
@@ -58,16 +64,68 @@ export default function BatchMaster() {
     }
   }
 
-  const filtered = batches.filter(
+  function stockStatus(b: Batch): StockFilter {
+    if (b.currentQty <= 0) return "out";
+    if (b.currentQty < b.openingQty * 0.25) return "critical";
+    if (b.currentQty < b.openingQty * 0.5) return "low";
+    if (b.currentQty < b.openingQty) return "updated";
+    return "full";
+  }
+
+  // Filter
+  const afterSearch = batches.filter(
     (b) =>
-      (b as any).item?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      b.batchNo.toLowerCase().includes(search.toLowerCase()),
+      ((b as any).item?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        b.batchNo.toLowerCase().includes(search.toLowerCase())) &&
+      (stockFilter === "all" || stockStatus(b) === stockFilter),
   );
 
-  const pg = usePagination(filtered, 50);
+  // Sort
+  const sorted = [...afterSearch].sort((a, b) => {
+    let v = 0;
+    if (sortKey === "name")
+      v = ((a as any).item?.name || "").localeCompare(
+        (b as any).item?.name || "",
+      );
+    if (sortKey === "batchNo") v = a.batchNo.localeCompare(b.batchNo);
+    if (sortKey === "expiry")
+      v = (a.expiryDate || "").localeCompare(b.expiryDate || "");
+    if (sortKey === "stock") v = a.currentQty - b.currentQty;
+    if (sortKey === "price") v = (a.salePrice || 0) - (b.salePrice || 0);
+    return v * sortDir;
+  });
+
+  const pg = usePagination(sorted, 50);
   useEffect(() => {
     pg.reset();
-  }, [search]);
+  }, [search, stockFilter, sortKey, sortDir]);
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === 1 ? -1 : 1));
+    else {
+      setSortKey(k);
+      setSortDir(1);
+    }
+  }
+
+  function SortTh({ label, k }: { label: string; k: SortKey }) {
+    const active = sortKey === k;
+    return (
+      <th
+        onClick={() => toggleSort(k)}
+        className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap cursor-pointer select-none hover:text-slate-700 group"
+      >
+        <span className="flex items-center gap-1">
+          {label}
+          <span
+            className={`transition-opacity ${active ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`}
+          >
+            {active ? (sortDir === 1 ? "↑" : "↓") : "↕"}
+          </span>
+        </span>
+      </th>
+    );
+  }
 
   function openCreate() {
     setEditing(null);
@@ -123,14 +181,6 @@ export default function BatchMaster() {
     }
   }
 
-  function stockStatus(b: Batch) {
-    if (b.currentQty <= 0) return "out";
-    if (b.currentQty < b.openingQty * 0.25) return "critical";
-    if (b.currentQty < b.openingQty * 0.5) return "low";
-    if (b.currentQty < b.openingQty) return "updated";
-    return "full";
-  }
-
   function stockBadge(b: Batch) {
     const sold = b.openingQty - b.currentQty,
       status = stockStatus(b);
@@ -140,6 +190,7 @@ export default function BatchMaster() {
       low: "bg-yellow-100 text-yellow-700 border border-yellow-200",
       updated: "bg-blue-50 text-blue-700 border border-blue-200",
       full: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+      all: "",
     };
     return (
       <div className="flex flex-col gap-0.5">
@@ -170,6 +221,39 @@ export default function BatchMaster() {
     return "hover:bg-slate-50";
   }
 
+  const FILTERS: { key: StockFilter; color: string; label: string }[] = [
+    {
+      key: "all",
+      color: "bg-slate-100 text-slate-600 border border-slate-200",
+      label: `All (${batches.length})`,
+    },
+    {
+      key: "full",
+      color: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+      label: `Full Stock (${batches.filter((b) => stockStatus(b) === "full").length})`,
+    },
+    {
+      key: "updated",
+      color: "bg-blue-100 text-blue-700 border border-blue-200",
+      label: `Partially Sold (${batches.filter((b) => stockStatus(b) === "updated").length})`,
+    },
+    {
+      key: "low",
+      color: "bg-yellow-100 text-yellow-700 border border-yellow-200",
+      label: `< 50% Left (${batches.filter((b) => stockStatus(b) === "low").length})`,
+    },
+    {
+      key: "critical",
+      color: "bg-orange-100 text-orange-700 border border-orange-200",
+      label: `< 25% Left (${batches.filter((b) => stockStatus(b) === "critical").length})`,
+    },
+    {
+      key: "out",
+      color: "bg-red-100 text-red-700 border border-red-200",
+      label: `Out of Stock (${batches.filter((b) => stockStatus(b) === "out").length})`,
+    },
+  ];
+
   return (
     <div>
       {toast && (
@@ -195,23 +279,19 @@ export default function BatchMaster() {
         }
       />
 
-      <div className="flex items-center gap-3 mb-3 px-1 flex-wrap">
+      {/* Clickable stock filter pills */}
+      <div className="flex items-center gap-2 mb-3 px-1 flex-wrap">
         <span className="text-xs text-slate-400 font-medium">
           Stock Status:
         </span>
-        {[
-          { color: "bg-emerald-100 text-emerald-700", label: "Full Stock" },
-          { color: "bg-blue-100 text-blue-700", label: "Partially Sold" },
-          { color: "bg-yellow-100 text-yellow-700", label: "< 50% Left" },
-          { color: "bg-orange-100 text-orange-700", label: "< 25% Left" },
-          { color: "bg-red-100 text-red-700", label: "Out of Stock" },
-        ].map(({ color, label }) => (
-          <span
-            key={label}
-            className={`text-xs px-2 py-0.5 rounded-full font-medium ${color}`}
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setStockFilter(f.key)}
+            className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all border ${f.color} ${stockFilter === f.key ? "ring-2 ring-offset-1 ring-blue-400 scale-105" : ""}`}
           >
-            {label}
-          </span>
+            {f.label}
+          </button>
         ))}
       </div>
 
@@ -219,10 +299,14 @@ export default function BatchMaster() {
         <LoadingScreen />
       ) : (
         <Card>
-          {filtered.length === 0 ? (
+          {sorted.length === 0 ? (
             <EmptyState
-              title="No batches"
-              action={<Button onClick={openCreate}>+ New Batch</Button>}
+              title="No batches found"
+              action={
+                <Button onClick={() => setStockFilter("all")}>
+                  Clear Filter
+                </Button>
+              }
             />
           ) : (
             <>
@@ -230,25 +314,26 @@ export default function BatchMaster() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-slate-50">
-                      {[
-                        "Item",
-                        "Batch No",
-                        "Mfg Date",
-                        "Expiry",
-                        "Purchase Price",
-                        "Sale Price",
-                        "MRP",
-                        "Opening Qty",
-                        "Current Stock",
-                        "Actions",
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
-                        >
-                          {h}
-                        </th>
-                      ))}
+                      <SortTh label="Item" k="name" />
+                      <SortTh label="Batch No" k="batchNo" />
+                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                        Mfg Date
+                      </th>
+                      <SortTh label="Expiry" k="expiry" />
+                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                        Purchase Price
+                      </th>
+                      <SortTh label="Sale Price" k="price" />
+                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                        MRP
+                      </th>
+                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                        Opening Qty
+                      </th>
+                      <SortTh label="Current Stock" k="stock" />
+                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>

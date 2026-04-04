@@ -5,7 +5,12 @@ export const getAll = async (_req: Request, res: Response) => {
   try {
     const items = await prisma.item.findMany({
       where: { isActive: true },
-      include: { hsn: true, taxSlab: true, batches: true },
+      include: {
+        hsn: true,
+        taxSlab: true,
+        batches: true,
+        categoryPrices: { orderBy: { category: "asc" } },
+      },
       orderBy: { name: "asc" },
     });
     res.json(items);
@@ -37,6 +42,8 @@ export const create = async (req: Request, res: Response) => {
       unit,
       altUnit,
       altFactor,
+      mrp,
+      rate,
       maintainBatch,
     } = req.body;
 
@@ -73,6 +80,8 @@ export const create = async (req: Request, res: Response) => {
         unit: unit || "Pcs",
         altUnit: altUnit || null,
         altFactor: altFactor ? parseFloat(altFactor) : 1,
+        mrp: mrp ? parseFloat(mrp) : null,
+        rate: rate ? parseFloat(rate) : null,
         maintainBatch: maintainBatch !== false,
       },
       include: { hsn: true, taxSlab: true },
@@ -95,6 +104,8 @@ export const update = async (req: Request, res: Response) => {
       unit,
       altUnit,
       altFactor,
+      mrp,
+      rate,
       maintainBatch,
     } = req.body;
 
@@ -123,6 +134,8 @@ export const update = async (req: Request, res: Response) => {
         unit,
         altUnit: altUnit || null,
         altFactor: altFactor ? parseFloat(altFactor) : undefined,
+        mrp: mrp !== undefined ? (mrp ? parseFloat(mrp) : null) : undefined,
+        rate: rate !== undefined ? (rate ? parseFloat(rate) : null) : undefined,
         maintainBatch,
       },
       include: { hsn: true, taxSlab: true },
