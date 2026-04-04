@@ -75,80 +75,109 @@ function ItemSearch({
     setSearch(value);
   }, [value]);
 
-  function openDropdown() {
-    if (inputRef.current) {
-      const rect = inputRef.current.getBoundingClientRect();
-      setPos({
-        top: rect.bottom + 2,
-        left: rect.left,
-        width: Math.max(rect.width, 300),
-      });
-    }
-    setShow(true);
+  // Recalculate position — called on focus, change, and scroll
+  function updatePos() {
+    if (!inputRef.current) return;
+    const r = inputRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 300) });
   }
+
+  // Listen to scroll on the overflow-auto content container so dropdown tracks input
+  useEffect(() => {
+    if (!show) return;
+    const scroller = inputRef.current?.closest(
+      ".overflow-auto",
+    ) as HTMLElement | null;
+    const onScroll = () => updatePos();
+    scroller?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scroller?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+    };
+  }, [show]);
 
   const filtered = allItems.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
-    <div className="relative w-full">
+    <>
       <input
         ref={inputRef}
         value={search}
         onChange={(e) => {
           setSearch(e.target.value);
           onUpdate(rowId, e.target.value);
-          openDropdown();
+          updatePos();
+          setShow(true);
         }}
-        onFocus={openDropdown}
+        onFocus={() => {
+          updatePos();
+          setShow(true);
+        }}
         onBlur={() => setTimeout(() => setShow(false), 200)}
         placeholder="Search item..."
         className="border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-2 py-1.5 text-left hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all"
       />
-      {show && typeof document !== "undefined" && (
-        <div
-          style={{
-            position: "fixed",
-            top: pos.top,
-            left: pos.left,
-            width: pos.width,
-            maxHeight: 240,
-            zIndex: 9999,
-          }}
-          className="bg-white border border-slate-200 rounded-xl shadow-2xl overflow-y-auto"
-        >
-          {filtered.length === 0 && (
-            <div className="px-4 py-4 text-xs text-slate-400 text-center">
-              {search ? "No items found" : "Type to search items..."}
-            </div>
-          )}
-          {filtered.map((item) => (
-            <div
-              key={item.id}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                setSearch(item.name);
-                setShow(false);
-                onSelect(rowId, item);
-              }}
-              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
-            >
-              <div className="text-sm font-semibold text-slate-800">
-                {item.name}
+      {show &&
+        pos.top > 0 &&
+        createPortal(
+          <div
+            style={{
+              position: "fixed",
+              top: pos.top,
+              left: pos.left,
+              width: pos.width,
+              maxHeight: 240,
+              zIndex: 99999,
+              backgroundColor: "#fff",
+              border: "1px solid #e2e8f0",
+              borderRadius: "12px",
+              boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
+              overflowY: "auto",
+            }}
+          >
+            {filtered.length === 0 ? (
+              <div
+                style={{
+                  padding: "16px",
+                  textAlign: "center",
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                }}
+              >
+                {search ? "No items found" : "Type to search..."}
               </div>
-              <div className="text-xs text-slate-400 mt-0.5 flex gap-3">
-                <span>HSN: {(item.hsn as any)?.code || "-"}</span>
-                <span>GST: {(item.taxSlab as any)?.rate ?? 0}%</span>
-                <span>
-                  Stk: {item.batches.reduce((s, b) => s + b.currentQty, 0)}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+            ) : (
+              filtered.map((item) => (
+                <div
+                  key={item.id}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setSearch(item.name);
+                    setShow(false);
+                    onSelect(rowId, item);
+                  }}
+                  className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
+                >
+                  <div className="text-sm font-semibold text-slate-800">
+                    {item.name}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5 flex gap-3">
+                    <span>HSN: {(item.hsn as any)?.code || "-"}</span>
+                    <span>GST: {(item.taxSlab as any)?.rate ?? 0}%</span>
+                    <span>
+                      Stk: {item.batches.reduce((s, b) => s + b.currentQty, 0)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>,
+          document.body,
+        )}
+    </>
   );
 }
 
@@ -624,10 +653,10 @@ export default function SaleEntry() {
                       ["Exp", 72, "center"],
                       ["MRP", 72, "right"],
                       ["Rate", 80, "right"],
-                      ["Dis %", 64, "right"],
-                      ["S Dis %", 68, "right"],
                       ["Qty", 64, "right"],
                       ["Free", 56, "right"],
+                      ["Dis %", 64, "right"],
+                      ["S Dis %", 68, "right"],
                       ["GST %", 60, "right"],
                       ["Taxable", 90, "right"],
                       ["Total", 90, "right"],
