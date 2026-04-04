@@ -13,6 +13,7 @@ import {
   Input,
   Select,
 } from "../../components/ui";
+import { Pagination, usePagination } from "../../components/ui/Pagination";
 import type { Customer, CustomerFormData } from "../../types";
 
 const STATES = [
@@ -67,6 +68,20 @@ export default function CustomerMaster() {
       setLoading(false);
     }
   }
+
+  const filtered = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      (c.gstin || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.mobile || "").includes(search),
+  );
+
+  const pg = usePagination(filtered, 50);
+
+  // Reset page when search changes
+  useEffect(() => {
+    pg.reset();
+  }, [search]);
 
   function openCreate() {
     setEditing(null);
@@ -143,13 +158,6 @@ export default function CustomerMaster() {
     }
   }
 
-  const filtered = customers.filter(
-    (c) =>
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      (c.gstin || "").toLowerCase().includes(search.toLowerCase()) ||
-      (c.mobile || "").includes(search),
-  );
-
   return (
     <div>
       {toast && (
@@ -159,7 +167,6 @@ export default function CustomerMaster() {
           onClose={() => setToast(null)}
         />
       )}
-
       <PageHeader
         title="Customers"
         subtitle={`${customers.length} total customers`}
@@ -187,93 +194,103 @@ export default function CustomerMaster() {
               action={<Button onClick={openCreate}>+ New Customer</Button>}
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-slate-100 bg-slate-50">
-                    {[
-                      "Name",
-                      "GSTIN",
-                      "State",
-                      "Mobile",
-                      "Balance",
-                      "Actions",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium text-sm text-slate-800">
-                          {c.name}
-                        </div>
-                        {c.address && (
-                          <div className="text-xs text-slate-500">
-                            {c.address}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {c.gstin ? (
-                          <Badge color="green">{c.gstin}</Badge>
-                        ) : (
-                          <Badge color="gray">No GSTIN</Badge>
-                        )}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {c.state} ({c.stateCode})
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
-                        {c.mobile || "-"}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`text-sm font-semibold ${c.balance < 0 ? "text-red-600" : "text-emerald-600"}`}
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50">
+                      {[
+                        "Name",
+                        "GSTIN",
+                        "State",
+                        "Mobile",
+                        "Balance",
+                        "Actions",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
                         >
-                          ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
-                          {c.balance < 0 ? "Dr." : "Cr."}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(c)}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(c.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            Delete
-                          </Button>
-                        </div>
-                      </td>
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {pg.paginated.map((c) => (
+                      <tr
+                        key={c.id}
+                        className="border-b border-slate-50 hover:bg-slate-50 transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-sm text-slate-800">
+                            {c.name}
+                          </div>
+                          {c.address && (
+                            <div className="text-xs text-slate-500">
+                              {c.address}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {c.gstin ? (
+                            <Badge color="green">{c.gstin}</Badge>
+                          ) : (
+                            <Badge color="gray">No GSTIN</Badge>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {c.state} ({c.stateCode})
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {c.mobile || "-"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`text-sm font-semibold ${c.balance < 0 ? "text-red-600" : "text-emerald-600"}`}
+                          >
+                            ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
+                            {c.balance < 0 ? "Dr." : "Cr."}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEdit(c)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(c.id)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              Delete
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                total={pg.total}
+                page={pg.page}
+                perPage={pg.perPage}
+                from={pg.from}
+                to={pg.to}
+                onPage={pg.setPage}
+                onPerPage={pg.onPerPage}
+              />
+            </>
           )}
         </Card>
       )}
 
-      {/* Modal */}
       <Modal
         open={modal}
         onClose={() => setModal(false)}
