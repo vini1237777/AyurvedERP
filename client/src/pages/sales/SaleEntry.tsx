@@ -758,22 +758,7 @@ export default function SaleEntry() {
                           placeholder="0"
                         />
                       </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          value={row.disc}
-                          onChange={(e) => upd(row.id, "disc", e.target.value)}
-                          className={ti}
-                          placeholder="0"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
-                          value={row.sDis}
-                          onChange={(e) => upd(row.id, "sDis", e.target.value)}
-                          className={ti}
-                          placeholder="0"
-                        />
-                      </td>
+
                       <td className="px-2 py-1.5">
                         <input
                           value={row.qty}
@@ -786,6 +771,22 @@ export default function SaleEntry() {
                         <input
                           value={row.free}
                           onChange={(e) => upd(row.id, "free", e.target.value)}
+                          className={ti}
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          value={row.disc}
+                          onChange={(e) => upd(row.id, "disc", e.target.value)}
+                          className={ti}
+                          placeholder="0"
+                        />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input
+                          value={row.sDis}
+                          onChange={(e) => upd(row.id, "sDis", e.target.value)}
                           className={ti}
                           placeholder="0"
                         />
