@@ -3,16 +3,20 @@ import prisma from "../utils/prisma";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
-// ── FA-01, FA-02... format ────────────────────────────────────────────────────
+function getCurrentFY(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  if (m >= 4) return `20${String(y).slice(2)}-${String(y + 1).slice(2)}`;
+  return `20${String(y - 1).slice(2)}-${String(y).slice(2)}`;
+}
+
 async function getNextInvoiceNo(): Promise<string> {
-  // Only FA- invoices (not SP- imported history)
-  // Use createdAt desc to avoid string-sort issues (FA-0099 > FA-0100 alphabetically)
   const faInvoices = await prisma.invoice.findMany({
     where: { invoiceNo: { startsWith: "FA-" } },
     select: { invoiceNo: true },
   });
   if (!faInvoices.length) return "FA-01";
-  // Parse all numbers and take the max
   const maxNum = Math.max(
     ...faInvoices.map((i) => parseInt(i.invoiceNo.replace("FA-", ""), 10) || 0),
   );
@@ -26,7 +30,6 @@ async function getNextReturnNo(): Promise<number> {
   return (last?.returnNo || 0) + 1;
 }
 
-// ── getNextNo (API endpoint) ──────────────────────────────────────────────────
 export const getNextNo = async (_req: Request, res: Response) => {
   try {
     const invoiceNo = await getNextInvoiceNo();
@@ -36,13 +39,11 @@ export const getNextNo = async (_req: Request, res: Response) => {
   }
 };
 
-// ── getAll ───────────────────────────────────────────────────────────────────
 export const getAll = async (req: Request, res: Response) => {
   try {
-    const { from, to, customerId, page, limit } = req.query;
-
+    const { from, to, customerId, page, limit, financialYear } = req.query;
     const pageNum = parseInt(String(page || "1"), 10);
-    const limitNum = parseInt(String(limit || "0"), 10); // 0 = no limit
+    const limitNum = parseInt(String(limit || "0"), 10);
 
     const where = {
       ...(from && to
@@ -54,6 +55,7 @@ export const getAll = async (req: Request, res: Response) => {
           }
         : {}),
       ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
+      ...(financialYear ? { financialYear: String(financialYear) } : {}),
       status: { not: "CANCELLED" },
     };
 
@@ -64,7 +66,7 @@ export const getAll = async (req: Request, res: Response) => {
         agent: true,
         items: { include: { batch: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { invoiceDate: "desc" },
       ...(limitNum > 0
         ? { skip: (pageNum - 1) * limitNum, take: limitNum }
         : {}),
@@ -87,7 +89,6 @@ export const getAll = async (req: Request, res: Response) => {
   }
 };
 
-// ── getById ──────────────────────────────────────────────────────────────────
 export const getById = async (req: Request, res: Response) => {
   try {
     const invoice = await prisma.invoice.findUnique({
@@ -105,14 +106,12 @@ export const getById = async (req: Request, res: Response) => {
   }
 };
 
-// ── create ───────────────────────────────────────────────────────────────────
 export const create = async (req: Request, res: Response) => {
   try {
     const { customerId, agentId, invoiceDate, dueDate, terms, rows } = req.body;
 
-    if (!customerId || !rows?.length) {
+    if (!customerId || !rows?.length)
       return res.status(400).json({ error: "Customer and items are required" });
-    }
 
     const customer = await prisma.customer.findUnique({
       where: { id: parseInt(customerId) },
@@ -121,6 +120,15 @@ export const create = async (req: Request, res: Response) => {
 
     const taxType = customer.stateCode === "27" ? "CGST_SGST" : "IGST";
     const invoiceNo = await getNextInvoiceNo();
+
+    // Determine financial year from invoice date
+    const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
+    const y = invDate.getFullYear();
+    const m = invDate.getMonth() + 1;
+    const financialYear =
+      m >= 4
+        ? `20${String(y).slice(2)}-${String(y + 1).slice(2)}`
+        : `20${String(y - 1).slice(2)}-${String(y).slice(2)}`;
 
     const calcedRows = rows.map((row: any) => {
       const rate = parseFloat(row.rate) || 0;
@@ -147,11 +155,10 @@ export const create = async (req: Request, res: Response) => {
       calcedRows.reduce((s: number, r: any) => s + r.taxAmt, 0),
     );
     const cgstAmt = taxType === "CGST_SGST" ? r2(totalTax / 2) : 0;
-    const sgstAmt = taxType === "CGST_SGST" ? r2(totalTax - cgstAmt) : 0; // avoids 1-paisa rounding gap
+    const sgstAmt = taxType === "CGST_SGST" ? r2(totalTax - cgstAmt) : 0;
     const igstAmt = taxType === "IGST" ? totalTax : 0;
     const grandTotal = r2(totalTaxable + totalTax);
 
-    // Validate stock
     for (const row of calcedRows) {
       if (row.batchId) {
         const batch = await prisma.batch.findUnique({
@@ -161,7 +168,7 @@ export const create = async (req: Request, res: Response) => {
           return res
             .status(400)
             .json({ error: `Batch not found for ${row.itemName}` });
-        // Allow negative stock — client takes orders even without stock
+        // Allow negative stock
       }
     }
 
@@ -169,6 +176,7 @@ export const create = async (req: Request, res: Response) => {
       const inv = await tx.invoice.create({
         data: {
           invoiceNo,
+          financialYear,
           invoiceDate: new Date(invoiceDate),
           dueDate: dueDate ? new Date(dueDate) : null,
           terms: terms || "Credit",
@@ -230,7 +238,6 @@ export const create = async (req: Request, res: Response) => {
   }
 };
 
-// ── createReturn ─────────────────────────────────────────────────────────────
 export const createReturn = async (req: Request, res: Response) => {
   try {
     const invoiceId = parseInt(req.params.id, 10);
@@ -335,7 +342,6 @@ export const createReturn = async (req: Request, res: Response) => {
   }
 };
 
-// ── getAllReturns ─────────────────────────────────────────────────────────────
 export const getAllReturns = async (_req: Request, res: Response) => {
   try {
     const returns = await prisma.salesReturn.findMany({
@@ -348,7 +354,6 @@ export const getAllReturns = async (_req: Request, res: Response) => {
   }
 };
 
-// ── getReturnById ─────────────────────────────────────────────────────────────
 export const getReturnById = async (req: Request, res: Response) => {
   try {
     const salesReturn = await prisma.salesReturn.findUnique({
@@ -367,7 +372,6 @@ export const getReturnById = async (req: Request, res: Response) => {
   }
 };
 
-// ── cancel ───────────────────────────────────────────────────────────────────
 export const cancel = async (req: Request, res: Response) => {
   try {
     const invoice = await prisma.invoice.findUnique({

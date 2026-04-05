@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
 import { fmt } from "../../utils/invoice.utils";
@@ -14,15 +14,22 @@ import {
 import { Pagination, usePagination } from "../../components/ui/Pagination";
 import type { Invoice } from "../../types";
 
-type SortBy = "date" | "customer" | "total";
-type SortOrder = "asc" | "desc";
+// Current financial year helper
+function getCurrentFY(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  if (m >= 4) return `${y}-${String(y + 1).slice(2)}`;
+  return `${y - 1}-${String(y).slice(2)}`;
+}
 
 export default function SaleList() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("date");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [selectedFY, setSelectedFY] = useState(getCurrentFY());
+  const [availableFYs, setAvailableFYs] = useState<string[]>([]);
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
@@ -34,7 +41,15 @@ export default function SaleList() {
 
   async function load() {
     try {
-      setInvoices(await invoiceApi.getAll());
+      const data = await invoiceApi.getAll();
+      setInvoices(data);
+      // Extract unique financial years from data
+      const fys = [
+        ...new Set(data.map((i: any) => i.financialYear || getCurrentFY())),
+      ]
+        .sort()
+        .reverse();
+      setAvailableFYs(fys as string[]);
     } catch {
       setToast({ msg: "Failed to load invoices", type: "error" });
     } finally {
@@ -53,42 +68,22 @@ export default function SaleList() {
     }
   }
 
-  const filtered = useMemo(() => {
-    return invoices.filter(
+  // Filter by FY + search
+  const filtered = invoices
+    .filter(
       (i) =>
-        String(i.invoiceNo).toLowerCase().includes(search.toLowerCase()) ||
-        i.customer.name.toLowerCase().includes(search.toLowerCase()),
-    );
-  }, [invoices, search]);
-
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-
-    arr.sort((a, b) => {
-      let aVal: string | number = "";
-      let bVal: string | number = "";
-
-      if (sortBy === "date") {
-        aVal = new Date(a.invoiceDate).getTime();
-        bVal = new Date(b.invoiceDate).getTime();
-      } else if (sortBy === "customer") {
-        aVal = (a.customer?.name || "").toLowerCase();
-        bVal = (b.customer?.name || "").toLowerCase();
-      } else if (sortBy === "total") {
-        aVal = a.grandTotal || 0;
-        bVal = b.grandTotal || 0;
-      }
-
-      if (aVal < bVal) return sortOrder === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortOrder === "asc" ? 1 : -1;
-      return 0;
+        i.financialYear === selectedFY &&
+        (String(i.invoiceNo).toLowerCase().includes(search.toLowerCase()) ||
+          i.customer.name.toLowerCase().includes(search.toLowerCase())),
+    )
+    .sort((a, b) => {
+      const diff =
+        new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
+      return sortDir === "desc" ? -diff : diff;
     });
 
-    return arr;
-  }, [filtered, sortBy, sortOrder]);
-
-  const pg = usePagination(sorted, 50);
-  const totalSales = sorted.reduce((s, i) => s + i.grandTotal, 0);
+  const pg = usePagination(filtered, 50);
+  const totalSales = filtered.reduce((s, i) => s + i.grandTotal, 0);
 
   async function handlePrint(inv: Invoice) {
     try {
@@ -129,7 +124,6 @@ export default function SaleList() {
         taxAmt: item.taxAmt || 0,
         netValue: item.netValue || 0,
       }));
-
       const data = {
         customer: {
           name: full.customer?.name || "",
@@ -154,7 +148,6 @@ export default function SaleList() {
         totTax: full.totalTax || 0,
         grand: full.grandTotal || 0,
       };
-
       localStorage.setItem("fulanand_print_data", JSON.stringify(data));
       window.open("/invoice-print.html", "_blank");
     } catch {
@@ -171,10 +164,9 @@ export default function SaleList() {
           onClose={() => setToast(null)}
         />
       )}
-
       <PageHeader
         title="All Invoices"
-        subtitle={`${sorted.length} invoices · Total: ₹${fmt(totalSales)}`}
+        subtitle={`${filtered.length} invoices · Total: ₹${fmt(totalSales)}`}
         actions={
           <>
             <input
@@ -183,26 +175,12 @@ export default function SaleList() {
               placeholder="Search invoice or party..."
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-64 outline-none focus:border-blue-500"
             />
-
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortBy)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-blue-500"
+            <button
+              onClick={() => setSortDir((d) => (d === "desc" ? "asc" : "desc"))}
+              className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 whitespace-nowrap"
             >
-              <option value="date">Sort by Date</option>
-              <option value="customer">Sort by Customer</option>
-              <option value="total">Sort by Total</option>
-            </select>
-
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:border-blue-500"
-            >
-              <option value="asc">Asc</option>
-              <option value="desc">Desc</option>
-            </select>
-
+              Date {sortDir === "desc" ? "↓" : "↑"}
+            </button>
             <Link to="/sales/new">
               <Button>+ New Sale</Button>
             </Link>
@@ -210,11 +188,34 @@ export default function SaleList() {
         }
       />
 
+      {/* Financial Year Tabs */}
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        {[...new Set([getCurrentFY(), ...availableFYs])]
+          .sort()
+          .reverse()
+          .map((fy) => (
+            <button
+              key={fy}
+              onClick={() => setSelectedFY(fy)}
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                selectedFY === fy
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
+              }`}
+            >
+              FY {fy}
+              {fy === getCurrentFY() && (
+                <span className="ml-1.5 text-xs opacity-75">(Current)</span>
+              )}
+            </button>
+          ))}
+      </div>
+
       {loading ? (
         <LoadingScreen />
       ) : (
         <Card>
-          {sorted.length === 0 ? (
+          {filtered.length === 0 ? (
             <EmptyState
               title="No invoices found"
               action={
@@ -311,7 +312,6 @@ export default function SaleList() {
                   </tbody>
                 </table>
               </div>
-
               <Pagination
                 total={pg.total}
                 page={pg.page}

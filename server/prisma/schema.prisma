@@ -110,7 +110,8 @@ model Batch {
 
 model Invoice {
   id                Int           @id @default(autoincrement())
-  invoiceNo         String        @unique
+  invoiceNo         String
+  financialYear     String        @default("2025-26")
   invoiceDate       DateTime
   dueDate           DateTime?
   terms             String        @default("Credit")
@@ -135,6 +136,8 @@ model Invoice {
   salesReturns      SalesReturn[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@unique([invoiceNo, financialYear])
 }
 
 model InvoiceItem {
