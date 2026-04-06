@@ -20,7 +20,7 @@ async function getNextInvoiceNo(): Promise<string> {
   const maxNum = Math.max(
     ...faInvoices.map((i) => parseInt(i.invoiceNo.replace("FA-", ""), 10) || 0),
   );
-  return `FA-${String(maxNum + 1).padStart(4, "0")}`;
+  return `FA-${String(maxNum + 1).padStart(2, "0")}`;
 }
 
 async function getNextReturnNo(): Promise<number> {
