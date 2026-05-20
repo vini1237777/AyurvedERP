@@ -11,8 +11,10 @@
     "prisma:generate": "npx prisma generate",
     "prisma:studio": "npx prisma studio",
     "seed": "ts-node prisma/seed.ts",
-    "prisma:seed": "node --loader ts-node/esm prisma/seed.ts",
+    "seed:prod": "ts-node -r dotenv/config prisma/seed.ts dotenv_config_path=.env.production.local",
     "migrate:deploy": "prisma migrate deploy",
+    "migrate:deploy:prod": "node -r dotenv/config node_modules/.bin/prisma migrate deploy dotenv_config_path=.env.production.local",
+    "prisma:seed": "node --loader ts-node/esm prisma/seed.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {
