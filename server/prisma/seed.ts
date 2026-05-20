@@ -411,6 +411,24 @@ async function main() {
     const mrp = r2(purchase * rFloat(1.4, 2.2));
     const sale = r2(mrp / 1.15); // approx sale before tax
 
+    // Pre-compute batch specs so item + batches create together (atomic on one connection)
+    const batchCount = rInt(2, 4);
+    const batchSpecs = Array.from({ length: batchCount }, (_, b) => {
+      const yr = 2027 + rInt(0, 2);
+      const mn = rInt(1, 12);
+      const qty = rInt(50, 800);
+      return {
+        batchNo: `B${b}-${rInt(1000, 9999)}-${String.fromCharCode(65 + b)}${rInt(10, 99)}`,
+        expiryDate: `${mn}-${yr}`,
+        mfgDate: `${mn}-${yr - 3}`,
+        purchasePrice: purchase,
+        salePrice: sale,
+        mrp,
+        openingQty: qty,
+        currentQty: qty,
+      };
+    });
+
     const item = await prisma.item.create({
       data: {
         name,
@@ -422,30 +440,13 @@ async function main() {
         mrp,
         rate: sale,
         maintainBatch: true,
+        batches: { create: batchSpecs },
       },
+      include: { batches: true },
     });
-    items.push({ id: item.id, gst: hsn.gstRate, hsn: hsn.code });
 
-    // 2-4 batches per item
-    const batchCount = rInt(2, 4);
-    for (let b = 0; b < batchCount; b++) {
-      const yr = 2027 + rInt(0, 2);
-      const mfgYr = yr - 3;
-      const mn = rInt(1, 12);
-      const qty = rInt(50, 800);
-      const batch = await prisma.batch.create({
-        data: {
-          itemId: item.id,
-          batchNo: `B${String(item.id).padStart(3, "0")}-${String.fromCharCode(65 + b)}${rInt(10, 99)}`,
-          expiryDate: `${mn}-${yr}`,
-          mfgDate: `${mn}-${mfgYr}`,
-          purchasePrice: purchase,
-          salePrice: sale,
-          mrp,
-          openingQty: qty,
-          currentQty: qty,
-        },
-      });
+    items.push({ id: item.id, gst: hsn.gstRate, hsn: hsn.code });
+    for (const batch of item.batches) {
       batches.push({
         id: batch.id,
         itemId: item.id,
