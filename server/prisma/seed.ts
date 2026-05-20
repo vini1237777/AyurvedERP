@@ -319,11 +319,11 @@ async function main() {
     ].map((name) => prisma.agent.create({ data: { name, mobile: mobile() } })),
   );
 
-  // ── Customers (100) ────────────────────────────────────────────────────
-  console.log("Seeding 100 customers...");
+  // ── Customers (200) ────────────────────────────────────────────────────
+  console.log("Seeding 200 customers...");
   const customers: { id: number; stateCode: string }[] = [];
-  for (let i = 0; i < 100; i++) {
-    const isSupplier = i >= 85; // last 15 are suppliers
+  for (let i = 0; i < 200; i++) {
+    const isSupplier = i >= 170; // last 30 are suppliers
     let name: string,
       address: string,
       city: string,
@@ -331,7 +331,7 @@ async function main() {
     let gstin: string | null;
 
     if (isSupplier) {
-      name = SUPPLIER_NAMES[i - 85] || `Ayur Supplier ${i - 84}`;
+      name = SUPPLIER_NAMES[i - 170] || `Ayur Supplier ${i - 169}`;
       state = STATES[rInt(0, STATES.length - 1)];
       city =
         state.code === "27" ? rPick(MH_CITIES) : `${state.name.split(" ")[0]} City`;
@@ -366,11 +366,11 @@ async function main() {
     });
     customers.push({ id: c.id, stateCode: state.code });
   }
-  const salesCustomers = customers.slice(0, 85);
-  const supplierCustomers = customers.slice(85);
+  const salesCustomers = customers.slice(0, 170);
+  const supplierCustomers = customers.slice(170);
 
-  // ── Items (100) + Batches ──────────────────────────────────────────────
-  console.log("Seeding 100 items with batches...");
+  // ── Items (200) + Batches ──────────────────────────────────────────────
+  console.log("Seeding 200 items with batches...");
   const slabs = [
     { rate: 5, slab: slab5 },
     { rate: 12, slab: slab12 },
@@ -388,7 +388,7 @@ async function main() {
   }[] = [];
 
   let productIdx = 0;
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 200; i++) {
     const base = AYURVEDIC_PRODUCTS[productIdx % AYURVEDIC_PRODUCTS.length];
     productIdx++;
     const unit = rPick(base.units);
@@ -455,8 +455,8 @@ async function main() {
     }
   }
 
-  // ── Sale Invoices (100) ────────────────────────────────────────────────
-  console.log("Seeding 100 sale invoices...");
+  // ── Sale Invoices (200) ────────────────────────────────────────────────
+  console.log("Seeding 200 sale invoices...");
   // spread over last 6 months
   const now = new Date();
   const sixMonthsAgo = new Date(now);
@@ -464,8 +464,8 @@ async function main() {
   const dayMs = 24 * 60 * 60 * 1000;
   const spanDays = Math.floor((now.getTime() - sixMonthsAgo.getTime()) / dayMs);
 
-  for (let i = 0; i < 100; i++) {
-    const dateOffset = Math.floor((i / 100) * spanDays) + rInt(0, 1);
+  for (let i = 0; i < 200; i++) {
+    const dateOffset = Math.floor((i / 200) * spanDays) + rInt(0, 1);
     const invoiceDate = new Date(sixMonthsAgo.getTime() + dateOffset * dayMs);
     const cust = rPick(salesCustomers);
     const taxType = cust.stateCode === "27" ? "CGST_SGST" : "IGST";
@@ -569,10 +569,10 @@ async function main() {
     }
   }
 
-  // ── Purchase Invoices (100) ────────────────────────────────────────────
-  console.log("Seeding 100 purchase invoices...");
-  for (let i = 0; i < 100; i++) {
-    const dateOffset = Math.floor((i / 100) * spanDays) + rInt(0, 1);
+  // ── Purchase Invoices (200) ────────────────────────────────────────────
+  console.log("Seeding 200 purchase invoices...");
+  for (let i = 0; i < 200; i++) {
+    const dateOffset = Math.floor((i / 200) * spanDays) + rInt(0, 1);
     const purchaseDate = new Date(sixMonthsAgo.getTime() + dateOffset * dayMs);
     const sup = rPick(supplierCustomers);
     const taxType = sup.stateCode === "27" ? "CGST_SGST" : "IGST";
@@ -676,8 +676,8 @@ async function main() {
   console.log(`  Suppliers:          ${supplierCustomers.length}`);
   console.log(`  Items:              ${items.length}`);
   console.log(`  Batches:            ${batches.length}`);
-  console.log(`  Sale Invoices:      100`);
-  console.log(`  Purchase Invoices:  100`);
+  console.log(`  Sale Invoices:      200`);
+  console.log(`  Purchase Invoices:  200`);
   console.log("─────────────────────────────────────────");
 }
 
