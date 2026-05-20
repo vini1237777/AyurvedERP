@@ -23,26 +23,28 @@ model Company {
 }
 
 model Customer {
-  id           Int           @id @default(autoincrement())
-  name         String
-  gstin        String?
-  pan          String?
-  dlNo         String?
-  state        String        @default("Maharashtra")
-  stateCode    String        @default("27")
-  address      String?
-  city         String?
-  pincode      String?
-  mobile       String?
-  phone        String?
-  email        String?
-  category     String?
-  balance      Float         @default(0)
-  isActive     Boolean       @default(true)
-  invoices     Invoice[]
-  salesReturns SalesReturn[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id              Int              @id @default(autoincrement())
+  name            String
+  gstin           String?
+  pan             String?
+  dlNo            String?
+  state           String           @default("Maharashtra")
+  stateCode       String           @default("27")
+  address         String?
+  city            String?
+  pincode         String?
+  mobile          String?
+  phone           String?
+  email           String?
+  category        String?
+  balance         Float            @default(0)
+  isActive        Boolean          @default(true)
+  invoices        Invoice[]
+  salesReturns    SalesReturn[]
+  purchases       Purchase[]
+  purchaseReturns PurchaseReturn[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Agent {
@@ -86,26 +88,28 @@ model Item {
   isActive       Boolean             @default(true)
   batches        Batch[]
   invoiceItems   InvoiceItem[]
+  purchaseItems  PurchaseItem[]
   categoryPrices ItemCategoryPrice[]
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
 }
 
 model Batch {
-  id            Int           @id @default(autoincrement())
+  id            Int            @id @default(autoincrement())
   itemId        Int
-  item          Item          @relation(fields: [itemId], references: [id])
+  item          Item           @relation(fields: [itemId], references: [id])
   batchNo       String
   expiryDate    String?
   mfgDate       String?
   purchasePrice Float?
   salePrice     Float?
   mrp           Float?
-  openingQty    Float         @default(0)
-  currentQty    Float         @default(0)
+  openingQty    Float          @default(0)
+  currentQty    Float          @default(0)
   invoiceItems  InvoiceItem[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  purchaseItems PurchaseItem[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Invoice {
@@ -208,4 +212,85 @@ model ItemCategoryPrice {
   updatedAt DateTime @updatedAt
 
   @@unique([itemId, category])
+}
+
+model Purchase {
+  id                Int              @id @default(autoincrement())
+  purchaseNo        String           @unique
+  financialYear     String           @default("2025-26")
+  purchaseDate      DateTime
+  supplierId        Int
+  supplier          Customer         @relation(fields: [supplierId], references: [id])
+  supplierGstin     String?
+  supplierState     String
+  supplierStateCode String
+  taxType           String           @default("CGST_SGST")
+  totalDiscount     Float            @default(0)
+  totalTaxable      Float            @default(0)
+  cgstAmt           Float            @default(0)
+  sgstAmt           Float            @default(0)
+  igstAmt           Float            @default(0)
+  totalTax          Float            @default(0)
+  grandTotal        Float            @default(0)
+  status            String           @default("SAVED")
+  items             PurchaseItem[]
+  purchaseReturns   PurchaseReturn[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model PurchaseItem {
+  id                  Int                  @id @default(autoincrement())
+  purchaseId          Int
+  purchase            Purchase             @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  itemId              Int
+  item                Item                 @relation(fields: [itemId], references: [id])
+  batchId             Int?
+  batch               Batch?               @relation(fields: [batchId], references: [id])
+  itemName            String
+  hsnCode             String
+  mrp                 Float?
+  rate                Float
+  qty                 Float
+  freeQty             Float                @default(0)
+  per                 String               @default("Pcs")
+  basicAmt            Float
+  discPercent         Float                @default(0)
+  discAmt             Float                @default(0)
+  taxableAmt          Float
+  gstPercent          Float
+  taxAmt              Float
+  netValue            Float
+  createdAt           DateTime             @default(now())
+  purchaseReturnItems PurchaseReturnItem[]
+}
+
+model PurchaseReturn {
+  id           Int                  @id @default(autoincrement())
+  returnNo     Int                  @unique
+  purchaseId   Int
+  purchase     Purchase             @relation(fields: [purchaseId], references: [id])
+  supplierId   Int
+  supplier     Customer             @relation(fields: [supplierId], references: [id])
+  reason       String?
+  totalTaxable Float                @default(0)
+  totalTax     Float                @default(0)
+  totalDebit   Float                @default(0)
+  createdAt    DateTime             @default(now())
+  items        PurchaseReturnItem[]
+}
+
+model PurchaseReturnItem {
+  id               Int            @id @default(autoincrement())
+  purchaseReturnId Int
+  purchaseReturn   PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
+  purchaseItemId   Int
+  purchaseItem     PurchaseItem   @relation(fields: [purchaseItemId], references: [id])
+  qty              Float
+  rate             Float
+  discPercent      Float
+  gstPercent       Float
+  taxableAmt       Float
+  taxAmt           Float
+  netValue         Float
 }
