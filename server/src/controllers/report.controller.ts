@@ -6,9 +6,9 @@ const r2 = (v: number) => Math.round(v * 100) / 100;
 export const saleRegister = async (req: Request, res: Response) => {
   try {
     const { from, to, customerId } = req.query;
-
     const invoices = await prisma.invoice.findMany({
       where: {
+        status: { not: "CANCELLED" }, // ✅ fix
         ...(from && to
           ? {
               invoiceDate: {
@@ -19,13 +19,9 @@ export const saleRegister = async (req: Request, res: Response) => {
           : {}),
         ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
       },
-      include: {
-        customer: true,
-        agent: true,
-      },
+      include: { customer: true, agent: true },
       orderBy: { invoiceDate: "desc" },
     });
-
     res.json(invoices);
   } catch (err) {
     console.error("saleRegister error:", err);
@@ -36,7 +32,6 @@ export const saleRegister = async (req: Request, res: Response) => {
 export const gstReport = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
-
     const invoices = await prisma.invoice.findMany({
       where: {
         status: { not: "CANCELLED" },
@@ -49,9 +44,7 @@ export const gstReport = async (req: Request, res: Response) => {
             }
           : {}),
       },
-      include: {
-        customer: true,
-      },
+      include: { customer: true },
       orderBy: { invoiceDate: "desc" },
     });
 
@@ -89,13 +82,7 @@ export const gstReport = async (req: Request, res: Response) => {
 export const stockReport = async (_req: Request, res: Response) => {
   try {
     const batches = await prisma.batch.findMany({
-      include: {
-        item: {
-          include: {
-            hsn: true,
-          },
-        },
-      },
+      include: { item: { include: { hsn: true } } },
       orderBy: [{ item: { name: "asc" } }, { batchNo: "asc" }],
     });
 
@@ -121,5 +108,130 @@ export const stockReport = async (_req: Request, res: Response) => {
   } catch (err) {
     console.error("stockReport error:", err);
     res.status(500).json({ error: "Failed to fetch stock report" });
+  }
+};
+
+// ── Party-wise Ledger ─────────────────────────────────────────────────────────
+export const getLedger = async (req: Request, res: Response) => {
+  try {
+    const { customerId, from, to } = req.query;
+    if (!customerId)
+      return res.status(400).json({ error: "customerId required" });
+
+    const where: any = {
+      customerId: parseInt(String(customerId)),
+      status: { not: "CANCELLED" },
+    };
+    if (from && to) {
+      where.invoiceDate = {
+        gte: new Date(String(from)),
+        lte: new Date(String(to)),
+      };
+    }
+
+    const invoices = await prisma.invoice.findMany({
+      where,
+      include: { customer: true },
+      orderBy: { invoiceDate: "asc" },
+    });
+
+    let balance = 0;
+    const rows = invoices.map((inv) => {
+      balance += inv.grandTotal;
+      return {
+        date: inv.invoiceDate,
+        invoiceNo: inv.invoiceNo,
+        type: "Invoice",
+        debit: inv.grandTotal,
+        credit: 0,
+        balance,
+      };
+    });
+
+    res.json({
+      customer: invoices[0]?.customer || null,
+      rows,
+      closingBalance: balance,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch ledger" });
+  }
+};
+
+// ── GST R1 Report ─────────────────────────────────────────────────────────────
+export const getGstR1 = async (req: Request, res: Response) => {
+  try {
+    const { from, to, financialYear } = req.query;
+    const where: any = { status: { not: "CANCELLED" } };
+    if (financialYear) where.financialYear = String(financialYear);
+    if (from && to)
+      where.invoiceDate = {
+        gte: new Date(String(from)),
+        lte: new Date(String(to)),
+      };
+
+    const invoices = await prisma.invoice.findMany({
+      where,
+      include: { customer: true, items: true },
+      orderBy: { invoiceDate: "asc" },
+    });
+
+    // B2B: registered customers
+    const b2b = invoices.filter(
+      (i) => i.customerGstin && i.customerGstin.length === 15,
+    );
+    // B2C: unregistered
+    const b2c = invoices.filter(
+      (i) => !i.customerGstin || i.customerGstin.length !== 15,
+    );
+
+    const summary = {
+      totalInvoices: invoices.length,
+      b2bCount: b2b.length,
+      b2cCount: b2c.length,
+      totalTaxable: invoices.reduce((s, i) => s + i.totalTaxable, 0),
+      totalTax: invoices.reduce((s, i) => s + i.totalTax, 0),
+      grandTotal: invoices.reduce((s, i) => s + i.grandTotal, 0),
+    };
+
+    res.json({ b2b, b2c, summary });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch GST R1" });
+  }
+};
+
+// ── GST R3B Report ────────────────────────────────────────────────────────────
+export const getGstR3 = async (req: Request, res: Response) => {
+  try {
+    const { from, to, financialYear } = req.query;
+    const where: any = { status: { not: "CANCELLED" } };
+    if (financialYear) where.financialYear = String(financialYear);
+    if (from && to)
+      where.invoiceDate = {
+        gte: new Date(String(from)),
+        lte: new Date(String(to)),
+      };
+
+    const invoices = await prisma.invoice.findMany({ where });
+
+    const cgst = invoices.reduce((s, i) => s + i.cgstAmt, 0);
+    const sgst = invoices.reduce((s, i) => s + i.sgstAmt, 0);
+    const igst = invoices.reduce((s, i) => s + i.igstAmt, 0);
+    const taxable = invoices.reduce((s, i) => s + i.totalTaxable, 0);
+
+    res.json({
+      outwardSupplies: { taxable, cgst, sgst, igst, total: cgst + sgst + igst },
+      summary: {
+        totalInvoices: invoices.length,
+        taxable,
+        cgst,
+        sgst,
+        igst,
+        totalTax: cgst + sgst + igst,
+        grandTotal: invoices.reduce((s, i) => s + i.grandTotal, 0),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch GST R3" });
   }
 };
