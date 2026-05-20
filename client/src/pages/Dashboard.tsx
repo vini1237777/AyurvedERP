@@ -106,7 +106,7 @@ export default function Dashboard() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Welcome to Fulanand ERP</p>
+        <p className="text-slate-500 text-sm mt-0.5">Welcome to ERP</p>
       </div>
 
       <div className="grid grid-cols-5 gap-4 mb-6">

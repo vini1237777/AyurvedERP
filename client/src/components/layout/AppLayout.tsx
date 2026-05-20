@@ -88,17 +88,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {!collapsed ? (
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                F
+                A
               </div>
               <span className="font-bold text-slate-800 text-sm leading-tight">
-                Fulanand
+                Aushadhi
                 <br />
                 <span className="text-blue-600 font-semibold">ERP</span>
               </span>
             </div>
           ) : (
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm mx-auto">
-              F
+              A
             </div>
           )}
         </div>
@@ -222,10 +222,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               GitHub
             </a>
             <div className="text-sm font-medium text-slate-700">
-              Fulanand Ayurved, Tasgaon
+              Aushadhi Wellness Pvt Ltd, Pune
             </div>
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-              F
+              A
             </div>
           </div>
         </header>

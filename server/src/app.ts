@@ -30,7 +30,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/category-prices", categoryPriceRoutes);
 
 app.get("/", (_req, res) => {
-  res.json({ message: "Fulanand ERP API running", version: "1.0.0" });
+  res.json({ message: "ERP API running", version: "1.0.0" });
 });
 
 app.use(
