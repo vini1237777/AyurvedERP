@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
 import type { Customer, Item } from "../../types";
@@ -125,7 +126,6 @@ function ItemSearch({
     }
   }, [search, show]);
 
-  const { createPortal } = require("react-dom");
   return (
     <>
       <input
