@@ -11,6 +11,7 @@ import invoiceRoutes from "./routes/invoice.routes";
 import hsnRoutes from "./routes/hsn.routes";
 import reportRoutes from "./routes/report.routes";
 import categoryPriceRoutes from "./routes/categoryPrice.routes";
+import companyRoutes from "./routes/company.routes";
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use("/api/purchases", purchaseRoutes);
 app.use("/api/hsn", hsnRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/category-prices", categoryPriceRoutes);
+app.use("/api/company", companyRoutes);
 
 app.get("/", (_req, res) => {
   res.json({ message: "ERP API running", version: "1.0.0" });

@@ -27,6 +27,7 @@ const ItemCategoryReport = lazy(
 const CustomerCategoryReport = lazy(
   () => import("./pages/reports/Customercategoryreport"),
 );
+const CompanyProfile = lazy(() => import("./pages/settings/CompanyProfile"));
 
 function PageLoader() {
   return (
@@ -182,6 +183,16 @@ export default function App() {
           element={
             <Wrap>
               <CustomerCategoryReport />
+            </Wrap>
+          }
+        />
+
+        {/* Settings */}
+        <Route
+          path="/settings/profile"
+          element={
+            <Wrap>
+              <CompanyProfile />
             </Wrap>
           }
         />

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { companyApi } from "../../utils/api";
+import type { Company } from "../../types";
 
 type NavLeaf = { path: string; label: string };
 type NavItem = NavLeaf | { key: string; label: string; children: NavLeaf[] };
@@ -48,6 +50,10 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { path: "/reports/customer-category", label: "Customer Category" },
     ],
   },
+  {
+    group: "Settings",
+    items: [{ path: "/settings/profile", label: "Company Profile" }],
+  },
 ];
 
 const isLeaf = (i: NavItem): i is NavLeaf => "path" in i;
@@ -61,6 +67,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [company, setCompany] = useState<Company | null>(null);
+
+  useEffect(() => {
+    companyApi.get().then(setCompany).catch(() => {});
+  }, []);
+
+  const businessName = company?.name || "Company Profile";
+  const businessInitial = (company?.name || "C").charAt(0).toUpperCase();
 
   useEffect(() => {
     setOpenGroups((prev) => {
@@ -221,11 +235,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </svg>
               GitHub
             </a>
-            <div className="text-sm font-medium text-slate-700">
-              Aushadhi Wellness Pvt Ltd, Pune
-            </div>
+            <Link
+              to="/settings/profile"
+              className="text-sm font-medium text-slate-700 hover:text-blue-700 transition-colors"
+              title="Edit company profile"
+            >
+              {businessName}
+            </Link>
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
-              A
+              {businessInitial}
             </div>
           </div>
         </header>
