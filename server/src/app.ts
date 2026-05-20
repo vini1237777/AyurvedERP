@@ -10,7 +10,7 @@ import purchaseRoutes from "./routes/purchase.routes";
 import invoiceRoutes from "./routes/invoice.routes";
 import hsnRoutes from "./routes/hsn.routes";
 import reportRoutes from "./routes/report.routes";
-import categoryPriceRoutes from "./routes/categoryPrice.routes";
+import categoryPriceRoutes from "./routes/categoryprice.routes";
 import companyRoutes from "./routes/company.routes";
 
 dotenv.config();
