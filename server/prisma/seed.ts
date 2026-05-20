@@ -390,12 +390,24 @@ async function main() {
     gst: number;
   }[] = [];
 
-  let productIdx = 0;
+  // Build every unique (product, unit) combination, shuffle deterministically
+  const productCombos: { base: typeof AYURVEDIC_PRODUCTS[number]; unit: string }[] = [];
+  for (const p of AYURVEDIC_PRODUCTS) {
+    for (const u of p.units) productCombos.push({ base: p, unit: u });
+  }
+  for (let i = productCombos.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [productCombos[i], productCombos[j]] = [productCombos[j], productCombos[i]];
+  }
+
   for (let i = 0; i < 200; i++) {
-    const base = AYURVEDIC_PRODUCTS[productIdx % AYURVEDIC_PRODUCTS.length];
-    productIdx++;
-    const unit = rPick(base.units);
-    const name = `${base.name} ${unit}`;
+    const combo = productCombos[i % productCombos.length];
+    const base = combo.base;
+    const unit = combo.unit;
+    const lotPass = Math.floor(i / productCombos.length) + 1;
+    const name = lotPass === 1
+      ? `${base.name} ${unit}`
+      : `${base.name} ${unit} (Lot ${lotPass})`;
     // Match HSN by category
     let hsn = hsnRecords[0]; // default ayurvedic
     if (/Tel|Tail|Oil/i.test(base.name)) {
