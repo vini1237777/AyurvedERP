@@ -6,10 +6,11 @@ import customerRoutes from "./routes/customer.routes";
 import itemRoutes from "./routes/item.routes";
 import batchRoutes from "./routes/batch.routes";
 import agentRoutes from "./routes/agent.routes";
+import purchaseRoutes from "./routes/purchase.routes";
 import invoiceRoutes from "./routes/invoice.routes";
 import hsnRoutes from "./routes/hsn.routes";
 import reportRoutes from "./routes/report.routes";
-import categoryPriceRoutes from "./routes/categoryprice.routes";
+import categoryPriceRoutes from "./routes/categoryPrice.routes";
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use("/api/items", itemRoutes);
 app.use("/api/batches", batchRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/invoices", invoiceRoutes);
+app.use("/api/purchases", purchaseRoutes);
 app.use("/api/hsn", hsnRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/category-prices", categoryPriceRoutes);

@@ -1,7 +1,7 @@
 {
-  "name": "fulanand-erp-server",
+  "name": "erp-server",
   "version": "1.0.0",
-  "description": "Fulanand ERP Backend",
+  "description": "ERP Backend",
   "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon --exec ts-node src/app.ts",

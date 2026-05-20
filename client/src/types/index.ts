@@ -17,6 +17,7 @@ export interface Customer {
   balance: number;
   isActive: boolean;
   createdAt: string;
+  category?: string;
 }
 
 export interface Agent {

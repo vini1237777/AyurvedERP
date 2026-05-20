@@ -2,19 +2,25 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 
-// Eager — small, always needed
+// Eager
 import Dashboard from "./pages/Dashboard";
 import SaleEntry from "./pages/sales/SaleEntry";
+import SaleRegister from "./pages/reports/SalesRegister";
+import GSTReport from "./pages/reports/GSTReport";
+import GstR1Report from "./pages/reports/Gstr1report";
+import GstR3Report from "./pages/reports/Gstr3report";
+import StockReport from "./pages/reports/StockReport";
+import LedgerReport from "./pages/reports/Ledgerreport";
+import PurchaseEntry from "./pages/sales/PurchaseEntry";
+import PurchaseList from "./pages/sales/PurchaseList";
 
-// Lazy — heavy pages
+// Lazy
 const Customers = lazy(() => import("./pages/masters/Customers"));
 const Items = lazy(() => import("./pages/masters/Items"));
 const BatchMaster = lazy(() => import("./pages/masters/Batches"));
 const SaleList = lazy(() => import("./pages/sales/SaleList"));
 const SaleReturn = lazy(() => import("./pages/sales/SaleReturn"));
-const GSTReport = lazy(() => import("./pages/reports/GSTReport"));
-const StockReport = lazy(() => import("./pages/reports/StockReport"));
-const SaleRegister = lazy(() => import("./pages/reports/SalesRegister"));
+
 const ItemCategoryReport = lazy(
   () => import("./pages/reports/Itemcategoryreport"),
 );
@@ -50,6 +56,8 @@ export default function App() {
             </Wrap>
           }
         />
+
+        {/* Masters */}
         <Route
           path="/masters/customers"
           element={
@@ -74,6 +82,8 @@ export default function App() {
             </Wrap>
           }
         />
+
+        {/* Sales */}
         <Route path="/sales/new" element={<SaleEntry />} />
         <Route
           path="/sales"
@@ -91,6 +101,26 @@ export default function App() {
             </Suspense>
           }
         />
+
+        {/* Purchases */}
+        <Route
+          path="/purchases"
+          element={
+            <Wrap>
+              <PurchaseList />
+            </Wrap>
+          }
+        />
+        <Route
+          path="/purchases/new"
+          element={
+            <Suspense fallback={<PageLoader />}>
+              <PurchaseEntry />
+            </Suspense>
+          }
+        />
+
+        {/* Reports */}
         <Route
           path="/reports/sale-register"
           element={
@@ -108,10 +138,34 @@ export default function App() {
           }
         />
         <Route
+          path="/reports/gst-r1"
+          element={
+            <Wrap>
+              <GstR1Report />
+            </Wrap>
+          }
+        />
+        <Route
+          path="/reports/gst-r3"
+          element={
+            <Wrap>
+              <GstR3Report />
+            </Wrap>
+          }
+        />
+        <Route
           path="/reports/stock"
           element={
             <Wrap>
               <StockReport />
+            </Wrap>
+          }
+        />
+        <Route
+          path="/reports/ledger"
+          element={
+            <Wrap>
+              <LedgerReport />
             </Wrap>
           }
         />
@@ -131,6 +185,7 @@ export default function App() {
             </Wrap>
           }
         />
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
