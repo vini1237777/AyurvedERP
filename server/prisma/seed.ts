@@ -226,23 +226,26 @@ function fyOf(d: Date) {
 
 async function main() {
   console.log("Wiping existing data...");
-  // Order matters — children first
-  await prisma.purchaseReturnItem.deleteMany();
-  await prisma.purchaseReturn.deleteMany();
-  await prisma.purchaseItem.deleteMany();
-  await prisma.purchase.deleteMany();
-  await prisma.salesReturnItem.deleteMany();
-  await prisma.salesReturn.deleteMany();
-  await prisma.invoiceItem.deleteMany();
-  await prisma.invoice.deleteMany();
-  await prisma.itemCategoryPrice.deleteMany();
-  await prisma.batch.deleteMany();
-  await prisma.item.deleteMany();
-  await prisma.customer.deleteMany();
-  await prisma.agent.deleteMany();
-  await prisma.hsnCode.deleteMany();
-  await prisma.taxSlab.deleteMany();
-  await prisma.company.deleteMany();
+  await prisma.$executeRawUnsafe(`
+    TRUNCATE TABLE
+      "PurchaseReturnItem",
+      "PurchaseReturn",
+      "PurchaseItem",
+      "Purchase",
+      "SalesReturnItem",
+      "SalesReturn",
+      "InvoiceItem",
+      "Invoice",
+      "ItemCategoryPrice",
+      "Batch",
+      "Item",
+      "Customer",
+      "Agent",
+      "HsnCode",
+      "TaxSlab",
+      "Company"
+    RESTART IDENTITY CASCADE;
+  `);
 
   // ── Tax Slabs ──────────────────────────────────────────────────────────
   console.log("Seeding tax slabs...");
@@ -319,11 +322,11 @@ async function main() {
     ].map((name) => prisma.agent.create({ data: { name, mobile: mobile() } })),
   );
 
-  // ── Customers (100) ────────────────────────────────────────────────────
-  console.log("Seeding 100 customers...");
+  // ── Customers (200) ────────────────────────────────────────────────────
+  console.log("Seeding 200 customers...");
   const customers: { id: number; stateCode: string }[] = [];
-  for (let i = 0; i < 100; i++) {
-    const isSupplier = i >= 85; // last 15 are suppliers
+  for (let i = 0; i < 200; i++) {
+    const isSupplier = i >= 170; // last 30 are suppliers
     let name: string,
       address: string,
       city: string,
@@ -331,7 +334,7 @@ async function main() {
     let gstin: string | null;
 
     if (isSupplier) {
-      name = SUPPLIER_NAMES[i - 85] || `Ayur Supplier ${i - 84}`;
+      name = SUPPLIER_NAMES[i - 170] || `Ayur Supplier ${i - 169}`;
       state = STATES[rInt(0, STATES.length - 1)];
       city =
         state.code === "27" ? rPick(MH_CITIES) : `${state.name.split(" ")[0]} City`;
@@ -366,11 +369,11 @@ async function main() {
     });
     customers.push({ id: c.id, stateCode: state.code });
   }
-  const salesCustomers = customers.slice(0, 85);
-  const supplierCustomers = customers.slice(85);
+  const salesCustomers = customers.slice(0, 170);
+  const supplierCustomers = customers.slice(170);
 
-  // ── Items (100) + Batches ──────────────────────────────────────────────
-  console.log("Seeding 100 items with batches...");
+  // ── Items (200) + Batches ──────────────────────────────────────────────
+  console.log("Seeding 200 items with batches...");
   const slabs = [
     { rate: 5, slab: slab5 },
     { rate: 12, slab: slab12 },
@@ -387,12 +390,24 @@ async function main() {
     gst: number;
   }[] = [];
 
-  let productIdx = 0;
-  for (let i = 0; i < 100; i++) {
-    const base = AYURVEDIC_PRODUCTS[productIdx % AYURVEDIC_PRODUCTS.length];
-    productIdx++;
-    const unit = rPick(base.units);
-    const name = `${base.name} ${unit}`;
+  // Build every unique (product, unit) combination, shuffle deterministically
+  const productCombos: { base: typeof AYURVEDIC_PRODUCTS[number]; unit: string }[] = [];
+  for (const p of AYURVEDIC_PRODUCTS) {
+    for (const u of p.units) productCombos.push({ base: p, unit: u });
+  }
+  for (let i = productCombos.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [productCombos[i], productCombos[j]] = [productCombos[j], productCombos[i]];
+  }
+
+  for (let i = 0; i < 200; i++) {
+    const combo = productCombos[i % productCombos.length];
+    const base = combo.base;
+    const unit = combo.unit;
+    const lotPass = Math.floor(i / productCombos.length) + 1;
+    const name = lotPass === 1
+      ? `${base.name} ${unit}`
+      : `${base.name} ${unit} (Lot ${lotPass})`;
     // Match HSN by category
     let hsn = hsnRecords[0]; // default ayurvedic
     if (/Tel|Tail|Oil/i.test(base.name)) {
@@ -408,6 +423,24 @@ async function main() {
     const mrp = r2(purchase * rFloat(1.4, 2.2));
     const sale = r2(mrp / 1.15); // approx sale before tax
 
+    // Pre-compute batch specs so item + batches create together (atomic on one connection)
+    const batchCount = rInt(2, 4);
+    const batchSpecs = Array.from({ length: batchCount }, (_, b) => {
+      const yr = 2027 + rInt(0, 2);
+      const mn = rInt(1, 12);
+      const qty = rInt(50, 800);
+      return {
+        batchNo: `B${b}-${rInt(1000, 9999)}-${String.fromCharCode(65 + b)}${rInt(10, 99)}`,
+        expiryDate: `${mn}-${yr}`,
+        mfgDate: `${mn}-${yr - 3}`,
+        purchasePrice: purchase,
+        salePrice: sale,
+        mrp,
+        openingQty: qty,
+        currentQty: qty,
+      };
+    });
+
     const item = await prisma.item.create({
       data: {
         name,
@@ -419,30 +452,13 @@ async function main() {
         mrp,
         rate: sale,
         maintainBatch: true,
+        batches: { create: batchSpecs },
       },
+      include: { batches: true },
     });
-    items.push({ id: item.id, gst: hsn.gstRate, hsn: hsn.code });
 
-    // 2-4 batches per item
-    const batchCount = rInt(2, 4);
-    for (let b = 0; b < batchCount; b++) {
-      const yr = 2027 + rInt(0, 2);
-      const mfgYr = yr - 3;
-      const mn = rInt(1, 12);
-      const qty = rInt(50, 800);
-      const batch = await prisma.batch.create({
-        data: {
-          itemId: item.id,
-          batchNo: `B${String(item.id).padStart(3, "0")}-${String.fromCharCode(65 + b)}${rInt(10, 99)}`,
-          expiryDate: `${mn}-${yr}`,
-          mfgDate: `${mn}-${mfgYr}`,
-          purchasePrice: purchase,
-          salePrice: sale,
-          mrp,
-          openingQty: qty,
-          currentQty: qty,
-        },
-      });
+    items.push({ id: item.id, gst: hsn.gstRate, hsn: hsn.code });
+    for (const batch of item.batches) {
       batches.push({
         id: batch.id,
         itemId: item.id,
@@ -455,8 +471,8 @@ async function main() {
     }
   }
 
-  // ── Sale Invoices (100) ────────────────────────────────────────────────
-  console.log("Seeding 100 sale invoices...");
+  // ── Sale Invoices (200) ────────────────────────────────────────────────
+  console.log("Seeding 200 sale invoices...");
   // spread over last 6 months
   const now = new Date();
   const sixMonthsAgo = new Date(now);
@@ -464,8 +480,8 @@ async function main() {
   const dayMs = 24 * 60 * 60 * 1000;
   const spanDays = Math.floor((now.getTime() - sixMonthsAgo.getTime()) / dayMs);
 
-  for (let i = 0; i < 100; i++) {
-    const dateOffset = Math.floor((i / 100) * spanDays) + rInt(0, 1);
+  for (let i = 0; i < 200; i++) {
+    const dateOffset = Math.floor((i / 200) * spanDays) + rInt(0, 1);
     const invoiceDate = new Date(sixMonthsAgo.getTime() + dateOffset * dayMs);
     const cust = rPick(salesCustomers);
     const taxType = cust.stateCode === "27" ? "CGST_SGST" : "IGST";
@@ -537,42 +553,42 @@ async function main() {
     });
     const invoiceNo = String(i + 1).padStart(4, "0");
 
-    await prisma.invoice.create({
-      data: {
-        invoiceNo,
-        financialYear: fy,
-        invoiceDate,
-        customerId: cust.id,
-        agentId: rPick(agents).id,
-        customerGstin: custRow!.gstin,
-        customerState: custRow!.state,
-        customerStateCode: custRow!.stateCode,
-        taxType,
-        totalDiscount: r2(totalDiscount),
-        totalTaxable: r2(totalTaxable),
-        cgstAmt,
-        sgstAmt,
-        igstAmt,
-        totalTax: r2(totalTax),
-        grandTotal,
-        status: "SAVED",
-        items: { create: lineItems },
-      },
-    });
-
-    // Deduct stock
-    for (const li of lineItems) {
-      await prisma.batch.update({
-        where: { id: li.batchId },
-        data: { currentQty: { decrement: li.qty } },
-      });
-    }
+    await prisma.$transaction([
+      prisma.invoice.create({
+        data: {
+          invoiceNo,
+          financialYear: fy,
+          invoiceDate,
+          customerId: cust.id,
+          agentId: rPick(agents).id,
+          customerGstin: custRow!.gstin,
+          customerState: custRow!.state,
+          customerStateCode: custRow!.stateCode,
+          taxType,
+          totalDiscount: r2(totalDiscount),
+          totalTaxable: r2(totalTaxable),
+          cgstAmt,
+          sgstAmt,
+          igstAmt,
+          totalTax: r2(totalTax),
+          grandTotal,
+          status: "SAVED",
+          items: { create: lineItems },
+        },
+      }),
+      ...lineItems.map((li) =>
+        prisma.batch.updateMany({
+          where: { id: li.batchId },
+          data: { currentQty: { decrement: li.qty } },
+        }),
+      ),
+    ]);
   }
 
-  // ── Purchase Invoices (100) ────────────────────────────────────────────
-  console.log("Seeding 100 purchase invoices...");
-  for (let i = 0; i < 100; i++) {
-    const dateOffset = Math.floor((i / 100) * spanDays) + rInt(0, 1);
+  // ── Purchase Invoices (200) ────────────────────────────────────────────
+  console.log("Seeding 200 purchase invoices...");
+  for (let i = 0; i < 200; i++) {
+    const dateOffset = Math.floor((i / 200) * spanDays) + rInt(0, 1);
     const purchaseDate = new Date(sixMonthsAgo.getTime() + dateOffset * dayMs);
     const sup = rPick(supplierCustomers);
     const taxType = sup.stateCode === "27" ? "CGST_SGST" : "IGST";
@@ -633,35 +649,35 @@ async function main() {
     const supRow = await prisma.customer.findUnique({ where: { id: sup.id } });
     const purchaseNo = `FP-${String(i + 1).padStart(4, "0")}`;
 
-    await prisma.purchase.create({
-      data: {
-        purchaseNo,
-        financialYear: fy,
-        purchaseDate,
-        supplierId: sup.id,
-        supplierGstin: supRow!.gstin,
-        supplierState: supRow!.state,
-        supplierStateCode: supRow!.stateCode,
-        taxType,
-        totalDiscount: r2(totalDiscount),
-        totalTaxable: r2(totalTaxable),
-        cgstAmt,
-        sgstAmt,
-        igstAmt,
-        totalTax: r2(totalTax),
-        grandTotal,
-        status: "SAVED",
-        items: { create: lineItems },
-      },
-    });
-
-    // Increment stock from purchase
-    for (const li of lineItems) {
-      await prisma.batch.update({
-        where: { id: li.batchId },
-        data: { currentQty: { increment: li.qty } },
-      });
-    }
+    await prisma.$transaction([
+      prisma.purchase.create({
+        data: {
+          purchaseNo,
+          financialYear: fy,
+          purchaseDate,
+          supplierId: sup.id,
+          supplierGstin: supRow!.gstin,
+          supplierState: supRow!.state,
+          supplierStateCode: supRow!.stateCode,
+          taxType,
+          totalDiscount: r2(totalDiscount),
+          totalTaxable: r2(totalTaxable),
+          cgstAmt,
+          sgstAmt,
+          igstAmt,
+          totalTax: r2(totalTax),
+          grandTotal,
+          status: "SAVED",
+          items: { create: lineItems },
+        },
+      }),
+      ...lineItems.map((li) =>
+        prisma.batch.updateMany({
+          where: { id: li.batchId },
+          data: { currentQty: { increment: li.qty } },
+        }),
+      ),
+    ]);
   }
 
   console.log("");
@@ -676,8 +692,8 @@ async function main() {
   console.log(`  Suppliers:          ${supplierCustomers.length}`);
   console.log(`  Items:              ${items.length}`);
   console.log(`  Batches:            ${batches.length}`);
-  console.log(`  Sale Invoices:      100`);
-  console.log(`  Purchase Invoices:  100`);
+  console.log(`  Sale Invoices:      200`);
+  console.log(`  Purchase Invoices:  200`);
   console.log("─────────────────────────────────────────");
 }
 
