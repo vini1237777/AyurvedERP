@@ -220,6 +220,7 @@ export default function PurchaseEntry() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [showSupplier, setShowSupplier] = useState(false);
   const [rows, setRows] = useState<PRow[]>([newRow(1)]);
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const supRef = useRef<HTMLDivElement>(null);
@@ -329,6 +330,7 @@ export default function PurchaseEntry() {
       const payload = {
         supplierId: supplier.id,
         purchaseDate,
+        notes: notes.trim() || undefined,
         rows: filledRows.map((r) => ({
           itemId: r.itemId,
           batchId: r.batchId,
@@ -631,6 +633,23 @@ export default function PurchaseEntry() {
             >
               <span className="text-lg">+</span> Add Item
             </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-700 text-sm">
+              Notes / Remarks
+            </h2>
+          </div>
+          <div className="px-5 py-4">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Optional — internal remarks, supplier notes, PO reference, etc."
+              className={`${inp} w-full px-3 py-2.5 resize-y min-h-[72px]`}
+            />
           </div>
         </div>
 
