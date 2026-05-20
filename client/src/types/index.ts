@@ -65,6 +65,8 @@ export interface Item {
   altUnit?: string;
   altFactor: number;
   maintainBatch: boolean;
+  mrp?: number | null;
+  rate?: number | null;
   isActive: boolean;
   batches: Batch[];
 }
@@ -174,6 +176,8 @@ export interface ItemFormData {
   altUnit: string;
   altFactor: string;
   maintainBatch: boolean;
+  mrp: string;
+  rate: string;
 }
 
 export interface BatchFormData {
