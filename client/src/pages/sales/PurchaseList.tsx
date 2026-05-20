@@ -70,6 +70,55 @@ export default function PurchaseList() {
     }
   }
 
+  async function handlePrint(p: any, mode: "voucher" | "grn") {
+    try {
+      const res = await fetch(`${API}/purchases/${p.id}`);
+      if (!res.ok) throw new Error("not ok");
+      const full = await res.json();
+      const supplier = full.supplier || {};
+      const data = {
+        mode,
+        purchaseNo: full.purchaseNo,
+        purchaseDate: full.purchaseDate,
+        taxType: full.taxType,
+        supplier: {
+          name: supplier.name || "",
+          address: supplier.address || "",
+          state: full.supplierState || supplier.state || "",
+          stateCode: full.supplierStateCode || supplier.stateCode || "",
+          mobile: supplier.mobile || "",
+          gstin: full.supplierGstin || supplier.gstin || "",
+        },
+        rows: (full.items || []).map((item: any) => ({
+          itemName: item.itemName,
+          hsn: item.hsnCode,
+          batchNo: item.batch?.batchNo || "-",
+          mfgDate: item.batch?.mfgDate || "-",
+          expiryDate: item.batch?.expiryDate || "-",
+          qty: item.qty,
+          freeQty: item.freeQty || 0,
+          per: item.per || "Pcs",
+          rate: item.rate || 0,
+          disc: item.discPercent || 0,
+          gst: item.gstPercent || 0,
+          netValue: item.netValue || 0,
+        })),
+        totalDiscount: full.totalDiscount || 0,
+        totalTaxable: full.totalTaxable || 0,
+        cgstAmt: full.cgstAmt || 0,
+        sgstAmt: full.sgstAmt || 0,
+        igstAmt: full.igstAmt || 0,
+        totalTax: full.totalTax || 0,
+        grandTotal: full.grandTotal || 0,
+        notes: full.notes || "",
+      };
+      localStorage.setItem("erp_purchase_print", JSON.stringify(data));
+      window.open("/purchase-print.html", "_blank");
+    } catch {
+      setToast({ msg: "Failed to open purchase", type: "error" });
+    }
+  }
+
   const filtered = purchases.filter(
     (p) =>
       p.financialYear === selectedFY &&
@@ -186,7 +235,21 @@ export default function PurchaseList() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePrint(p, "voucher")}
+                          >
+                            Voucher
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePrint(p, "grn")}
+                          >
+                            GRN
+                          </Button>
                           <Link to={`/purchases/${p.id}/return`}>
                             <Button variant="ghost" size="sm">
                               Return
