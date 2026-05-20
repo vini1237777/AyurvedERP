@@ -28,13 +28,20 @@ app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 app.use(express.json());
 
+import prisma from "./utils/prisma";
+
 app.get("/health", async (_req, res) => {
+  const hasDbUrl = !!process.env.DATABASE_URL;
   try {
-    const prisma = (await import("./utils/prisma")).default;
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ ok: true, db: "connected" });
+    res.json({ ok: true, db: "connected", hasDbUrl });
   } catch (err: any) {
-    res.status(500).json({ ok: false, db: "error", message: err?.message });
+    res.status(500).json({
+      ok: false,
+      db: "error",
+      hasDbUrl,
+      message: err?.message || String(err),
+    });
   }
 });
 
@@ -70,9 +77,11 @@ app.use(
   },
 );
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
 
 export default app;
