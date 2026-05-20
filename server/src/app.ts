@@ -17,8 +17,26 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const corsMiddleware = cors({
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Seed-Token"],
+});
+
+app.use(corsMiddleware);
+app.options("*", corsMiddleware);
 app.use(express.json());
+
+app.get("/health", async (_req, res) => {
+  try {
+    const prisma = (await import("./utils/prisma")).default;
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, db: "connected" });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, db: "error", message: err?.message });
+  }
+});
 
 app.use("/api/customers", customerRoutes);
 app.use("/api/items", itemRoutes);
@@ -38,11 +56,16 @@ app.get("/", (_req, res) => {
 app.use(
   (
     err: Error,
-    _req: express.Request,
+    req: express.Request,
     res: express.Response,
     _next: express.NextFunction,
   ) => {
     console.error(err.stack);
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+    }
     res.status(500).json({ error: err.message || "Internal server error" });
   },
 );
