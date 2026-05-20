@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
 import { fmt } from "../../utils/invoice.utils";
@@ -11,7 +11,6 @@ import {
   LoadingScreen,
   Toast,
 } from "../../components/ui";
-import { Pagination, usePagination } from "../../components/ui/Pagination";
 import type { Invoice } from "../../types";
 
 // Current financial year helper
@@ -21,6 +20,28 @@ function getCurrentFY(): string {
   const m = now.getMonth() + 1;
   if (m >= 4) return `${y}-${String(y + 1).slice(2)}`;
   return `${y - 1}-${String(y).slice(2)}`;
+}
+
+function normalizeText(value: string) {
+  return (value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function matchesAlphabetMode(invoice: Invoice, query: string) {
+  const q = normalizeText(query);
+  if (!q) return true;
+
+  const invoiceNo = normalizeText(String(invoice.invoiceNo));
+  const customerName = normalizeText(invoice.customer?.name || "");
+
+  if (q.length === 1) {
+    return invoiceNo.startsWith(q) || customerName.startsWith(q);
+  }
+
+  return invoiceNo.includes(q) || customerName.includes(q);
 }
 
 export default function SaleList() {
@@ -43,12 +64,13 @@ export default function SaleList() {
     try {
       const data = await invoiceApi.getAll();
       setInvoices(data);
-      // Extract unique financial years from data
+
       const fys = [
         ...new Set(data.map((i: any) => i.financialYear || getCurrentFY())),
       ]
         .sort()
         .reverse();
+
       setAvailableFYs(fys as string[]);
     } catch {
       setToast({ msg: "Failed to load invoices", type: "error" });
@@ -59,6 +81,7 @@ export default function SaleList() {
 
   async function handleCancel(id: number) {
     if (!confirm("Cancel this invoice? Stock will be reversed.")) return;
+
     try {
       await invoiceApi.cancel(id);
       setToast({ msg: "Invoice cancelled", type: "success" });
@@ -68,26 +91,24 @@ export default function SaleList() {
     }
   }
 
-  // Filter by FY + search
-  const filtered = invoices
-    .filter(
-      (i) =>
-        i.financialYear === selectedFY &&
-        (String(i.invoiceNo).toLowerCase().includes(search.toLowerCase()) ||
-          i.customer.name.toLowerCase().includes(search.toLowerCase())),
-    )
-    .sort((a, b) => {
-      const diff =
-        new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
-      return sortDir === "desc" ? -diff : diff;
-    });
+  const filtered = useMemo(() => {
+    return invoices
+      .filter(
+        (i) => i.financialYear === selectedFY && matchesAlphabetMode(i, search),
+      )
+      .sort((a, b) => {
+        const diff =
+          new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
+        return sortDir === "desc" ? -diff : diff;
+      });
+  }, [invoices, selectedFY, search, sortDir]);
 
-  const pg = usePagination(filtered, 50);
   const totalSales = filtered.reduce((s, i) => s + i.grandTotal, 0);
 
   async function handlePrint(inv: Invoice) {
     try {
       const full = await invoiceApi.getById(inv.id);
+
       const rows = (full.items || []).map((item: any) => ({
         id: item.id,
         itemId: item.itemId,
@@ -124,6 +145,7 @@ export default function SaleList() {
         taxAmt: item.taxAmt || 0,
         netValue: item.netValue || 0,
       }));
+
       const data = {
         customer: {
           name: full.customer?.name || "",
@@ -148,12 +170,17 @@ export default function SaleList() {
         totTax: full.totalTax || 0,
         grand: full.grandTotal || 0,
       };
-      localStorage.setItem("fulanand_print_data", JSON.stringify(data));
+
+      localStorage.setItem("erp_print_data", JSON.stringify(data));
       window.open("/invoice-print.html", "_blank");
     } catch {
       setToast({ msg: "Failed to open invoice", type: "error" });
     }
   }
+
+  const fyTabs = [...new Set([getCurrentFY(), ...availableFYs])]
+    .sort()
+    .reverse();
 
   return (
     <div>
@@ -164,6 +191,7 @@ export default function SaleList() {
           onClose={() => setToast(null)}
         />
       )}
+
       <PageHeader
         title="All Invoices"
         subtitle={`${filtered.length} invoices · Total: ₹${fmt(totalSales)}`}
@@ -188,27 +216,23 @@ export default function SaleList() {
         }
       />
 
-      {/* Financial Year Tabs */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {[...new Set([getCurrentFY(), ...availableFYs])]
-          .sort()
-          .reverse()
-          .map((fy) => (
-            <button
-              key={fy}
-              onClick={() => setSelectedFY(fy)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                selectedFY === fy
-                  ? "bg-blue-600 text-white shadow-sm"
-                  : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
-              }`}
-            >
-              FY {fy}
-              {fy === getCurrentFY() && (
-                <span className="ml-1.5 text-xs opacity-75">(Current)</span>
-              )}
-            </button>
-          ))}
+        {fyTabs.map((fy) => (
+          <button
+            key={fy}
+            onClick={() => setSelectedFY(fy)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              selectedFY === fy
+                ? "bg-blue-600 text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-600 hover:border-blue-300 hover:text-blue-600"
+            }`}
+          >
+            FY {fy}
+            {fy === getCurrentFY() && (
+              <span className="ml-1.5 text-xs opacity-75">(Current)</span>
+            )}
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -225,103 +249,88 @@ export default function SaleList() {
               }
             />
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b bg-slate-50">
-                      {[
-                        "Invoice No",
-                        "Date",
-                        "Customer",
-                        "GSTIN",
-                        "Taxable",
-                        "Tax",
-                        "Total",
-                        "Status",
-                        "Actions",
-                      ].map((h) => (
-                        <th
-                          key={h}
-                          className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pg.paginated.map((inv) => (
-                      <tr
-                        key={inv.id}
-                        className="border-b border-slate-50 hover:bg-slate-50"
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-slate-50">
+                    {[
+                      "Invoice No",
+                      "Date",
+                      "Customer",
+                      "GSTIN",
+                      "Taxable",
+                      "Tax",
+                      "Total",
+                      "Status",
+                      "Actions",
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
                       >
-                        <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm">
-                          #{inv.invoiceNo}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                          {new Date(inv.invoiceDate).toLocaleDateString(
-                            "en-IN",
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-800 font-medium">
-                          {inv.customer.name}
-                        </td>
-                        <td className="px-4 py-3 text-xs text-slate-500">
-                          {inv.customerGstin || "B2C"}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-700">
-                          ₹{fmt(inv.totalTaxable)}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          ₹{fmt(inv.totalTax)}
-                        </td>
-                        <td className="px-4 py-3 text-sm font-bold text-slate-800">
-                          ₹{fmt(inv.grandTotal)}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            color={inv.status === "SAVED" ? "green" : "red"}
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((inv) => (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-slate-50 hover:bg-slate-50"
+                    >
+                      <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm">
+                        #{inv.invoiceNo}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                        {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-800 font-medium">
+                        {inv.customer.name}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500">
+                        {inv.customerGstin || "B2C"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        ₹{fmt(inv.totalTaxable)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        ₹{fmt(inv.totalTax)}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                        ₹{fmt(inv.grandTotal)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge color={inv.status === "SAVED" ? "green" : "red"}>
+                          {inv.status}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePrint(inv)}
                           >
-                            {inv.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1">
+                            Print
+                          </Button>
+                          {inv.status === "SAVED" && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handlePrint(inv)}
+                              onClick={() => handleCancel(inv.id)}
+                              className="text-red-500"
                             >
-                              Print
+                              Cancel
                             </Button>
-                            {inv.status === "SAVED" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleCancel(inv.id)}
-                                className="text-red-500"
-                              >
-                                Cancel
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination
-                total={pg.total}
-                page={pg.page}
-                perPage={pg.perPage}
-                from={pg.from}
-                to={pg.to}
-                onPage={pg.setPage}
-                onPerPage={pg.onPerPage}
-              />
-            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
       )}

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { customerApi, itemApi, agentApi, invoiceApi } from "../../utils/api";
@@ -6,7 +6,6 @@ import { fmt, fmtInt, COMPANY, SELLER_STATE } from "../../utils/invoice.utils";
 import type { Customer, Item, Agent, SaleRow, TaxType } from "../../types";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
-
 type ExtRow = SaleRow & { sDis: string };
 
 function calcRow(row: ExtRow): ExtRow {
@@ -26,6 +25,47 @@ function calcRow(row: ExtRow): ExtRow {
 
 function determineTaxType(sc: string, bc: string): TaxType {
   return sc === bc ? "CGST_SGST" : "IGST";
+}
+
+function normalizeText(value: string) {
+  return (value || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+function alphaSort<T>(list: T[], getLabel: (item: T) => string) {
+  return [...list].sort((a, b) =>
+    normalizeText(getLabel(a)).localeCompare(normalizeText(getLabel(b))),
+  );
+}
+
+function rankBySearch<T>(
+  list: T[],
+  getLabel: (item: T) => string,
+  query: string,
+) {
+  const q = normalizeText(query);
+  if (!q) return list;
+
+  return [...list]
+    .map((item) => {
+      const label = normalizeText(getLabel(item));
+      let rank = 99;
+
+      if (label.startsWith(q)) rank = 0;
+      else if (label.split(/\s+/).some((part) => part.startsWith(q))) rank = 1;
+      else if (label.includes(q)) rank = 2;
+
+      return { item, label, rank };
+    })
+    .filter((x) => x.rank < 99)
+    .sort((a, b) => {
+      if (a.rank !== b.rank) return a.rank - b.rank;
+      return a.label.localeCompare(b.label);
+    })
+    .map((x) => x.item);
 }
 
 const newRow = (id: number): ExtRow => ({
@@ -52,54 +92,109 @@ const newRow = (id: number): ExtRow => ({
   _batches: [],
 });
 
-// ── Item Search Dropdown — uses fixed positioning to escape overflow clip ──
+// ── Item Search ───────────────────────────────────────────────────────────────
 function ItemSearch({
   value,
   rowId,
   allItems,
   onSelect,
   onUpdate,
+  customerCategory,
 }: {
   value: string;
   rowId: number;
   allItems: Item[];
   onSelect: (rowId: number, item: Item) => void;
   onUpdate: (rowId: number, val: string) => void;
+  customerCategory?: string;
 }) {
   const [show, setShow] = useState(false);
   const [search, setSearch] = useState(value);
   const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSearch(value);
   }, [value]);
 
-  // Recalculate position — called on focus, change, and scroll
   function updatePos() {
     if (!inputRef.current) return;
     const r = inputRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 300) });
+    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 320) });
   }
 
-  // Listen to scroll on the overflow-auto content container so dropdown tracks input
   useEffect(() => {
     if (!show) return;
+    updatePos();
+
     const scroller = inputRef.current?.closest(
       ".overflow-auto",
     ) as HTMLElement | null;
     const onScroll = () => updatePos();
+
     scroller?.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
     return () => {
       scroller?.removeEventListener("scroll", onScroll);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
     };
   }, [show]);
 
-  const filtered = allItems.filter((i) =>
-    i.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const sorted = useMemo(() => alphaSort(allItems, (i) => i.name), [allItems]);
+
+  const filtered = useMemo(() => {
+    const q = normalizeText(search);
+
+    if (!q) return sorted;
+
+    if (q.length === 1) {
+      return sorted.filter((i) => normalizeText(i.name).startsWith(q));
+    }
+
+    return rankBySearch(sorted, (i) => i.name, search);
+  }, [sorted, search]);
+
+  useEffect(() => {
+    if (!show || !search.trim() || !listRef.current) return;
+
+    const q = normalizeText(search);
+    const items = Array.from(
+      listRef.current.querySelectorAll("[data-name]"),
+    ) as HTMLElement[];
+
+    let target: HTMLElement | undefined;
+
+    if (q.length === 1) {
+      target = items.find((el) =>
+        normalizeText(el.dataset.name || "").startsWith(q),
+      );
+    } else {
+      target =
+        items.find((el) =>
+          normalizeText(el.dataset.name || "").startsWith(q),
+        ) ||
+        items.find((el) =>
+          normalizeText(el.dataset.name || "")
+            .split(/\s+/)
+            .some((part) => part.startsWith(q)),
+        ) ||
+        items.find((el) => normalizeText(el.dataset.name || "").includes(q));
+    }
+
+    if (target) target.scrollIntoView({ block: "nearest" });
+  }, [search, show, filtered]);
+
+  function getCategoryPrice(item: Item): number | null {
+    if (!customerCategory) return null;
+    const cp = (item as any).categoryPrices?.find(
+      (p: any) => p.category === customerCategory,
+    );
+    return cp ? cp.price : null;
+  }
 
   return (
     <>
@@ -107,8 +202,9 @@ function ItemSearch({
         ref={inputRef}
         value={search}
         onChange={(e) => {
-          setSearch(e.target.value);
-          onUpdate(rowId, e.target.value);
+          const val = e.target.value;
+          setSearch(val);
+          onUpdate(rowId, val);
           updatePos();
           setShow(true);
         }}
@@ -124,12 +220,13 @@ function ItemSearch({
         pos.top > 0 &&
         createPortal(
           <div
+            ref={listRef}
             style={{
               position: "fixed",
               top: pos.top,
               left: pos.left,
               width: pos.width,
-              maxHeight: 240,
+              maxHeight: 280,
               zIndex: 99999,
               backgroundColor: "#fff",
               border: "1px solid #e2e8f0",
@@ -150,29 +247,39 @@ function ItemSearch({
                 {search ? "No items found" : "Type to search..."}
               </div>
             ) : (
-              filtered.map((item) => (
-                <div
-                  key={item.id}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setSearch(item.name);
-                    setShow(false);
-                    onSelect(rowId, item);
-                  }}
-                  className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
-                >
-                  <div className="text-sm font-semibold text-slate-800">
-                    {item.name}
+              filtered.map((item) => {
+                const catPrice = getCategoryPrice(item);
+                return (
+                  <div
+                    key={item.id}
+                    data-name={item.name}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearch(item.name);
+                      setShow(false);
+                      onSelect(rowId, item);
+                    }}
+                    className="px-3 py-2 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
+                  >
+                    <div className="text-sm font-semibold text-slate-800">
+                      {item.name}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-3">
+                      <span>HSN: {(item.hsn as any)?.code || "-"}</span>
+                      <span>GST: {(item.taxSlab as any)?.rate ?? 0}%</span>
+                      <span>
+                        Stk:{" "}
+                        {item.batches.reduce((s, b) => s + b.currentQty, 0)}
+                      </span>
+                      {catPrice !== null && (
+                        <span className="text-blue-600 font-semibold">
+                          {customerCategory} Price: ₹{catPrice}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 mt-0.5 flex gap-3">
-                    <span>HSN: {(item.hsn as any)?.code || "-"}</span>
-                    <span>GST: {(item.taxSlab as any)?.rate ?? 0}%</span>
-                    <span>
-                      Stk: {item.batches.reduce((s, b) => s + b.currentQty, 0)}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>,
           document.body,
@@ -181,21 +288,181 @@ function ItemSearch({
   );
 }
 
+// ── Customer Search ───────────────────────────────────────────────────────────
+function CustomerSearch({
+  customers,
+  value,
+  onSelect,
+}: {
+  customers: Customer[];
+  value: Customer | null;
+  onSelect: (c: Customer | null) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!show) {
+      setSearch(value?.name || "");
+    }
+  }, [value, show]);
+
+  const sorted = useMemo(
+    () => alphaSort(customers, (c) => c.name),
+    [customers],
+  );
+
+  const filtered = useMemo(() => {
+    const q = normalizeText(search);
+
+    if (!q) return sorted;
+
+    if (q.length === 1) {
+      return sorted.filter((c) => normalizeText(c.name).startsWith(q));
+    }
+
+    return [...sorted]
+      .map((c) => {
+        const name = normalizeText(c.name);
+        const gstin = normalizeText(c.gstin || "");
+        let rank = 99;
+
+        if (name.startsWith(q)) rank = 0;
+        else if (name.split(/\s+/).some((part) => part.startsWith(q))) rank = 1;
+        else if (name.includes(q)) rank = 2;
+        else if (gstin.startsWith(q)) rank = 3;
+        else if (gstin.includes(q)) rank = 4;
+
+        return { c, name, rank };
+      })
+      .filter((x) => x.rank < 99)
+      .sort((a, b) => {
+        if (a.rank !== b.rank) return a.rank - b.rank;
+        return a.name.localeCompare(b.name);
+      })
+      .map((x) => x.c);
+  }, [sorted, search]);
+
+  useEffect(() => {
+    if (!show || !search.trim() || !listRef.current) return;
+
+    const q = normalizeText(search);
+    const items = Array.from(
+      listRef.current.querySelectorAll("[data-name]"),
+    ) as HTMLElement[];
+
+    let target: HTMLElement | undefined;
+
+    if (q.length === 1) {
+      target = items.find((el) =>
+        normalizeText(el.dataset.name || "").startsWith(q),
+      );
+    } else {
+      target =
+        items.find((el) =>
+          normalizeText(el.dataset.name || "").startsWith(q),
+        ) ||
+        items.find((el) =>
+          normalizeText(el.dataset.name || "")
+            .split(/\s+/)
+            .some((part) => part.startsWith(q)),
+        ) ||
+        items.find((el) => normalizeText(el.dataset.name || "").includes(q));
+    }
+
+    if (target) target.scrollIntoView({ block: "nearest" });
+  }, [search, show, filtered]);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setShow(false);
+      }
+    };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={search}
+        onChange={(e) => {
+          setSearch(e.target.value);
+          onSelect(null);
+          setShow(true);
+        }}
+        onFocus={() => {
+          setSearch(value?.name || search);
+          setShow(true);
+        }}
+        placeholder="Search by name or GSTIN..."
+        className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-300 transition-all w-full px-3 py-2.5"
+      />
+      {show && (
+        <div
+          ref={listRef}
+          className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto"
+        >
+          {filtered.length === 0 ? (
+            <div className="px-4 py-4 text-xs text-slate-400 text-center">
+              No customers found
+            </div>
+          ) : (
+            filtered.map((c) => (
+              <div
+                key={c.id}
+                data-name={c.name}
+                onMouseDown={() => {
+                  onSelect(c);
+                  setSearch(c.name);
+                  setShow(false);
+                }}
+                className="px-4 py-3 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0 flex justify-between items-center"
+              >
+                <div>
+                  <div className="text-sm font-semibold text-slate-800">
+                    {c.name}
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">
+                    {c.city || "-"}
+                    {c.state ? `, ${c.state}` : ""} ·{" "}
+                    {c.gstin || "B2C — No GSTIN"}
+                  </div>
+                </div>
+                <span
+                  className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                    c.balance < 0
+                      ? "bg-red-50 text-red-600"
+                      : "bg-emerald-50 text-emerald-600"
+                  }`}
+                >
+                  ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
+                  {c.balance < 0 ? "Dr." : "Cr."}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function SaleEntry() {
   const navigate = useNavigate();
-
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-
   const [invoiceDate, setInvoiceDate] = useState(
     () => new Date().toISOString().split("T")[0],
   );
   const [terms, setTerms] = useState("Credit");
-  const [invoiceNo, setInvoiceNo] = useState("FA-01");
+  const [invoiceNo, setInvoiceNo] = useState("");
 
-  // Load next invoice number on mount
   useEffect(() => {
     const base = (
       import.meta.env.VITE_API_URL || "http://localhost:5000/api"
@@ -209,10 +476,6 @@ export default function SaleEntry() {
   }, []);
 
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [partySearch, setPartySearch] = useState("");
-  const [showParty, setShowParty] = useState(false);
-  const partyRef = useRef<HTMLDivElement>(null);
-
   const [agentId, setAgentId] = useState("");
   const [rows, setRows] = useState<ExtRow[]>([newRow(1)]);
   const [saving, setSaving] = useState(false);
@@ -260,15 +523,6 @@ export default function SaleEntry() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (partyRef.current && !partyRef.current.contains(e.target as Node))
-        setShowParty(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
-
   const upd = (id: number, field: string, val: string) =>
     setRows((p) =>
       p.map((r) => (r.id === id ? calcRow({ ...r, [field]: val }) : r)),
@@ -277,6 +531,13 @@ export default function SaleEntry() {
   function selectItem(rowId: number, item: Item) {
     const batches = item.batches || [];
     const firstBatch = batches[0] || null;
+
+    const catPrice = customer?.category
+      ? (item as any).categoryPrices?.find(
+          (p: any) => p.category === customer.category,
+        )?.price
+      : null;
+
     setRows((p) =>
       p.map((r) => {
         if (r.id !== rowId) return r;
@@ -291,7 +552,12 @@ export default function SaleEntry() {
           _batches: batches,
           batchNo: firstBatch?.batchNo || "",
           batchId: firstBatch?.id ?? null,
-          price: firstBatch ? String(firstBatch.salePrice ?? "") : "",
+          price:
+            catPrice !== null
+              ? String(catPrice)
+              : firstBatch
+                ? String(firstBatch.salePrice ?? "")
+                : "",
           mrp: firstBatch?.mrp ?? 0,
         });
       }),
@@ -302,11 +568,23 @@ export default function SaleEntry() {
     setRows((p) =>
       p.map((r) => {
         if (r.id !== rowId) return r;
+
+        const catPrice = customer?.category
+          ? (
+              allItems.find((i) => i.id === r.itemId) as any
+            )?.categoryPrices?.find(
+              (p: any) => p.category === customer.category,
+            )?.price
+          : null;
+
         return calcRow({
           ...r,
           batchNo: batch.batchNo || "",
           batchId: batch.id ?? null,
-          price: String(batch.salePrice ?? ""),
+          price:
+            catPrice !== null
+              ? String(catPrice)
+              : String(batch.salePrice ?? ""),
           mrp: batch.mrp ?? 0,
         });
       }),
@@ -379,7 +657,7 @@ export default function SaleEntry() {
       totTax,
       grand,
     };
-    localStorage.setItem("fulanand_print_data", JSON.stringify(data));
+    localStorage.setItem("erp_print_data", JSON.stringify(data));
     window.open("/invoice-print.html", "_blank");
   }
 
@@ -392,7 +670,6 @@ export default function SaleEntry() {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f8fafc]">
-      {/* TOP BAR */}
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <button
@@ -449,9 +726,7 @@ export default function SaleEntry() {
         </div>
       </div>
 
-      {/* CONTENT */}
       <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-4">
-        {/* INVOICE DETAILS */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div className="px-5 py-3.5 border-b border-slate-100">
             <h2 className="font-semibold text-slate-700 text-sm">
@@ -459,71 +734,23 @@ export default function SaleEntry() {
             </h2>
           </div>
           <div className="px-5 py-4 grid grid-cols-4 gap-4">
-            {/* Customer */}
-            <div className="col-span-2 relative" ref={partyRef}>
+            <div className="col-span-2">
               <label className="text-xs font-semibold text-slate-500 block mb-1.5">
                 Customer *
               </label>
-              <input
-                value={customer ? customer.name : partySearch}
-                onChange={(e) => {
-                  setPartySearch(e.target.value);
-                  setCustomer(null);
-                  setShowParty(true);
-                }}
-                onFocus={() => setShowParty(true)}
-                placeholder="Search by name or GSTIN..."
-                className={`${inp} w-full px-3 py-2.5`}
+              <CustomerSearch
+                customers={customers}
+                value={customer}
+                onSelect={(c) => setCustomer(c)}
               />
-              {showParty && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto">
-                  {customers
-                    .filter(
-                      (c) =>
-                        c.name
-                          .toLowerCase()
-                          .includes(partySearch.toLowerCase()) ||
-                        (c.gstin || "").includes(partySearch),
-                    )
-                    .map((c) => (
-                      <div
-                        key={c.id}
-                        onMouseDown={() => {
-                          setCustomer(c);
-                          setPartySearch("");
-                          setShowParty(false);
-                        }}
-                        className="px-4 py-3 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0 flex justify-between items-center"
-                      >
-                        <div>
-                          <div className="text-sm font-semibold text-slate-800">
-                            {c.name}
-                          </div>
-                          <div className="text-xs text-slate-400 mt-0.5">
-                            {c.gstin || "B2C — No GSTIN"} · {c.state}
-                          </div>
-                        </div>
-                        <span
-                          className={`text-xs font-bold px-2 py-1 rounded-lg ${c.balance < 0 ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}
-                        >
-                          ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
-                          {c.balance < 0 ? "Dr." : "Cr."}
-                        </span>
-                      </div>
-                    ))}
-                  {!customers.filter((c) =>
-                    c.name.toLowerCase().includes(partySearch.toLowerCase()),
-                  ).length && (
-                    <div className="px-4 py-4 text-xs text-slate-400 text-center">
-                      No customers found
-                    </div>
-                  )}
-                </div>
-              )}
               {customer && (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${customer.balance < 0 ? "bg-red-50 text-red-600" : "bg-emerald-50 text-emerald-600"}`}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      customer.balance < 0
+                        ? "bg-red-50 text-red-600"
+                        : "bg-emerald-50 text-emerald-600"
+                    }`}
                   >
                     Bal: ₹{Math.abs(customer.balance).toLocaleString("en-IN")}{" "}
                     {customer.balance < 0 ? "Dr." : "Cr."}
@@ -540,10 +767,14 @@ export default function SaleEntry() {
                       B2C — No GSTIN
                     </span>
                   )}
+                  {customer.category && (
+                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">
+                      Category: {customer.category}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
-
             <div>
               <label className="text-xs font-semibold text-slate-500 block mb-1.5">
                 Invoice Date
@@ -598,7 +829,6 @@ export default function SaleEntry() {
               />
             </div>
           </div>
-
           {lastFilled && (
             <div className="mx-5 mb-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-5 text-xs flex-wrap">
               <span className="text-slate-400">Last item:</span>
@@ -626,7 +856,6 @@ export default function SaleEntry() {
           )}
         </div>
 
-        {/* PRODUCTS TABLE */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-semibold text-slate-700 text-sm">
@@ -636,7 +865,6 @@ export default function SaleEntry() {
               {filledRows.length} item(s)
             </span>
           </div>
-
           <div
             className="overflow-x-auto"
             style={{ overflowX: "auto", overflowY: "visible" }}
@@ -688,13 +916,15 @@ export default function SaleEntry() {
                   return (
                     <tr
                       key={row.id}
-                      className={`border-b border-slate-50 transition-colors ${idx % 2 === 0 ? "bg-white hover:bg-slate-50/40" : "bg-slate-50/20 hover:bg-slate-50/60"}`}
+                      className={`border-b border-slate-50 transition-colors ${
+                        idx % 2 === 0
+                          ? "bg-white hover:bg-slate-50/40"
+                          : "bg-slate-50/20 hover:bg-slate-50/60"
+                      }`}
                     >
                       <td className="px-2 py-2 text-center text-xs text-slate-300 font-semibold">
                         {idx + 1}
                       </td>
-
-                      {/* ── Item Search (dedicated component) ── */}
                       <td className="px-2 py-1.5">
                         <ItemSearch
                           value={row.itemName}
@@ -702,9 +932,9 @@ export default function SaleEntry() {
                           allItems={allItems}
                           onSelect={selectItem}
                           onUpdate={(rowId, val) => upd(rowId, "itemName", val)}
+                          customerCategory={customer?.category || undefined}
                         />
                       </td>
-
                       <td className="px-2 py-1.5">
                         <input
                           value={row.hsn}
@@ -712,8 +942,6 @@ export default function SaleEntry() {
                           className={`${ti} bg-slate-50/80 text-slate-400 text-center cursor-not-allowed border-transparent`}
                         />
                       </td>
-
-                      {/* Batch dropdown */}
                       <td className="px-2 py-1.5">
                         <select
                           value={
@@ -725,7 +953,7 @@ export default function SaleEntry() {
                             );
                             if (b) selectBatch(row.id, b);
                           }}
-                          className="border border-slate-200 rounded-md text-xs bg-white outline-none focus:border-blue-400 w-full px-1.5 py-1 cursor-pointer hover:border-slate-300 transition-colors"
+                          className="border border-slate-200 rounded-md text-xs bg-white outline-none focus:border-blue-400 w-full px-1.5 py-1 cursor-pointer"
                         >
                           <option value="">-- Batch --</option>
                           {bList.map((b: any) => (
@@ -735,7 +963,6 @@ export default function SaleEntry() {
                           ))}
                         </select>
                       </td>
-
                       <td className="px-2 py-1.5">
                         <input
                           value={currBatch?.expiryDate || ""}
@@ -790,7 +1017,6 @@ export default function SaleEntry() {
                           placeholder="0"
                         />
                       </td>
-
                       <td className="px-2 py-1.5">
                         <input
                           value={row.gst || ""}
@@ -838,7 +1064,6 @@ export default function SaleEntry() {
           </div>
         </div>
 
-        {/* SUMMARY */}
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-3">
@@ -892,7 +1117,6 @@ export default function SaleEntry() {
         <div className="h-16" />
       </div>
 
-      {/* STICKY BOTTOM BAR */}
       <div className="bg-slate-900 text-white px-4 py-2.5 flex items-center sticky bottom-0 z-40 shadow-2xl">
         {(
           [
@@ -908,13 +1132,17 @@ export default function SaleEntry() {
         ).map(([label, value], i, arr) => (
           <div
             key={label}
-            className={`flex-1 text-center px-2 ${i < arr.length - 1 ? "border-r border-slate-700" : ""}`}
+            className={`flex-1 text-center px-2 ${
+              i < arr.length - 1 ? "border-r border-slate-700" : ""
+            }`}
           >
             <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide leading-tight">
               {label}
             </div>
             <div
-              className={`text-sm font-bold leading-tight mt-0.5 ${i === arr.length - 1 ? "text-blue-400" : "text-white"}`}
+              className={`text-sm font-bold leading-tight mt-0.5 ${
+                i === arr.length - 1 ? "text-blue-400" : "text-white"
+              }`}
             >
               {value}
             </div>
