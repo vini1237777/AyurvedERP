@@ -1,53 +1,83 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-const NAV = [
-  { group: "Main", items: [{ path: "/", icon: "", label: "Dashboard" }] },
+type NavLeaf = { path: string; label: string };
+type NavItem = NavLeaf | { key: string; label: string; children: NavLeaf[] };
+
+const NAV: { group: string; items: NavItem[] }[] = [
+  { group: "Main", items: [{ path: "/", label: "Dashboard" }] },
   {
     group: "Sales",
     items: [
-      { path: "/sales/new", icon: "", label: "New Sale" },
-      { path: "/sales", icon: "", label: "All Invoices" },
-      { path: "/sales/return", icon: "", label: "Sale Return" },
+      { path: "/sales/new", label: "New Sale" },
+      { path: "/sales", label: "All Invoices" },
+      { path: "/sales/return", label: "Sale Return" },
     ],
   },
   {
     group: "Purchases",
     items: [
-      { path: "/purchases/new", icon: "", label: "New Purchase" },
-      { path: "/purchases", icon: "", label: "All Purchases" },
+      { path: "/purchases/new", label: "New Purchase" },
+      { path: "/purchases", label: "All Purchases" },
     ],
   },
   {
     group: "Masters",
     items: [
-      { path: "/masters/customers", icon: "", label: "Customers" },
-      { path: "/masters/items", icon: "", label: "Items" },
-      { path: "/masters/batches", icon: "", label: "Batches" },
+      { path: "/masters/customers", label: "Customers" },
+      { path: "/masters/items", label: "Items" },
+      { path: "/masters/batches", label: "Batches" },
     ],
   },
   {
     group: "Reports",
     items: [
-      { path: "/reports/sale-register", icon: "", label: "Sale Register" },
-      { path: "/reports/gst", icon: "", label: "GST Report" },
-      { path: "/reports/gst-r1", icon: "", label: "GST R1" },
-      { path: "/reports/gst-r3", icon: "", label: "GST R3B" },
-      { path: "/reports/stock", icon: "", label: "Stock Report" },
-      { path: "/reports/ledger", icon: "", label: "Party Ledger" },
-      { path: "/reports/item-category", icon: "", label: "Item Category" },
+      { path: "/reports/sale-register", label: "Sale Register" },
       {
-        path: "/reports/customer-category",
-        icon: "",
-        label: "Customer Category",
+        key: "gst",
+        label: "GST",
+        children: [
+          { path: "/reports/gst", label: "GST Summary" },
+          { path: "/reports/gst-r1", label: "GST R1" },
+          { path: "/reports/gst-r3", label: "GST R3B" },
+        ],
       },
+      { path: "/reports/stock", label: "Stock Report" },
+      { path: "/reports/ledger", label: "Party Ledger" },
+      { path: "/reports/item-category", label: "Item Category" },
+      { path: "/reports/customer-category", label: "Customer Category" },
     ],
   },
 ];
 
+const isLeaf = (i: NavItem): i is NavLeaf => "path" in i;
+
+function isActive(pathname: string, target: string) {
+  if (target === "/") return pathname === "/";
+  return pathname === target || pathname.startsWith(target + "/");
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      NAV.forEach((g) =>
+        g.items.forEach((item) => {
+          if (!isLeaf(item)) {
+            const childActive = item.children.some((c) =>
+              isActive(location.pathname, c.path),
+            );
+            if (childActive) next[item.key] = true;
+          }
+        }),
+      );
+      return next;
+    });
+  }, [location.pathname]);
 
   return (
     <div className="flex h-screen bg-slate-50">
@@ -73,7 +103,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
+        <nav className="flex-1 overflow-y-auto py-3 px-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {NAV.map((group) => (
             <div key={group.group} className="mb-4">
               {!collapsed && (
@@ -82,21 +112,70 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </div>
               )}
               {group.items.map((item) => {
-                const active =
-                  location.pathname === item.path ||
-                  (item.path !== "/" &&
-                    location.pathname.startsWith(item.path));
+                if (isLeaf(item)) {
+                  const active = isActive(location.pathname, item.path);
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"}`}
+                    >
+                      <span className="text-base leading-none w-4 text-center flex-shrink-0" />
+                      {!collapsed && item.label}
+                    </Link>
+                  );
+                }
+                const open = !!openGroups[item.key];
+                const childActive = item.children.some((c) =>
+                  isActive(location.pathname, c.path),
+                );
+                if (collapsed) {
+                  return item.children.map((c) => {
+                    const active = isActive(location.pathname, c.path);
+                    return (
+                      <Link
+                        key={c.path}
+                        to={c.path}
+                        title={`${item.label} — ${c.label}`}
+                        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"}`}
+                      >
+                        <span className="text-base leading-none w-4 text-center flex-shrink-0" />
+                      </Link>
+                    );
+                  });
+                }
                 return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${active ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"}`}
-                  >
-                    <span className="text-base leading-none w-4 text-center flex-shrink-0">
-                      {item.icon}
-                    </span>
-                    {!collapsed && item.label}
-                  </Link>
+                  <div key={item.key}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenGroups((p) => ({ ...p, [item.key]: !open }))
+                      }
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${childActive ? "bg-blue-50 text-blue-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"}`}
+                    >
+                      <span className="text-base leading-none w-4 text-center flex-shrink-0" />
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <span className="text-xs text-slate-400">
+                        {open ? "▾" : "▸"}
+                      </span>
+                    </button>
+                    {open && (
+                      <div className="ml-3 pl-2 border-l border-slate-200 mb-1">
+                        {item.children.map((c) => {
+                          const active = isActive(location.pathname, c.path);
+                          return (
+                            <Link
+                              key={c.path}
+                              to={c.path}
+                              className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm mb-0.5 transition-all ${active ? "bg-blue-50 text-blue-700 font-medium" : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"}`}
+                            >
+                              {c.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>

@@ -12,7 +12,7 @@ import GstR3Report from "./pages/reports/Gstr3report";
 import StockReport from "./pages/reports/StockReport";
 import LedgerReport from "./pages/reports/Ledgerreport";
 import PurchaseEntry from "./pages/sales/PurchaseEntry";
-import PurchaseList from "./pages/sales/Purchaselist";
+import PurchaseList from "./pages/sales/PurchaseList";
 
 // Lazy
 const Customers = lazy(() => import("./pages/masters/Customers"));
