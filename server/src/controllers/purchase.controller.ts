@@ -61,7 +61,7 @@ export const getNextNo = async (_req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
   try {
-    const { supplierId, purchaseDate, rows } = req.body;
+    const { supplierId, purchaseDate, rows, notes } = req.body;
     if (!supplierId || !rows?.length)
       return res.status(400).json({ error: "Supplier and items required" });
 
@@ -126,6 +126,7 @@ export const create = async (req: Request, res: Response) => {
           igstAmt,
           totalTax,
           grandTotal,
+          notes: typeof notes === "string" ? notes.trim() || null : null,
           items: {
             create: calcedRows.map((row: any) => ({
               itemId: parseInt(row.itemId),

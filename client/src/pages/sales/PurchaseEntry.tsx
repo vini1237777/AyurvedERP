@@ -220,6 +220,7 @@ export default function PurchaseEntry() {
   const [supplierSearch, setSupplierSearch] = useState("");
   const [showSupplier, setShowSupplier] = useState(false);
   const [rows, setRows] = useState<PRow[]>([newRow(1)]);
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const supRef = useRef<HTMLDivElement>(null);
@@ -314,7 +315,7 @@ export default function PurchaseEntry() {
     [sortedSuppliers, supplierSearch],
   );
 
-  async function handleSave() {
+  async function handleSave(printMode?: "voucher" | "grn") {
     if (!supplier) {
       setError("Select a supplier");
       return;
@@ -329,6 +330,7 @@ export default function PurchaseEntry() {
       const payload = {
         supplierId: supplier.id,
         purchaseDate,
+        notes: notes.trim() || undefined,
         rows: filledRows.map((r) => ({
           itemId: r.itemId,
           batchId: r.batchId,
@@ -349,11 +351,63 @@ export default function PurchaseEntry() {
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
+      const created = await res.json();
+      if (printMode) {
+        await openPrint(created.id, printMode);
+      }
       navigate("/purchases");
     } catch (err: any) {
       setError(err.message || "Failed to save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function openPrint(id: number, mode: "voucher" | "grn") {
+    try {
+      const res = await fetch(`${API}/purchases/${id}`);
+      const full = await res.json();
+      const sup = full.supplier || {};
+      const data = {
+        mode,
+        purchaseNo: full.purchaseNo,
+        purchaseDate: full.purchaseDate,
+        taxType: full.taxType,
+        supplier: {
+          name: sup.name || "",
+          address: sup.address || "",
+          state: full.supplierState || sup.state || "",
+          stateCode: full.supplierStateCode || sup.stateCode || "",
+          mobile: sup.mobile || "",
+          gstin: full.supplierGstin || sup.gstin || "",
+        },
+        rows: (full.items || []).map((item: any) => ({
+          itemName: item.itemName,
+          hsn: item.hsnCode,
+          batchNo: item.batch?.batchNo || "-",
+          mfgDate: item.batch?.mfgDate || "-",
+          expiryDate: item.batch?.expiryDate || "-",
+          qty: item.qty,
+          freeQty: item.freeQty || 0,
+          per: item.per || "Pcs",
+          rate: item.rate || 0,
+          disc: item.discPercent || 0,
+          gst: item.gstPercent || 0,
+          netValue: item.netValue || 0,
+        })),
+        totalDiscount: full.totalDiscount || 0,
+        totalTaxable: full.totalTaxable || 0,
+        cgstAmt: full.cgstAmt || 0,
+        sgstAmt: full.sgstAmt || 0,
+        igstAmt: full.igstAmt || 0,
+        totalTax: full.totalTax || 0,
+        grandTotal: full.grandTotal || 0,
+        notes: full.notes || "",
+      };
+      localStorage.setItem("erp_purchase_print", JSON.stringify(data));
+      window.open("/purchase-print.html", "_blank");
+    } catch {
+      // print failure shouldn't block save flow
     }
   }
 
@@ -391,7 +445,23 @@ export default function PurchaseEntry() {
             </div>
           )}
           <button
-            onClick={handleSave}
+            onClick={() => handleSave("grn")}
+            disabled={saving}
+            title="Save and print Goods Received Note"
+            className="px-3 py-2 text-sm bg-white border border-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 disabled:opacity-50"
+          >
+            Save & GRN
+          </button>
+          <button
+            onClick={() => handleSave("voucher")}
+            disabled={saving}
+            title="Save and print Purchase Voucher"
+            className="px-3 py-2 text-sm bg-white border border-slate-200 text-slate-700 rounded-lg font-semibold hover:bg-slate-50 disabled:opacity-50"
+          >
+            Save & Voucher
+          </button>
+          <button
+            onClick={() => handleSave()}
             disabled={saving}
             className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
           >
@@ -631,6 +701,23 @@ export default function PurchaseEntry() {
             >
               <span className="text-lg">+</span> Add Item
             </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div className="px-5 py-3.5 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-700 text-sm">
+              Notes / Remarks
+            </h2>
+          </div>
+          <div className="px-5 py-4">
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Optional — internal remarks, supplier notes, PO reference, etc."
+              className={`${inp} w-full px-3 py-2.5 resize-y min-h-[72px]`}
+            />
           </div>
         </div>
 

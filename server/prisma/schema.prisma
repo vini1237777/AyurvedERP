@@ -233,6 +233,7 @@ model Purchase {
   totalTax          Float            @default(0)
   grandTotal        Float            @default(0)
   status            String           @default("SAVED")
+  notes             String?
   items             PurchaseItem[]
   purchaseReturns   PurchaseReturn[]
   createdAt         DateTime         @default(now())
