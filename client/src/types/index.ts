@@ -1,3 +1,33 @@
+// ─── Company ──────────────────────────────────────────────────────────────────
+
+export interface Company {
+  id: number;
+  name: string;
+  address?: string | null;
+  mobile?: string | null;
+  gstin?: string | null;
+  pan?: string | null;
+  stateCode: string;
+  state: string;
+  bank?: string | null;
+  ifsc?: string | null;
+  account?: string | null;
+  createdAt?: string;
+}
+
+export interface CompanyFormData {
+  name: string;
+  address: string;
+  mobile: string;
+  gstin: string;
+  pan: string;
+  stateCode: string;
+  state: string;
+  bank: string;
+  ifsc: string;
+  account: string;
+}
+
 // ─── Master Types ─────────────────────────────────────────────────────────────
 
 export interface Customer {

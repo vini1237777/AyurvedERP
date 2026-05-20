@@ -376,7 +376,7 @@ export default function PurchaseEntry() {
             <div className="font-bold text-slate-800 text-[15px]">
               New Purchase
             </div>
-            <div className="text-xs text-slate-400">Fulanand Ayurved</div>
+            <div className="text-xs text-slate-400">Purchase</div>
           </div>
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-1.5">
             <span className="text-sm font-bold text-blue-700">

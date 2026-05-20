@@ -75,14 +75,14 @@ export const emptyRow = (id: number): SaleRow => ({
 export const SELLER_STATE = '27'
 
 export const COMPANY = {
-  name: 'FULANAND AYURVED',
-  address: 'RAJMANE PLOT, PLOT NO 48 DHAVALVES, TASGAON TASGAON',
-  mobile: 'MOB.8668446400',
-  gstin: '27AZVPB8817G2ZW',
-  pan: 'AZVPB8817G',
+  name: 'AUSHADHI WELLNESS PVT LTD',
+  address: 'PLOT NO 10, MIDC, PUNE 411019',
+  mobile: 'MOB.0000000000',
+  gstin: '27AAAAA0000A1Z5',
+  pan: 'AAAAA0000A',
   stateCode: '27',
   state: 'Maharashtra',
-  bank: 'UCO BANK, TASGAON',
-  ifsc: 'IFSC-UCB40003225',
-  account: 'ACC NO-22250610000311',
+  bank: 'BANK NAME, BRANCH',
+  ifsc: 'IFSC-BANK0000000',
+  account: 'ACC NO-00000000000000',
 } as const

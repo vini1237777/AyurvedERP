@@ -1,4 +1,4 @@
-# Fulanand ERP — Setup Guide
+# ERP — Setup Guide
 
 ## Tech Stack
 
@@ -18,7 +18,7 @@ brew services start postgresql@14   # Mac (Homebrew)
 
 # Create database
 psql postgres
-CREATE DATABASE fulanand_erp;
+CREATE DATABASE erp;
 \q
 ```
 
@@ -95,7 +95,7 @@ npm run dev
 ## Project Structure
 
 ```
-fulanand-erp/
+erp/
 ├── server/
 │   ├── prisma/
 │   │   ├── schema.prisma       ← DB schema

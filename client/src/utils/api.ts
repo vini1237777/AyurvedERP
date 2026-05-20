@@ -7,9 +7,11 @@ import type {
   HsnCode,
   TaxSlab,
   Invoice,
+  Company,
   CustomerFormData,
   ItemFormData,
   BatchFormData,
+  CompanyFormData,
   GstReportResponse,
   StockReportResponse,
   SaleRegisterRow,
@@ -128,6 +130,12 @@ export const reportApi = {
 
   getStockReport: () =>
     api.get<StockReportResponse>("/reports/stock").then((r) => r.data),
+};
+
+export const companyApi = {
+  get: () => api.get<Company | null>("/company").then((r) => r.data),
+  save: (data: CompanyFormData) =>
+    api.put<Company>("/company", data).then((r) => r.data),
 };
 
 export const salesReturnApi = {

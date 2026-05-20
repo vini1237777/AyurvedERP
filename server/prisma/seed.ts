@@ -294,16 +294,16 @@ async function main() {
   console.log("Seeding company...");
   await prisma.company.create({
     data: {
-      name: "FULANAND AYURVED",
-      address: "RAJMANE PLOT, PLOT NO 48 DHAVALVES, TASGAON TASGAON",
-      mobile: "8668446400",
-      gstin: "27AZVPB8817G2ZW",
-      pan: "AZVPB8817G",
+      name: "AUSHADHI WELLNESS PVT LTD",
+      address: "PLOT NO 10, MIDC, PUNE 411019",
+      mobile: "0000000000",
+      gstin: "27AAAAA0000A1Z5",
+      pan: "AAAAA0000A",
       stateCode: "27",
       state: "Maharashtra",
-      bank: "UCO BANK, TASGAON",
-      ifsc: "UCB40003225",
-      account: "22250610000311",
+      bank: "BANK NAME, BRANCH",
+      ifsc: "BANK0000000",
+      account: "00000000000000",
     },
   });
 
@@ -670,7 +670,7 @@ async function main() {
   console.log("─────────────────────────────────────────");
   console.log(`  Tax Slabs:          5`);
   console.log(`  HSN Codes:          ${hsnRecords.length}`);
-  console.log(`  Company:            1 (Fulanand Ayurved)`);
+  console.log(`  Company:            1 (Aushadhi Wellness Pvt Ltd)`);
   console.log(`  Agents:             ${agents.length}`);
   console.log(`  Customers:          ${salesCustomers.length}`);
   console.log(`  Suppliers:          ${supplierCustomers.length}`);
