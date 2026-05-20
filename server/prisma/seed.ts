@@ -226,23 +226,26 @@ function fyOf(d: Date) {
 
 async function main() {
   console.log("Wiping existing data...");
-  // Order matters — children first
-  await prisma.purchaseReturnItem.deleteMany();
-  await prisma.purchaseReturn.deleteMany();
-  await prisma.purchaseItem.deleteMany();
-  await prisma.purchase.deleteMany();
-  await prisma.salesReturnItem.deleteMany();
-  await prisma.salesReturn.deleteMany();
-  await prisma.invoiceItem.deleteMany();
-  await prisma.invoice.deleteMany();
-  await prisma.itemCategoryPrice.deleteMany();
-  await prisma.batch.deleteMany();
-  await prisma.item.deleteMany();
-  await prisma.customer.deleteMany();
-  await prisma.agent.deleteMany();
-  await prisma.hsnCode.deleteMany();
-  await prisma.taxSlab.deleteMany();
-  await prisma.company.deleteMany();
+  await prisma.$executeRawUnsafe(`
+    TRUNCATE TABLE
+      "PurchaseReturnItem",
+      "PurchaseReturn",
+      "PurchaseItem",
+      "Purchase",
+      "SalesReturnItem",
+      "SalesReturn",
+      "InvoiceItem",
+      "Invoice",
+      "ItemCategoryPrice",
+      "Batch",
+      "Item",
+      "Customer",
+      "Agent",
+      "HsnCode",
+      "TaxSlab",
+      "Company"
+    RESTART IDENTITY CASCADE;
+  `);
 
   // ── Tax Slabs ──────────────────────────────────────────────────────────
   console.log("Seeding tax slabs...");
