@@ -119,7 +119,6 @@ export default function CompanyProfile() {
 
       <PageHeader
         title="Company Profile"
-        subtitle="Your business identity — used on invoices, reports and the topbar."
         actions={
           <Button onClick={save} disabled={saving}>
             {saving ? "Saving..." : "Save Profile"}
