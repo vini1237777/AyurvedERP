@@ -553,36 +553,36 @@ async function main() {
     });
     const invoiceNo = String(i + 1).padStart(4, "0");
 
-    await prisma.invoice.create({
-      data: {
-        invoiceNo,
-        financialYear: fy,
-        invoiceDate,
-        customerId: cust.id,
-        agentId: rPick(agents).id,
-        customerGstin: custRow!.gstin,
-        customerState: custRow!.state,
-        customerStateCode: custRow!.stateCode,
-        taxType,
-        totalDiscount: r2(totalDiscount),
-        totalTaxable: r2(totalTaxable),
-        cgstAmt,
-        sgstAmt,
-        igstAmt,
-        totalTax: r2(totalTax),
-        grandTotal,
-        status: "SAVED",
-        items: { create: lineItems },
-      },
-    });
-
-    // Deduct stock
-    for (const li of lineItems) {
-      await prisma.batch.update({
-        where: { id: li.batchId },
-        data: { currentQty: { decrement: li.qty } },
-      });
-    }
+    await prisma.$transaction([
+      prisma.invoice.create({
+        data: {
+          invoiceNo,
+          financialYear: fy,
+          invoiceDate,
+          customerId: cust.id,
+          agentId: rPick(agents).id,
+          customerGstin: custRow!.gstin,
+          customerState: custRow!.state,
+          customerStateCode: custRow!.stateCode,
+          taxType,
+          totalDiscount: r2(totalDiscount),
+          totalTaxable: r2(totalTaxable),
+          cgstAmt,
+          sgstAmt,
+          igstAmt,
+          totalTax: r2(totalTax),
+          grandTotal,
+          status: "SAVED",
+          items: { create: lineItems },
+        },
+      }),
+      ...lineItems.map((li) =>
+        prisma.batch.updateMany({
+          where: { id: li.batchId },
+          data: { currentQty: { decrement: li.qty } },
+        }),
+      ),
+    ]);
   }
 
   // ── Purchase Invoices (200) ────────────────────────────────────────────
@@ -649,35 +649,35 @@ async function main() {
     const supRow = await prisma.customer.findUnique({ where: { id: sup.id } });
     const purchaseNo = `FP-${String(i + 1).padStart(4, "0")}`;
 
-    await prisma.purchase.create({
-      data: {
-        purchaseNo,
-        financialYear: fy,
-        purchaseDate,
-        supplierId: sup.id,
-        supplierGstin: supRow!.gstin,
-        supplierState: supRow!.state,
-        supplierStateCode: supRow!.stateCode,
-        taxType,
-        totalDiscount: r2(totalDiscount),
-        totalTaxable: r2(totalTaxable),
-        cgstAmt,
-        sgstAmt,
-        igstAmt,
-        totalTax: r2(totalTax),
-        grandTotal,
-        status: "SAVED",
-        items: { create: lineItems },
-      },
-    });
-
-    // Increment stock from purchase
-    for (const li of lineItems) {
-      await prisma.batch.update({
-        where: { id: li.batchId },
-        data: { currentQty: { increment: li.qty } },
-      });
-    }
+    await prisma.$transaction([
+      prisma.purchase.create({
+        data: {
+          purchaseNo,
+          financialYear: fy,
+          purchaseDate,
+          supplierId: sup.id,
+          supplierGstin: supRow!.gstin,
+          supplierState: supRow!.state,
+          supplierStateCode: supRow!.stateCode,
+          taxType,
+          totalDiscount: r2(totalDiscount),
+          totalTaxable: r2(totalTaxable),
+          cgstAmt,
+          sgstAmt,
+          igstAmt,
+          totalTax: r2(totalTax),
+          grandTotal,
+          status: "SAVED",
+          items: { create: lineItems },
+        },
+      }),
+      ...lineItems.map((li) =>
+        prisma.batch.updateMany({
+          where: { id: li.batchId },
+          data: { currentQty: { increment: li.qty } },
+        }),
+      ),
+    ]);
   }
 
   console.log("");
