@@ -704,25 +704,24 @@ export default function PurchaseEntry() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <div className="px-5 py-3.5 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-700 text-sm">
-              Notes / Remarks
-            </h2>
+        <div className="grid grid-cols-[minmax(0,1fr)_18rem] gap-4 items-stretch">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-w-0 flex flex-col">
+            <div className="px-5 py-3.5 border-b border-slate-100">
+              <h2 className="font-semibold text-slate-700 text-sm">
+                Notes / Remarks
+              </h2>
+            </div>
+            <div className="px-5 py-4 flex-1">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional — internal remarks, supplier notes, PO reference, etc."
+                className={`${inp} w-full h-full px-3 py-2.5 resize-none min-h-[140px]`}
+              />
+            </div>
           </div>
-          <div className="px-5 py-4">
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              placeholder="Optional — internal remarks, supplier notes, PO reference, etc."
-              className={`${inp} w-full px-3 py-2.5 resize-y min-h-[72px]`}
-            />
-          </div>
-        </div>
 
-        <div className="flex justify-end">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-72">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-4">
               Summary
             </h2>
