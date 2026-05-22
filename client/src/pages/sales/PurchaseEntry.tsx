@@ -704,8 +704,8 @@ export default function PurchaseEntry() {
           </div>
         </div>
 
-        <div className="flex gap-4 items-stretch">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col">
+        <div className="grid grid-cols-[minmax(0,1fr)_18rem] gap-4 items-stretch">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-w-0 flex flex-col">
             <div className="px-5 py-3.5 border-b border-slate-100">
               <h2 className="font-semibold text-slate-700 text-sm">
                 Notes / Remarks
@@ -721,7 +721,7 @@ export default function PurchaseEntry() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 w-72 flex-shrink-0">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-4">
               Summary
             </h2>
