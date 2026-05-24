@@ -14,6 +14,35 @@ const rInt = (min: number, max: number) =>
   Math.floor(rand() * (max - min + 1)) + min;
 const rFloat = (min: number, max: number) => rand() * (max - min) + min;
 
+function envCount(name: string, fallback: number) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+
+  const count = Number.parseInt(raw, 10);
+  if (!Number.isInteger(count) || count < 1) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return count;
+}
+
+const seedCounts = {
+  customers: envCount("SEED_CUSTOMERS", 200),
+  suppliers: envCount("SEED_SUPPLIERS", 30),
+  items: envCount("SEED_ITEMS", 200),
+  saleInvoices: envCount("SEED_SALES_INVOICES", 200),
+  purchaseInvoices: envCount("SEED_PURCHASES", 200),
+  writeConcurrency: envCount("SEED_WRITE_CONCURRENCY", 4),
+};
+
+if (seedCounts.customers <= seedCounts.suppliers) {
+  throw new Error("SEED_CUSTOMERS must be greater than SEED_SUPPLIERS");
+}
+
+async function flushWrites(pending: Promise<unknown>[], force = false) {
+  if (!force && pending.length < seedCounts.writeConcurrency) return;
+  await Promise.all(pending.splice(0, pending.length));
+}
+
 // ── Reference data ───────────────────────────────────────────────────────
 const STATES = [
   { code: "27", name: "Maharashtra" },
@@ -322,11 +351,17 @@ async function main() {
     ].map((name) => prisma.agent.create({ data: { name, mobile: mobile() } })),
   );
 
-  // ── Customers (200) ────────────────────────────────────────────────────
-  console.log("Seeding 200 customers...");
-  const customers: { id: number; stateCode: string }[] = [];
-  for (let i = 0; i < 200; i++) {
-    const isSupplier = i >= 170; // last 30 are suppliers
+  // ── Customers ──────────────────────────────────────────────────────────
+  console.log(`Seeding ${seedCounts.customers} customers...`);
+  const customers: {
+    id: number;
+    gstin: string | null;
+    state: string;
+    stateCode: string;
+  }[] = [];
+  const supplierStart = seedCounts.customers - seedCounts.suppliers;
+  for (let i = 0; i < seedCounts.customers; i++) {
+    const isSupplier = i >= supplierStart;
     let name: string,
       address: string,
       city: string,
@@ -334,7 +369,9 @@ async function main() {
     let gstin: string | null;
 
     if (isSupplier) {
-      name = SUPPLIER_NAMES[i - 170] || `Ayur Supplier ${i - 169}`;
+      name =
+        SUPPLIER_NAMES[i - supplierStart] ||
+        `Ayur Supplier ${i - supplierStart + 1}`;
       state = STATES[rInt(0, STATES.length - 1)];
       city =
         state.code === "27" ? rPick(MH_CITIES) : `${state.name.split(" ")[0]} City`;
@@ -367,13 +404,18 @@ async function main() {
         isActive: true,
       },
     });
-    customers.push({ id: c.id, stateCode: state.code });
+    customers.push({
+      id: c.id,
+      gstin,
+      state: state.name,
+      stateCode: state.code,
+    });
   }
-  const salesCustomers = customers.slice(0, 170);
-  const supplierCustomers = customers.slice(170);
+  const salesCustomers = customers.slice(0, supplierStart);
+  const supplierCustomers = customers.slice(supplierStart);
 
-  // ── Items (200) + Batches ──────────────────────────────────────────────
-  console.log("Seeding 200 items with batches...");
+  // ── Items + Batches ────────────────────────────────────────────────────
+  console.log(`Seeding ${seedCounts.items} items with batches...`);
   const slabs = [
     { rate: 5, slab: slab5 },
     { rate: 12, slab: slab12 },
@@ -388,6 +430,7 @@ async function main() {
     mrp: number;
     hsn: string;
     gst: number;
+    itemName: string;
   }[] = [];
 
   // Build every unique (product, unit) combination, shuffle deterministically
@@ -400,7 +443,7 @@ async function main() {
     [productCombos[i], productCombos[j]] = [productCombos[j], productCombos[i]];
   }
 
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < seedCounts.items; i++) {
     const combo = productCombos[i % productCombos.length];
     const base = combo.base;
     const unit = combo.unit;
@@ -467,12 +510,13 @@ async function main() {
         mrp,
         hsn: hsn.code,
         gst: hsn.gstRate,
+        itemName: item.name,
       });
     }
   }
 
-  // ── Sale Invoices (200) ────────────────────────────────────────────────
-  console.log("Seeding 200 sale invoices...");
+  // ── Sale Invoices ──────────────────────────────────────────────────────
+  console.log(`Seeding ${seedCounts.saleInvoices} sale invoices...`);
   // spread over last 6 months
   const now = new Date();
   const sixMonthsAgo = new Date(now);
@@ -480,8 +524,11 @@ async function main() {
   const dayMs = 24 * 60 * 60 * 1000;
   const spanDays = Math.floor((now.getTime() - sixMonthsAgo.getTime()) / dayMs);
 
-  for (let i = 0; i < 200; i++) {
-    const dateOffset = Math.floor((i / 200) * spanDays) + rInt(0, 1);
+  const saleInvoiceNoWidth = Math.max(4, String(seedCounts.saleInvoices).length);
+  const saleWrites: Promise<unknown>[] = [];
+  for (let i = 0; i < seedCounts.saleInvoices; i++) {
+    const dateOffset =
+      Math.floor((i / seedCounts.saleInvoices) * spanDays) + rInt(0, 1);
     const invoiceDate = new Date(sixMonthsAgo.getTime() + dateOffset * dayMs);
     const cust = rPick(salesCustomers);
     const taxType = cust.stateCode === "27" ? "CGST_SGST" : "IGST";
@@ -514,7 +561,7 @@ async function main() {
       lineItems.push({
         itemId: b.itemId,
         batchId: b.id,
-        itemName: `Item-${b.itemId}`, // overwritten below
+        itemName: b.itemName,
         hsnCode: b.hsn,
         mrp: b.mrp,
         rate,
@@ -538,22 +585,9 @@ async function main() {
     const igstAmt = taxType === "IGST" ? r2(totalTax) : 0;
     const grandTotal = r2(totalTaxable + totalTax);
 
-    // Get item names
-    const itemRows = await prisma.item.findMany({
-      where: { id: { in: lineItems.map((x) => x.itemId) } },
-      select: { id: true, name: true },
-    });
-    const nameMap = new Map(itemRows.map((x) => [x.id, x.name]));
-    lineItems.forEach((li) => {
-      li.itemName = nameMap.get(li.itemId) || li.itemName;
-    });
+    const invoiceNo = String(i + 1).padStart(saleInvoiceNoWidth, "0");
 
-    const custRow = await prisma.customer.findUnique({
-      where: { id: cust.id },
-    });
-    const invoiceNo = String(i + 1).padStart(4, "0");
-
-    await prisma.$transaction([
+    saleWrites.push(prisma.$transaction([
       prisma.invoice.create({
         data: {
           invoiceNo,
@@ -561,9 +595,9 @@ async function main() {
           invoiceDate,
           customerId: cust.id,
           agentId: rPick(agents).id,
-          customerGstin: custRow!.gstin,
-          customerState: custRow!.state,
-          customerStateCode: custRow!.stateCode,
+          customerGstin: cust.gstin,
+          customerState: cust.state,
+          customerStateCode: cust.stateCode,
           taxType,
           totalDiscount: r2(totalDiscount),
           totalTaxable: r2(totalTaxable),
@@ -582,13 +616,21 @@ async function main() {
           data: { currentQty: { decrement: li.qty } },
         }),
       ),
-    ]);
+    ]));
+    await flushWrites(saleWrites);
   }
+  await flushWrites(saleWrites, true);
 
-  // ── Purchase Invoices (200) ────────────────────────────────────────────
-  console.log("Seeding 200 purchase invoices...");
-  for (let i = 0; i < 200; i++) {
-    const dateOffset = Math.floor((i / 200) * spanDays) + rInt(0, 1);
+  // ── Purchase Invoices ──────────────────────────────────────────────────
+  console.log(`Seeding ${seedCounts.purchaseInvoices} purchase invoices...`);
+  const purchaseNoWidth = Math.max(
+    4,
+    String(seedCounts.purchaseInvoices).length,
+  );
+  const purchaseWrites: Promise<unknown>[] = [];
+  for (let i = 0; i < seedCounts.purchaseInvoices; i++) {
+    const dateOffset =
+      Math.floor((i / seedCounts.purchaseInvoices) * spanDays) + rInt(0, 1);
     const purchaseDate = new Date(sixMonthsAgo.getTime() + dateOffset * dayMs);
     const sup = rPick(supplierCustomers);
     const taxType = sup.stateCode === "27" ? "CGST_SGST" : "IGST";
@@ -613,7 +655,7 @@ async function main() {
       lineItems.push({
         itemId: b.itemId,
         batchId: b.id,
-        itemName: `Item-${b.itemId}`,
+        itemName: b.itemName,
         hsnCode: b.hsn,
         mrp: b.mrp,
         rate,
@@ -637,28 +679,18 @@ async function main() {
     const igstAmt = taxType === "IGST" ? r2(totalTax) : 0;
     const grandTotal = r2(totalTaxable + totalTax);
 
-    const itemRows = await prisma.item.findMany({
-      where: { id: { in: lineItems.map((x) => x.itemId) } },
-      select: { id: true, name: true },
-    });
-    const nameMap = new Map(itemRows.map((x) => [x.id, x.name]));
-    lineItems.forEach((li) => {
-      li.itemName = nameMap.get(li.itemId) || li.itemName;
-    });
+    const purchaseNo = `FP-${String(i + 1).padStart(purchaseNoWidth, "0")}`;
 
-    const supRow = await prisma.customer.findUnique({ where: { id: sup.id } });
-    const purchaseNo = `FP-${String(i + 1).padStart(4, "0")}`;
-
-    await prisma.$transaction([
+    purchaseWrites.push(prisma.$transaction([
       prisma.purchase.create({
         data: {
           purchaseNo,
           financialYear: fy,
           purchaseDate,
           supplierId: sup.id,
-          supplierGstin: supRow!.gstin,
-          supplierState: supRow!.state,
-          supplierStateCode: supRow!.stateCode,
+          supplierGstin: sup.gstin,
+          supplierState: sup.state,
+          supplierStateCode: sup.stateCode,
           taxType,
           totalDiscount: r2(totalDiscount),
           totalTaxable: r2(totalTaxable),
@@ -677,8 +709,10 @@ async function main() {
           data: { currentQty: { increment: li.qty } },
         }),
       ),
-    ]);
+    ]));
+    await flushWrites(purchaseWrites);
   }
+  await flushWrites(purchaseWrites, true);
 
   console.log("");
   console.log("─────────────────────────────────────────");
@@ -692,8 +726,8 @@ async function main() {
   console.log(`  Suppliers:          ${supplierCustomers.length}`);
   console.log(`  Items:              ${items.length}`);
   console.log(`  Batches:            ${batches.length}`);
-  console.log(`  Sale Invoices:      200`);
-  console.log(`  Purchase Invoices:  200`);
+  console.log(`  Sale Invoices:      ${seedCounts.saleInvoices}`);
+  console.log(`  Purchase Invoices:  ${seedCounts.purchaseInvoices}`);
   console.log("─────────────────────────────────────────");
 }
 
