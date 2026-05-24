@@ -76,7 +76,7 @@ export const SELLER_STATE = '27'
 
 export const COMPANY = {
   name: 'AUSHADHI WELLNESS PVT LTD',
-  address: 'PLOT NO 10, MIDC, PUNE 411019',
+  address: '',
   mobile: 'MOB.0000000000',
   gstin: '27AAAAA0000A1Z5',
   pan: 'AAAAA0000A',

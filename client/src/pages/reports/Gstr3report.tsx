@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
+import { authFetch } from "../../utils/api";
 
 const API = (
   import.meta.env.VITE_API_URL || "http://localhost:3000/api"
@@ -22,7 +23,7 @@ export default function GstR3Report() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/reports/gst-r3?financialYear=${fy}`);
+      const res = await authFetch(`${API}/reports/gst-r3?financialYear=${fy}`);
       setData(await res.json());
     } catch {
       setData(null);
@@ -152,28 +153,79 @@ export default function GstR3Report() {
             <Card>
               <div className="px-5 py-4 border-b border-slate-100">
                 <h2 className="font-semibold text-slate-700">
-                  4. Eligible ITC
+                  4. Eligible ITC (Input Tax Credit)
                 </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  From {s.totalPurchases} purchases
+                </p>
               </div>
-              <div className="px-5 py-6 text-sm text-slate-500 text-center">
-                Purchase data required for ITC calculation. Add purchases to
-                calculate Input Tax Credit.
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-slate-50">
+                      {[
+                        "Description",
+                        "Taxable Value",
+                        "Integrated Tax",
+                        "Central Tax",
+                        "State/UT Tax",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="text-left text-xs font-semibold text-slate-500 px-5 py-3"
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b">
+                      <td className="px-5 py-4 text-sm font-medium">
+                        ITC available — inward supplies
+                      </td>
+                      <td className="px-5 py-4 text-sm font-bold text-slate-800">
+                        ₹{fmt(data.itc.taxable)}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        ₹{fmt(data.itc.igst)}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        ₹{fmt(data.itc.cgst)}
+                      </td>
+                      <td className="px-5 py-4 text-sm">
+                        ₹{fmt(data.itc.sgst)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </Card>
 
-            <Card className="p-5">
-              <h2 className="font-semibold text-slate-700 mb-4">
-                Tax Payable Summary
+            <Card className="p-5 bg-blue-50/50 border-blue-200">
+              <h2 className="font-semibold text-slate-700 mb-1">
+                6.1 Net Tax Payable
               </h2>
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <p className="text-xs text-slate-500 mb-4">
+                Output tax − Eligible ITC (clamped at zero per head)
+              </p>
+              <div className="grid grid-cols-4 gap-4 text-sm">
                 {[
-                  ["IGST", s.igst],
-                  ["CGST", s.cgst],
-                  ["SGST/UTGST", s.sgst],
-                ].map(([l, v]) => (
-                  <div key={l} className="bg-slate-50 rounded-xl p-4">
-                    <div className="text-slate-500 text-xs mb-1">{l}</div>
-                    <div className="text-xl font-bold text-slate-800">
+                  ["IGST", data.netPayable.igst],
+                  ["CGST", data.netPayable.cgst],
+                  ["SGST/UTGST", data.netPayable.sgst],
+                  ["Total Payable", data.netPayable.total],
+                ].map(([l, v], i) => (
+                  <div
+                    key={l}
+                    className={`rounded-xl p-4 ${i === 3 ? "bg-blue-600 text-white" : "bg-white border border-slate-200"}`}
+                  >
+                    <div
+                      className={`text-xs mb-1 ${i === 3 ? "text-blue-100" : "text-slate-500"}`}
+                    >
+                      {l}
+                    </div>
+                    <div className="text-xl font-bold">
                       ₹{fmt(Number(v))}
                     </div>
                   </div>

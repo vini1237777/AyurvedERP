@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
+import { authFetch } from "../../utils/api";
 
 const API = (
   import.meta.env.VITE_API_URL || "http://localhost:3000/api"
@@ -23,7 +24,7 @@ export default function GstR1Report() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`${API}/reports/gst-r1?financialYear=${fy}`);
+      const res = await authFetch(`${API}/reports/gst-r1?financialYear=${fy}`);
       setData(await res.json());
     } catch {
       setData(null);

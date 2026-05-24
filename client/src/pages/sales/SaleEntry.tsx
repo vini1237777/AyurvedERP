@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { customerApi, itemApi, agentApi, invoiceApi } from "../../utils/api";
+import {
+  customerApi,
+  itemApi,
+  agentApi,
+  invoiceApi,
+  authFetch,
+} from "../../utils/api";
 import { fmt, fmtInt, COMPANY, SELLER_STATE } from "../../utils/invoice.utils";
 import type { Customer, Item, Agent, SaleRow, TaxType } from "../../types";
 
@@ -467,7 +473,7 @@ export default function SaleEntry() {
     const base = (
       import.meta.env.VITE_API_URL || "http://localhost:5000/api"
     ).trim();
-    fetch(`${base}/invoices/next-no`)
+    authFetch(`${base}/invoices/next-no`)
       .then((r) => r.json())
       .then((d) => {
         if (d.invoiceNo) setInvoiceNo(d.invoiceNo);
@@ -553,7 +559,7 @@ export default function SaleEntry() {
           batchNo: firstBatch?.batchNo || "",
           batchId: firstBatch?.id ?? null,
           price:
-            catPrice !== null
+            catPrice != null
               ? String(catPrice)
               : firstBatch
                 ? String(firstBatch.salePrice ?? "")
@@ -582,7 +588,7 @@ export default function SaleEntry() {
           batchNo: batch.batchNo || "",
           batchId: batch.id ?? null,
           price:
-            catPrice !== null
+            catPrice != null
               ? String(catPrice)
               : String(batch.salePrice ?? ""),
           mrp: batch.mrp ?? 0,

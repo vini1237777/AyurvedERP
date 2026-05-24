@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
+import { authFetch } from "../../utils/api";
 import {
   Button,
   PageHeader,
@@ -41,7 +42,7 @@ export default function PurchaseList() {
 
   async function load() {
     try {
-      const res = await fetch(`${API}/purchases`);
+      const res = await authFetch(`${API}/purchases`);
       const data = await res.json();
       setPurchases(data);
       const fys = [
@@ -62,7 +63,7 @@ export default function PurchaseList() {
   async function handleCancel(id: number) {
     if (!confirm("Cancel this purchase?")) return;
     try {
-      await fetch(`${API}/purchases/${id}/cancel`, { method: "PATCH" });
+      await authFetch(`${API}/purchases/${id}/cancel`, { method: "PATCH" });
       setToast({ msg: "Purchase cancelled", type: "success" });
       load();
     } catch {
@@ -72,7 +73,7 @@ export default function PurchaseList() {
 
   async function handlePrint(p: any, mode: "voucher" | "grn") {
     try {
-      const res = await fetch(`${API}/purchases/${p.id}`);
+      const res = await authFetch(`${API}/purchases/${p.id}`);
       if (!res.ok) throw new Error("not ok");
       const full = await res.json();
       const supplier = full.supplier || {};

@@ -295,3 +295,53 @@ model PurchaseReturnItem {
   taxAmt           Float
   netValue         Float
 }
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("ADMIN")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Account {
+  id        Int           @id @default(autoincrement())
+  code      String        @unique
+  name      String
+  type      String
+  isActive  Boolean       @default(true)
+  lines     JournalLine[]
+  createdAt DateTime      @default(now())
+}
+
+model JournalEntry {
+  id           Int           @id @default(autoincrement())
+  entryNo      String        @unique
+  entryDate    DateTime
+  narration    String
+  refType      String
+  refId        Int?
+  isReversed   Boolean       @default(false)
+  reversedById Int?
+  lines        JournalLine[]
+  createdAt    DateTime      @default(now())
+
+  @@index([refType, refId])
+  @@index([entryDate])
+}
+
+model JournalLine {
+  id        Int          @id @default(autoincrement())
+  entryId   Int
+  entry     JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  accountId Int
+  account   Account      @relation(fields: [accountId], references: [id])
+  debit     Float        @default(0)
+  credit    Float        @default(0)
+
+  @@index([accountId])
+  @@index([entryId])
+}

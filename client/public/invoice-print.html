@@ -431,7 +431,7 @@
   <tr>
     <td style="border:${B};border-top:none;vertical-align:top;padding:4px 5px;">
       <div style="font-weight:bold;font-size:11px">AUSHADHI WELLNESS PVT LTD</div>
-      <div style="font-size:6.5px;margin-top:1px">PLOT NO 10, MIDC, PUNE 411019</div>
+      <div style="font-size:6.5px;margin-top:1px"></div>
       <div style="font-size:6.5px">MOB.0000000000</div>
       <div style="font-size:6.5px"><b>GSTIN NO.</b> 27AAAAA0000A1Z5</div>
       <div style="font-size:6.5px"><b>PAN NO.</b> AAAAA0000A</div>
@@ -609,6 +609,9 @@
           if (el) el.textContent = `Invoice #${D.invoiceNo}`;
         }
         renderAll();
+        if (new URLSearchParams(location.search).get("pdf") === "1") {
+          setTimeout(() => downloadPDF(), 300);
+        }
       });
     </script>
   </body>

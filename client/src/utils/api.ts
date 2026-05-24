@@ -25,13 +25,85 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
+    if (err?.response?.status === 401) {
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
+    }
+    if (err?.response?.status === 403) {
+      window.dispatchEvent(
+        new CustomEvent("api:forbidden", {
+          detail:
+            err.response?.data?.error ||
+            "You don't have permission to perform that action.",
+        }),
+      );
+    }
     console.error("API Error:", err.response?.data || err.message);
     return Promise.reject(err);
   },
 );
+
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+export type AuthUser = {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+};
+
+// Drop-in fetch replacement that adds the Bearer token and handles 401 the
+// same way the axios interceptor does. Use this in pages that call fetch()
+// directly instead of going through the axios `api` instance.
+export async function authFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+): Promise<Response> {
+  const token = localStorage.getItem("authToken");
+  const headers = new Headers(init.headers || {});
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+  if (!headers.has("Content-Type") && init.body) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(input, { ...init, headers });
+  if (res.status === 401) {
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("authUser");
+    if (window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+  }
+  if (res.status === 403) {
+    let msg = "You don't have permission to perform that action.";
+    try {
+      const body = await res.clone().json();
+      if (body?.error) msg = body.error;
+    } catch {}
+    window.dispatchEvent(new CustomEvent("api:forbidden", { detail: msg }));
+  }
+  return res;
+}
+
+export const authApi = {
+  login: (email: string, password: string) =>
+    api
+      .post<{ token: string; user: AuthUser }>("/auth/login", { email, password })
+      .then((r) => r.data),
+  me: () => api.get<AuthUser>("/auth/me").then((r) => r.data),
+};
 
 // ─── Customers ────────────────────────────────────────────────────────────────
 export const customerApi = {

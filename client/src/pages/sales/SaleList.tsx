@@ -105,7 +105,7 @@ export default function SaleList() {
 
   const totalSales = filtered.reduce((s, i) => s + i.grandTotal, 0);
 
-  async function handlePrint(inv: Invoice) {
+  async function handlePrint(inv: Invoice, action: "print" | "pdf" = "print") {
     try {
       const full = await invoiceApi.getById(inv.id);
 
@@ -172,7 +172,9 @@ export default function SaleList() {
       };
 
       localStorage.setItem("erp_print_data", JSON.stringify(data));
-      window.open("/invoice-print.html", "_blank");
+      const url =
+        action === "pdf" ? "/invoice-print.html?pdf=1" : "/invoice-print.html";
+      window.open(url, "_blank");
     } catch {
       setToast({ msg: "Failed to open invoice", type: "error" });
     }
@@ -313,6 +315,13 @@ export default function SaleList() {
                             onClick={() => handlePrint(inv)}
                           >
                             Print
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePrint(inv, "pdf")}
+                          >
+                            PDF
                           </Button>
                           {inv.status === "SAVED" && (
                             <Button
