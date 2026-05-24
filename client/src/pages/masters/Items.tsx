@@ -14,6 +14,7 @@ import {
   Select,
 } from "../../components/ui";
 import { Pagination, usePagination } from "../../components/ui/Pagination";
+import { fmt } from "../../utils/invoice.utils";
 import type { Item, HsnCode, TaxSlab, ItemFormData } from "../../types";
 
 const UNITS = [
@@ -229,7 +230,7 @@ export default function ItemMaster() {
     pg.reset();
   }, [search]);
 
-  const fmtR = (n?: number | null) => (n != null ? `₹${n.toFixed(2)}` : "-");
+  const fmtR = (n?: number | null) => (n != null ? `₹${fmt(n)}` : "-");
 
   return (
     <div>
