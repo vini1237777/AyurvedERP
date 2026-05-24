@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { fmt } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
-import { customerApi } from "../../utils/api";
+import { customerApi, authFetch } from "../../utils/api";
 import type { Customer } from "../../types";
 
 const API = (
@@ -25,7 +25,7 @@ export default function LedgerReport() {
     if (!selectedId) return;
     setLoading(true);
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `${API}/reports/ledger?customerId=${selectedId}&from=${from}&to=${to}`,
       );
       setData(await res.json());
