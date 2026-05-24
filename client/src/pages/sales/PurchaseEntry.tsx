@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
 import type { Customer, Item } from "../../types";
-import { customerApi, itemApi } from "../../utils/api";
+import { customerApi, itemApi, authFetch } from "../../utils/api";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const API = (
@@ -226,7 +226,7 @@ export default function PurchaseEntry() {
   const supRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`${API}/purchases/next-no`)
+    authFetch(`${API}/purchases/next-no`)
       .then((r) => r.json())
       .then((d) => {
         if (d.purchaseNo) setPurchaseNo(d.purchaseNo);
@@ -345,9 +345,8 @@ export default function PurchaseEntry() {
           gst: r.gst,
         })),
       };
-      const res = await fetch(`${API}/purchases`, {
+      const res = await authFetch(`${API}/purchases`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
@@ -365,7 +364,7 @@ export default function PurchaseEntry() {
 
   async function openPrint(id: number, mode: "voucher" | "grn") {
     try {
-      const res = await fetch(`${API}/purchases/${id}`);
+      const res = await authFetch(`${API}/purchases/${id}`);
       const full = await res.json();
       const sup = full.supplier || {};
       const data = {
