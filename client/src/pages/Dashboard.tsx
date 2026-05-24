@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { invoiceApi, salesReturnApi } from "../utils/api";
-import { fmt } from "../utils/invoice.utils";
+import { invoiceApi, salesReturnApi, authFetch } from "../utils/api";
+import { fmt, fmtInt } from "../utils/invoice.utils";
 import { Card, Badge, LoadingScreen } from "../components/ui";
 import type { Invoice } from "../types";
+
+const API = (
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
+).trim();
 
 interface SalesReturn {
   id: number;
@@ -17,9 +21,27 @@ interface SalesReturn {
   };
 }
 
+type DashboardSummary = {
+  outstanding: number;
+  lowStockCount: number;
+  lowStock: { itemName: string; batchNo: string; currentQty: number }[];
+  expiringCount: number;
+  expiring: {
+    itemName: string;
+    batchNo: string;
+    expiryDate: string;
+    currentQty: number;
+  }[];
+  gstPayable: number;
+  gstOutput: number;
+  gstInput: number;
+  topCustomers: { customerId: number; name: string; total: number }[];
+};
+
 export default function Dashboard() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [returns, setReturns] = useState<SalesReturn[]>([]);
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +59,13 @@ export default function Dashboard() {
       } catch (err) {
         console.error("Failed to load sales returns", err);
         setReturns([]);
+      }
+
+      try {
+        const res = await authFetch(`${API}/reports/dashboard-summary`);
+        if (res.ok) setSummary(await res.json());
+      } catch (err) {
+        console.error("Failed to load dashboard summary", err);
       }
 
       setLoading(false);
@@ -76,7 +105,7 @@ export default function Dashboard() {
 
   const monthNet = monthSales - monthReturns;
 
-  const recentInvoices = invoices.slice(0, 5);
+  const recentInvoices = invoices.slice(0, 3);
   const recentReturns = returns.slice(0, 5);
 
   const stats = [
@@ -109,7 +138,20 @@ export default function Dashboard() {
         <p className="text-slate-500 text-sm mt-0.5">Welcome to ERP</p>
       </div>
 
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between gap-4">
+        <div>
+          <div className="text-sm font-semibold text-blue-900">Demo data</div>
+          <p className="text-sm text-blue-700">
+            This preview uses seeded mock business records. No client data is
+            shown.
+          </p>
+        </div>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200 whitespace-nowrap">
+          Portfolio preview
+        </span>
+      </div>
+
+      <div className="grid grid-cols-5 gap-4 mb-4">
         {stats.map((s) => (
           <Card key={s.label} className="p-5">
             <div>
@@ -119,6 +161,76 @@ export default function Dashboard() {
           </Card>
         ))}
       </div>
+
+      {summary && (
+        <div className="grid grid-cols-5 gap-4 mb-6">
+          <Card className="p-5">
+            <p className="text-sm text-slate-500 mb-1">Outstanding Amount</p>
+            <p className="text-2xl font-bold text-slate-800">
+              ₹{fmt(summary.outstanding)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Σ unpaid SAVED invoices
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-sm text-slate-500 mb-1">Low Stock</p>
+            <p className="text-2xl font-bold text-amber-700">
+              {fmtInt(summary.lowStockCount)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">batches below 10 qty</p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-sm text-slate-500 mb-1">Expiring Batches</p>
+            <p className="text-2xl font-bold text-rose-700">
+              {fmtInt(summary.expiringCount)}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">within next 90 days</p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-sm text-slate-500 mb-1">GST Payable</p>
+            <p
+              className={`text-2xl font-bold ${
+                summary.gstPayable >= 0 ? "text-slate-800" : "text-emerald-700"
+              }`}
+            >
+              ₹{fmt(Math.abs(summary.gstPayable))}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              Output ₹{fmt(summary.gstOutput)} − Input ₹{fmt(summary.gstInput)}
+            </p>
+          </Card>
+
+          <Card className="p-5">
+            <p className="text-sm text-slate-500 mb-2">Top Customers</p>
+            {summary.topCustomers.length === 0 ? (
+              <p className="text-xs text-slate-400">No invoiced customers</p>
+            ) : (
+              <ol className="space-y-1">
+                {summary.topCustomers.slice(0, 3).map((c, i) => (
+                  <li
+                    key={c.customerId}
+                    className="flex items-baseline justify-between gap-2 text-xs"
+                  >
+                    <span className="truncate text-slate-700">
+                      <span className="text-slate-400 font-mono mr-1">
+                        {i + 1}.
+                      </span>
+                      {c.name}
+                    </span>
+                    <span className="font-semibold text-slate-800 whitespace-nowrap">
+                      ₹{fmt(c.total)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
+        </div>
+      )}
 
       <div className="grid grid-cols-5 gap-3 mb-6">
         {[
