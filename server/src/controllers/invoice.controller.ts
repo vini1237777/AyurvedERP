@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import {
+  postInvoice,
+  postSalesReturn,
+  reverseEntriesFor,
+} from "../services/posting.service";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -228,8 +233,21 @@ export const create = async (req: Request, res: Response) => {
           });
         }
       }
+
+      await postInvoice(tx, {
+        invoiceId: inv.id,
+        invoiceNo: inv.invoiceNo,
+        date: inv.invoiceDate,
+        taxType: taxType as "CGST_SGST" | "IGST",
+        totalTaxable,
+        cgstAmt,
+        sgstAmt,
+        igstAmt,
+        grandTotal,
+      });
+
       return inv;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     res.status(201).json(invoice);
   } catch (err: any) {
@@ -314,7 +332,7 @@ export const createReturn = async (req: Request, res: Response) => {
         });
       }
 
-      return await tx.salesReturn.create({
+      const sr = await tx.salesReturn.create({
         data: {
           returnNo,
           invoiceId: invoice.id,
@@ -327,7 +345,20 @@ export const createReturn = async (req: Request, res: Response) => {
         },
         include: { customer: true, invoice: true, items: true },
       });
-    });
+
+      await postSalesReturn(tx, {
+        salesReturnId: sr.id,
+        returnNo: sr.returnNo,
+        invoiceNo: invoice.invoiceNo,
+        date: sr.createdAt,
+        taxType: invoice.taxType as "CGST_SGST" | "IGST",
+        totalTaxable: r2(totalTaxable),
+        totalTax: r2(totalTax),
+        totalCredit: r2(totalTaxable + totalTax),
+      });
+
+      return sr;
+    }, { timeout: 20000, maxWait: 10000 });
 
     return res.status(201).json({
       success: true,
@@ -395,7 +426,13 @@ export const cancel = async (req: Request, res: Response) => {
           });
         }
       }
-    });
+      await reverseEntriesFor(
+        tx,
+        "INVOICE",
+        invoice.id,
+        `Cancellation of invoice ${invoice.invoiceNo}`,
+      );
+    }, { timeout: 20000, maxWait: 10000 });
 
     res.json({ message: "Invoice cancelled and stock reversed" });
   } catch (err) {

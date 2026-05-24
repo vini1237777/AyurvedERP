@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import {
+  postPurchase,
+  postPurchaseReturn,
+  reverseEntriesFor,
+} from "../services/posting.service";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -162,8 +167,21 @@ export const create = async (req: Request, res: Response) => {
           });
         }
       }
+
+      await postPurchase(tx, {
+        purchaseId: p.id,
+        purchaseNo: p.purchaseNo,
+        date: p.purchaseDate,
+        taxType: taxType as "CGST_SGST" | "IGST",
+        totalTaxable,
+        cgstAmt,
+        sgstAmt,
+        igstAmt,
+        grandTotal,
+      });
+
       return p;
-    });
+    }, { timeout: 20000, maxWait: 10000 });
 
     res.status(201).json(purchase);
   } catch (err: any) {
@@ -194,7 +212,13 @@ export const cancel = async (req: Request, res: Response) => {
           });
         }
       }
-    });
+      await reverseEntriesFor(
+        tx,
+        "PURCHASE",
+        purchase.id,
+        `Cancellation of purchase ${purchase.purchaseNo}`,
+      );
+    }, { timeout: 20000, maxWait: 10000 });
     res.json({ message: "Purchase cancelled" });
   } catch (err) {
     res.status(500).json({ error: "Failed to cancel purchase" });
@@ -261,7 +285,7 @@ export const createReturn = async (req: Request, res: Response) => {
           netValue: r2(taxableAmt + taxAmt),
         });
       }
-      return tx.purchaseReturn.create({
+      const pr = await tx.purchaseReturn.create({
         data: {
           returnNo,
           purchaseId,
@@ -274,7 +298,20 @@ export const createReturn = async (req: Request, res: Response) => {
         },
         include: { supplier: true, purchase: true, items: true },
       });
-    });
+
+      await postPurchaseReturn(tx, {
+        purchaseReturnId: pr.id,
+        returnNo: pr.returnNo,
+        purchaseNo: purchase.purchaseNo,
+        date: pr.createdAt,
+        taxType: purchase.taxType as "CGST_SGST" | "IGST",
+        totalTaxable: r2(totalTaxable),
+        totalTax: r2(totalTax),
+        totalDebit: r2(totalTaxable + totalTax),
+      });
+
+      return pr;
+    }, { timeout: 20000, maxWait: 10000 });
     res.status(201).json({ success: true, data: ret });
   } catch (err: any) {
     res.status(500).json({ error: err.message || "Failed to process return" });
