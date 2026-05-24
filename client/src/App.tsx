@@ -1,6 +1,10 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
+import { AuthProvider, RequireAuth } from "./auth/AuthContext";
+import Login from "./pages/Login";
+import Landing from "./pages/Landing";
+import NoAccess from "./pages/NoAccess";
 
 // Eager
 import Dashboard from "./pages/Dashboard";
@@ -28,6 +32,8 @@ const CustomerCategoryReport = lazy(
   () => import("./pages/reports/Customercategoryreport"),
 );
 const CompanyProfile = lazy(() => import("./pages/settings/CompanyProfile"));
+const TrialBalance = lazy(() => import("./pages/reports/TrialBalance"));
+const HsnSummary = lazy(() => import("./pages/reports/HsnSummary"));
 
 function PageLoader() {
   return (
@@ -39,24 +45,37 @@ function PageLoader() {
 
 function Wrap({ children }: { children: React.ReactNode }) {
   return (
-    <AppLayout>
-      <Suspense fallback={<PageLoader />}>{children}</Suspense>
-    </AppLayout>
+    <RequireAuth>
+      <AppLayout>
+        <Suspense fallback={<PageLoader />}>{children}</Suspense>
+      </AppLayout>
+    </RequireAuth>
   );
 }
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <Wrap>
-              <Dashboard />
-            </Wrap>
-          }
-        />
+      <AuthProvider>
+        <Routes>
+          <Route path="/welcome" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <Wrap>
+                <Dashboard />
+              </Wrap>
+            }
+          />
+          <Route
+            path="/no-access"
+            element={
+              <Wrap>
+                <NoAccess />
+              </Wrap>
+            }
+          />
 
         {/* Masters */}
         <Route
@@ -171,6 +190,22 @@ export default function App() {
           }
         />
         <Route
+          path="/reports/trial-balance"
+          element={
+            <Wrap>
+              <TrialBalance />
+            </Wrap>
+          }
+        />
+        <Route
+          path="/reports/hsn-summary"
+          element={
+            <Wrap>
+              <HsnSummary />
+            </Wrap>
+          }
+        />
+        <Route
           path="/reports/item-category"
           element={
             <Wrap>
@@ -198,7 +233,8 @@ export default function App() {
         />
 
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+        </Routes>
+      </AuthProvider>
     </BrowserRouter>
   );
 }
