@@ -12,6 +12,8 @@ import hsnRoutes from "./routes/hsn.routes";
 import reportRoutes from "./routes/report.routes";
 import categoryPriceRoutes from "./routes/categoryprice.routes";
 import companyRoutes from "./routes/company.routes";
+import authRoutes from "./routes/auth.routes";
+import { requireAuth, readOnlyForRoles } from "./middleware/auth";
 
 dotenv.config();
 
@@ -45,16 +47,66 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-app.use("/api/customers", customerRoutes);
-app.use("/api/items", itemRoutes);
-app.use("/api/batches", batchRoutes);
-app.use("/api/agents", agentRoutes);
-app.use("/api/invoices", invoiceRoutes);
-app.use("/api/purchases", purchaseRoutes);
-app.use("/api/hsn", hsnRoutes);
-app.use("/api/reports", reportRoutes);
-app.use("/api/category-prices", categoryPriceRoutes);
-app.use("/api/company", companyRoutes);
+app.use("/api/auth", authRoutes);
+// Sales-facing: SELLER + ADMIN write; ACCOUNTANT + RETAILER read-only
+app.use(
+  "/api/customers",
+  requireAuth,
+  readOnlyForRoles("ACCOUNTANT", "RETAILER"),
+  customerRoutes,
+);
+app.use(
+  "/api/invoices",
+  requireAuth,
+  readOnlyForRoles("ACCOUNTANT", "RETAILER"),
+  invoiceRoutes,
+);
+// Masters: ADMIN-only writes (everyone else read)
+app.use(
+  "/api/items",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  itemRoutes,
+);
+app.use(
+  "/api/batches",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  batchRoutes,
+);
+app.use(
+  "/api/agents",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  agentRoutes,
+);
+app.use(
+  "/api/hsn",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  hsnRoutes,
+);
+app.use(
+  "/api/category-prices",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  categoryPriceRoutes,
+);
+app.use(
+  "/api/company",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  companyRoutes,
+);
+// Purchases: ADMIN-only writes
+app.use(
+  "/api/purchases",
+  requireAuth,
+  readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
+  purchaseRoutes,
+);
+// Reports: read for everyone authenticated
+app.use("/api/reports", requireAuth, reportRoutes);
 
 app.get("/", (_req, res) => {
   res.json({ message: "ERP API running", version: "1.0.0" });
