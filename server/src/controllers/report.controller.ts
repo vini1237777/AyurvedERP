@@ -172,7 +172,7 @@ export const getGstR1 = async (req: Request, res: Response) => {
 
     const invoices = await prisma.invoice.findMany({
       where,
-      include: { customer: true, items: true },
+      include: { customer: true },
       orderBy: { invoiceDate: "asc" },
     });
 
@@ -201,37 +201,512 @@ export const getGstR1 = async (req: Request, res: Response) => {
 };
 
 // ── GST R3B Report ────────────────────────────────────────────────────────────
+// 3.1 Outward supplies (from invoices) + 4. ITC (from purchases) + net payable.
 export const getGstR3 = async (req: Request, res: Response) => {
   try {
     const { from, to, financialYear } = req.query;
-    const where: any = { status: { not: "CANCELLED" } };
-    if (financialYear) where.financialYear = String(financialYear);
-    if (from && to)
-      where.invoiceDate = {
+    const invoiceWhere: any = { status: { not: "CANCELLED" } };
+    const purchaseWhere: any = { status: { not: "CANCELLED" } };
+    if (financialYear) {
+      invoiceWhere.financialYear = String(financialYear);
+      purchaseWhere.financialYear = String(financialYear);
+    }
+    if (from && to) {
+      const range = {
         gte: new Date(String(from)),
         lte: new Date(String(to)),
       };
+      invoiceWhere.invoiceDate = range;
+      purchaseWhere.purchaseDate = range;
+    }
 
-    const invoices = await prisma.invoice.findMany({ where });
+    const [invoiceTotals, purchaseTotals] = await Promise.all([
+      prisma.invoice.aggregate({
+        where: invoiceWhere,
+        _count: { _all: true },
+        _sum: {
+          cgstAmt: true,
+          sgstAmt: true,
+          igstAmt: true,
+          totalTaxable: true,
+          grandTotal: true,
+        },
+      }),
+      prisma.purchase.aggregate({
+        where: purchaseWhere,
+        _count: { _all: true },
+        _sum: {
+          cgstAmt: true,
+          sgstAmt: true,
+          igstAmt: true,
+          totalTaxable: true,
+          grandTotal: true,
+        },
+      }),
+    ]);
 
-    const cgst = invoices.reduce((s, i) => s + i.cgstAmt, 0);
-    const sgst = invoices.reduce((s, i) => s + i.sgstAmt, 0);
-    const igst = invoices.reduce((s, i) => s + i.igstAmt, 0);
-    const taxable = invoices.reduce((s, i) => s + i.totalTaxable, 0);
+    const outCgst = r2(Number(invoiceTotals._sum.cgstAmt || 0));
+    const outSgst = r2(Number(invoiceTotals._sum.sgstAmt || 0));
+    const outIgst = r2(Number(invoiceTotals._sum.igstAmt || 0));
+    const outTaxable = r2(Number(invoiceTotals._sum.totalTaxable || 0));
+    const outGrand = r2(Number(invoiceTotals._sum.grandTotal || 0));
+
+    const inCgst = r2(Number(purchaseTotals._sum.cgstAmt || 0));
+    const inSgst = r2(Number(purchaseTotals._sum.sgstAmt || 0));
+    const inIgst = r2(Number(purchaseTotals._sum.igstAmt || 0));
+    const inTaxable = r2(Number(purchaseTotals._sum.totalTaxable || 0));
+    const inGrand = r2(Number(purchaseTotals._sum.grandTotal || 0));
+
+    const netCgst = r2(outCgst - inCgst);
+    const netSgst = r2(outSgst - inSgst);
+    const netIgst = r2(outIgst - inIgst);
+    const netPayable = r2(netCgst + netSgst + netIgst);
 
     res.json({
-      outwardSupplies: { taxable, cgst, sgst, igst, total: cgst + sgst + igst },
+      outwardSupplies: {
+        taxable: outTaxable,
+        cgst: outCgst,
+        sgst: outSgst,
+        igst: outIgst,
+        total: r2(outCgst + outSgst + outIgst),
+      },
+      itc: {
+        taxable: inTaxable,
+        cgst: inCgst,
+        sgst: inSgst,
+        igst: inIgst,
+        total: r2(inCgst + inSgst + inIgst),
+      },
+      netPayable: {
+        cgst: Math.max(0, netCgst),
+        sgst: Math.max(0, netSgst),
+        igst: Math.max(0, netIgst),
+        total: Math.max(0, netPayable),
+      },
       summary: {
-        totalInvoices: invoices.length,
-        taxable,
-        cgst,
-        sgst,
-        igst,
-        totalTax: cgst + sgst + igst,
-        grandTotal: invoices.reduce((s, i) => s + i.grandTotal, 0),
+        totalInvoices: invoiceTotals._count._all,
+        totalPurchases: purchaseTotals._count._all,
+        taxable: outTaxable,
+        cgst: outCgst,
+        sgst: outSgst,
+        igst: outIgst,
+        totalTax: r2(outCgst + outSgst + outIgst),
+        grandTotal: outGrand,
+        purchaseTaxable: inTaxable,
+        purchaseTax: r2(inCgst + inSgst + inIgst),
+        purchaseGrandTotal: inGrand,
+        netPayable: Math.max(0, netPayable),
       },
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch GST R3" });
+  }
+};
+
+// ── Trial Balance ────────────────────────────────────────────────────────────
+// Sums debit and credit per account from JournalLine. Asserts Σdebit === Σcredit.
+export const getTrialBalance = async (req: Request, res: Response) => {
+  try {
+    const { from, to } = req.query;
+    const dateFilter =
+      from && to
+        ? {
+            entryDate: {
+              gte: new Date(String(from)),
+              lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
+            },
+          }
+        : {};
+
+    const accounts = await prisma.account.findMany({
+      where: { isActive: true },
+      orderBy: { code: "asc" },
+    });
+
+    const lines = await prisma.journalLine.findMany({
+      where: { entry: dateFilter },
+      select: { accountId: true, debit: true, credit: true },
+    });
+
+    const byAccount = new Map<number, { debit: number; credit: number }>();
+    for (const l of lines) {
+      const cur = byAccount.get(l.accountId) || { debit: 0, credit: 0 };
+      cur.debit += l.debit;
+      cur.credit += l.credit;
+      byAccount.set(l.accountId, cur);
+    }
+
+    const rows = accounts
+      .map((a) => {
+        const totals = byAccount.get(a.id) || { debit: 0, credit: 0 };
+        const debit = r2(totals.debit);
+        const credit = r2(totals.credit);
+        return {
+          code: a.code,
+          name: a.name,
+          type: a.type,
+          debit,
+          credit,
+          balance: r2(debit - credit),
+        };
+      })
+      .filter((r) => r.debit !== 0 || r.credit !== 0);
+
+    const totalDebit = r2(rows.reduce((s, r) => s + r.debit, 0));
+    const totalCredit = r2(rows.reduce((s, r) => s + r.credit, 0));
+
+    res.json({
+      rows,
+      totalDebit,
+      totalCredit,
+      balanced: totalDebit === totalCredit,
+      difference: r2(totalDebit - totalCredit),
+    });
+  } catch (err) {
+    console.error("trial balance error:", err);
+    res.status(500).json({ error: "Failed to compute trial balance" });
+  }
+};
+
+// ── Profit & Loss ────────────────────────────────────────────────────────────
+export const getProfitLoss = async (req: Request, res: Response) => {
+  try {
+    const { from, to } = req.query;
+    const dateFilter =
+      from && to
+        ? {
+            entryDate: {
+              gte: new Date(String(from)),
+              lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
+            },
+          }
+        : {};
+
+    const accounts = await prisma.account.findMany({
+      where: { type: { in: ["INCOME", "EXPENSE"] }, isActive: true },
+      orderBy: { code: "asc" },
+    });
+
+    const lines = await prisma.journalLine.findMany({
+      where: { entry: dateFilter, accountId: { in: accounts.map((a) => a.id) } },
+      select: { accountId: true, debit: true, credit: true },
+    });
+
+    const byAccount = new Map<number, { debit: number; credit: number }>();
+    for (const l of lines) {
+      const cur = byAccount.get(l.accountId) || { debit: 0, credit: 0 };
+      cur.debit += l.debit;
+      cur.credit += l.credit;
+      byAccount.set(l.accountId, cur);
+    }
+
+    const income: { code: string; name: string; amount: number }[] = [];
+    const expense: { code: string; name: string; amount: number }[] = [];
+
+    for (const a of accounts) {
+      const t = byAccount.get(a.id) || { debit: 0, credit: 0 };
+      const amount =
+        a.type === "INCOME" ? r2(t.credit - t.debit) : r2(t.debit - t.credit);
+      if (amount === 0) continue;
+      (a.type === "INCOME" ? income : expense).push({
+        code: a.code,
+        name: a.name,
+        amount,
+      });
+    }
+
+    const totalIncome = r2(income.reduce((s, r) => s + r.amount, 0));
+    const totalExpense = r2(expense.reduce((s, r) => s + r.amount, 0));
+    const netProfit = r2(totalIncome - totalExpense);
+
+    res.json({ income, expense, totalIncome, totalExpense, netProfit });
+  } catch (err) {
+    console.error("p&l error:", err);
+    res.status(500).json({ error: "Failed to compute P&L" });
+  }
+};
+
+// ── Journal listing (audit trail) ────────────────────────────────────────────
+export const getJournal = async (req: Request, res: Response) => {
+  try {
+    const { from, to, refType, limit } = req.query;
+    const where: any = {};
+    if (from && to) {
+      where.entryDate = {
+        gte: new Date(String(from)),
+        lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
+      };
+    }
+    if (refType) where.refType = String(refType);
+
+    const entries = await prisma.journalEntry.findMany({
+      where,
+      include: { lines: { include: { account: true } } },
+      orderBy: { entryDate: "desc" },
+      take: limit ? parseInt(String(limit), 10) : 200,
+    });
+    res.json(entries);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch journal" });
+  }
+};
+
+// ── HSN summary (GSTR-1 §12) ─────────────────────────────────────────────────
+// Groups invoice items by HSN code + GST rate, splits tax across CGST/SGST/IGST
+// based on each invoice's taxType.
+export const getHsnSummary = async (req: Request, res: Response) => {
+  try {
+    const { from, to } = req.query;
+    const dateFilter =
+      from && to
+        ? {
+            invoiceDate: {
+              gte: new Date(String(from)),
+              lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
+            },
+          }
+        : {};
+
+    const items = await prisma.invoiceItem.findMany({
+      where: {
+        invoice: { status: { not: "CANCELLED" }, ...dateFilter },
+      },
+      select: {
+        hsnCode: true,
+        gstPercent: true,
+        qty: true,
+        taxableAmt: true,
+        taxAmt: true,
+        netValue: true,
+        invoice: { select: { id: true, taxType: true } },
+      },
+    });
+
+    type Row = {
+      hsnCode: string;
+      description: string;
+      gstPercent: number;
+      totalQty: number;
+      taxable: number;
+      cgst: number;
+      sgst: number;
+      igst: number;
+      total: number;
+      invoiceIds: Set<number>;
+    };
+    const map = new Map<string, Row>();
+    for (const it of items) {
+      const key = `${it.hsnCode}::${it.gstPercent}`;
+      const row = map.get(key) || {
+        hsnCode: it.hsnCode,
+        description: "",
+        gstPercent: it.gstPercent,
+        totalQty: 0,
+        taxable: 0,
+        cgst: 0,
+        sgst: 0,
+        igst: 0,
+        total: 0,
+        invoiceIds: new Set<number>(),
+      };
+      row.totalQty += it.qty;
+      row.taxable += it.taxableAmt;
+      row.total += it.netValue;
+      if (it.invoice.taxType === "CGST_SGST") {
+        const half = it.taxAmt / 2;
+        row.cgst += half;
+        row.sgst += half;
+      } else {
+        row.igst += it.taxAmt;
+      }
+      row.invoiceIds.add(it.invoice.id);
+      map.set(key, row);
+    }
+
+    // Look up HSN descriptions in one query
+    const codes = Array.from(new Set(items.map((i) => i.hsnCode)));
+    const hsnDescriptions =
+      codes.length > 0
+        ? await prisma.hsnCode.findMany({
+            where: { code: { in: codes } },
+            select: { code: true, description: true },
+          })
+        : [];
+    const descByCode = new Map(
+      hsnDescriptions.map((h) => [h.code, h.description || ""]),
+    );
+
+    const rows = Array.from(map.values())
+      .map((r) => ({
+        hsnCode: r.hsnCode,
+        description: descByCode.get(r.hsnCode) || "",
+        gstPercent: r.gstPercent,
+        totalQty: r2(r.totalQty),
+        taxable: r2(r.taxable),
+        cgst: r2(r.cgst),
+        sgst: r2(r.sgst),
+        igst: r2(r.igst),
+        total: r2(r.total),
+        invoiceCount: r.invoiceIds.size,
+      }))
+      .sort(
+        (a, b) =>
+          a.hsnCode.localeCompare(b.hsnCode) || a.gstPercent - b.gstPercent,
+      );
+
+    const summary = {
+      hsnCount: rows.length,
+      totalTaxable: r2(rows.reduce((s, r) => s + r.taxable, 0)),
+      totalCgst: r2(rows.reduce((s, r) => s + r.cgst, 0)),
+      totalSgst: r2(rows.reduce((s, r) => s + r.sgst, 0)),
+      totalIgst: r2(rows.reduce((s, r) => s + r.igst, 0)),
+      totalTax: r2(
+        rows.reduce((s, r) => s + r.cgst + r.sgst + r.igst, 0),
+      ),
+      grandTotal: r2(rows.reduce((s, r) => s + r.total, 0)),
+    };
+
+    res.json({ rows, summary });
+  } catch (err: any) {
+    console.error("hsn summary error:", err);
+    res.status(500).json({ error: "Failed to compute HSN summary" });
+  }
+};
+
+// ── Dashboard summary ────────────────────────────────────────────────────────
+// Five cards: outstanding receivables, low-stock batches, expiring batches,
+// net GST payable, and top customers by revenue.
+function parseExpiry(s: string | null): Date | null {
+  if (!s) return null;
+  // Accepts YYYY-MM-DD, DD/MM/YYYY, MM/YY, MM/YYYY
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (ymd) return new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
+  const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (dmy) {
+    const y = +dmy[3] < 100 ? 2000 + +dmy[3] : +dmy[3];
+    return new Date(y, +dmy[2] - 1, +dmy[1]);
+  }
+  const my = s.match(/^(\d{1,2})\/(\d{2,4})$/);
+  if (my) {
+    const y = +my[2] < 100 ? 2000 + +my[2] : +my[2];
+    return new Date(y, +my[1], 0); // last day of month
+  }
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+const LOW_STOCK_THRESHOLD = 10;
+const EXPIRY_WINDOW_DAYS = 90;
+
+export const getDashboardSummary = async (_req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const expiryCutoff = new Date(now);
+    expiryCutoff.setDate(expiryCutoff.getDate() + EXPIRY_WINDOW_DAYS);
+
+    // 1. Outstanding — sum of SAVED invoice grand totals (no payments table yet)
+    const outstandingAgg = await prisma.invoice.aggregate({
+      _sum: { grandTotal: true },
+      where: { status: "SAVED" },
+    });
+    const outstanding = r2(outstandingAgg._sum.grandTotal || 0);
+
+    // 2. Low stock — batches with currentQty below threshold, joined to item
+    const lowStockBatches = await prisma.batch.findMany({
+      where: { currentQty: { lt: LOW_STOCK_THRESHOLD } },
+      include: { item: { select: { id: true, name: true, unit: true } } },
+      orderBy: { currentQty: "asc" },
+      take: 50,
+    });
+    const lowStock = lowStockBatches.map((b) => ({
+      itemId: b.item.id,
+      itemName: b.item.name,
+      batchNo: b.batchNo,
+      currentQty: b.currentQty,
+      unit: b.item.unit,
+    }));
+
+    // 3. Expiring — batches with currentQty > 0 and expiry within window
+    const allBatches = await prisma.batch.findMany({
+      where: { currentQty: { gt: 0 }, expiryDate: { not: null } },
+      include: { item: { select: { id: true, name: true } } },
+    });
+    const expiring = allBatches
+      .map((b) => ({ b, exp: parseExpiry(b.expiryDate) }))
+      .filter(
+        (x): x is { b: typeof allBatches[number]; exp: Date } =>
+          x.exp !== null && x.exp <= expiryCutoff,
+      )
+      .sort((a, b) => a.exp.getTime() - b.exp.getTime())
+      .slice(0, 50)
+      .map(({ b, exp }) => ({
+        itemId: b.item.id,
+        itemName: b.item.name,
+        batchNo: b.batchNo,
+        expiryDate: exp.toISOString().slice(0, 10),
+        currentQty: b.currentQty,
+      }));
+
+    // 4. GST payable — Σ Output (credits − debits) − Σ Input (debits − credits)
+    const gstAccounts = await prisma.account.findMany({
+      where: { code: { in: ["2100", "2110", "2120", "1300", "1310", "1320"] } },
+      select: { id: true, code: true },
+    });
+    const gstAccountIds = gstAccounts.map((a) => a.id);
+    const gstLines =
+      gstAccountIds.length > 0
+        ? await prisma.journalLine.findMany({
+            where: { accountId: { in: gstAccountIds } },
+            select: { accountId: true, debit: true, credit: true },
+          })
+        : [];
+    const codeOf = new Map(gstAccounts.map((a) => [a.id, a.code]));
+    let output = 0,
+      input = 0;
+    for (const l of gstLines) {
+      const code = codeOf.get(l.accountId);
+      if (!code) continue;
+      if (["2100", "2110", "2120"].includes(code)) {
+        output += l.credit - l.debit;
+      } else {
+        input += l.debit - l.credit;
+      }
+    }
+    const gstPayable = r2(output - input);
+
+    // 5. Top customers — by sum of grandTotal across SAVED invoices
+    const topCustomersRaw = await prisma.invoice.groupBy({
+      by: ["customerId"],
+      where: { status: "SAVED" },
+      _sum: { grandTotal: true },
+      orderBy: { _sum: { grandTotal: "desc" } },
+      take: 5,
+    });
+    const custIds = topCustomersRaw.map((r) => r.customerId);
+    const custs = await prisma.customer.findMany({
+      where: { id: { in: custIds } },
+      select: { id: true, name: true },
+    });
+    const custName = new Map(custs.map((c) => [c.id, c.name]));
+    const topCustomers = topCustomersRaw.map((r) => ({
+      customerId: r.customerId,
+      name: custName.get(r.customerId) || "(unknown)",
+      total: r2(r._sum.grandTotal || 0),
+    }));
+
+    res.json({
+      outstanding,
+      lowStock,
+      lowStockCount: lowStock.length,
+      expiring,
+      expiringCount: expiring.length,
+      gstPayable,
+      gstOutput: r2(output),
+      gstInput: r2(input),
+      topCustomers,
+    });
+  } catch (err: any) {
+    console.error("dashboard summary error:", err);
+    res.status(500).json({ error: "Failed to compute dashboard summary" });
   }
 };
