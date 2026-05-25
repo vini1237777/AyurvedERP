@@ -83,7 +83,7 @@ export default function GstR1Report() {
     <div>
       <PageHeader
         title="GST R1 Report"
-        subtitle="Outward supplies — B2B & B2C"
+        subtitle="Outward supplies · B2B & B2C"
       />
       <div className="flex items-center gap-3 mb-4">
         <div>
@@ -189,7 +189,7 @@ export default function GstR1Report() {
                         {inv.customer?.name}
                       </td>
                       <td className="px-4 py-3 text-xs text-slate-500">
-                        {inv.customerGstin || "—"}
+                        {inv.customerGstin || "-"}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         ₹{fmt(inv.totalTaxable)}

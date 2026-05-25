@@ -57,7 +57,7 @@ function useScrollY() {
   return y;
 }
 
-// Decorative botanical sprig — rotates and drifts with scroll.
+// Decorative botanical sprig - rotates and drifts with scroll.
 function Sprig({
   className,
   factor = 0.06,
@@ -407,7 +407,7 @@ function Modules() {
         <Reveal>
           <div className="max-w-2xl mb-16">
             <h2 className="text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05]">
-              One workspace for the whole distributor cycle —
+              One workspace for the whole distributor cycle,
               <span className="text-slate-400">
                 {" "}billing to ledger to compliance.
               </span>
@@ -417,7 +417,7 @@ function Modules() {
 
         <div className="bg-slate-200/70 rounded-2xl overflow-hidden border border-slate-200/80">
         <div className="grid lg:grid-cols-3 gap-px">
-          {/* Featured: Sales & Billing — spans 2 columns on lg */}
+          {/* Featured: Sales & Billing - spans 2 columns on lg */}
           <Reveal className="lg:col-span-2">
             <TiltCard intensity={4}>
             <div className="group h-full bg-white p-10 sm:p-12 relative overflow-hidden">
@@ -612,7 +612,7 @@ function Performance() {
               </div>
             </div>
 
-            {/* Hero number — rotates + scales with scroll, label crossfades */}
+            {/* Hero number - rotates + scales with scroll, label crossfades */}
             <div
               className="relative"
               style={{
@@ -635,15 +635,15 @@ function Performance() {
               </div>
             </div>
 
-            {/* Cross-fading label band */}
-            <div className="relative h-14 overflow-hidden w-full max-w-3xl">
+            {/* Cross-fading label band - opacity-only, WhatsApp-style soft */}
+            <div className="relative h-14 w-full max-w-3xl">
               {STATS.map((s, i) => (
                 <div
                   key={s.label}
-                  className="absolute inset-0 transition-all duration-500 ease-out"
+                  className="absolute inset-0 transition-opacity duration-700 ease-in-out"
                   style={{
                     opacity: i === stage ? 1 : 0,
-                    transform: `translateY(${i === stage ? 0 : i < stage ? -20 : 20}px)`,
+                    pointerEvents: i === stage ? "auto" : "none",
                   }}
                 >
                   <div className="text-xl sm:text-2xl text-white font-semibold tracking-tight leading-tight">
@@ -656,7 +656,7 @@ function Performance() {
               ))}
             </div>
 
-            {/* Bottom progress bar — fills as you scroll the pinned section */}
+            {/* Bottom progress bar - fills as you scroll the pinned section */}
             <div className="w-full max-w-xl mt-4">
               <div className="h-px bg-slate-800 relative overflow-hidden">
                 <div
@@ -913,7 +913,7 @@ function ArchitectureDiagram() {
           className="arch-flow"
         />
 
-        {/* Cluster container — breathes */}
+        {/* Cluster container - breathes */}
         <g className="arch-cluster" style={{ transformBox: "fill-box" }}>
           <rect
             x="40"
@@ -1003,12 +1003,47 @@ function ArchitectureDiagram() {
   );
 }
 
+function SpecsCountNumber({
+  target,
+  suffix = "",
+}: {
+  target: number;
+  suffix?: string;
+}) {
+  const { ref, visible } = useReveal<HTMLDivElement>();
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    let raf = 0;
+    const start = performance.now();
+    const dur = 1400;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setV(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, target]);
+
+  return (
+    <div
+      ref={ref}
+      className="text-5xl sm:text-6xl font-semibold text-slate-900 tracking-[-0.035em] mb-2 tabular-nums"
+    >
+      {Math.round(v).toLocaleString()}
+      {suffix && <span className="text-emerald-700">{suffix}</span>}
+    </div>
+  );
+}
+
 function Specs() {
   const HIGHLIGHTS = [
-    { value: "1,000+", label: "seeded invoices" },
-    { value: "20", label: "relational tables" },
-    { value: "4", label: "user roles" },
-    { value: "3", label: "GST returns" },
+    { n: 1000, suffix: "+", label: "seeded invoices" },
+    { n: 20, suffix: "", label: "relational tables" },
+    { n: 4, suffix: "", label: "user roles" },
+    { n: 3, suffix: "", label: "GST returns" },
   ];
 
   const SPECS = [
@@ -1066,14 +1101,12 @@ function Specs() {
           </div>
         </Reveal>
 
-        {/* Highlight numbers — integrated, light, no dark band */}
+        {/* Highlight numbers - count up when scrolled in */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-10 mb-24 border-y border-slate-200 py-12">
           {HIGHLIGHTS.map((h, i) => (
-            <Reveal key={h.label} delay={i * 80}>
+            <Reveal key={h.label} delay={i * 100}>
               <div className="text-center">
-                <div className="text-5xl sm:text-6xl font-semibold text-slate-900 tracking-[-0.035em] mb-2">
-                  {h.value}
-                </div>
+                <SpecsCountNumber target={h.n} suffix={h.suffix} />
                 <div className="text-[11px] tracking-[0.15em] uppercase text-slate-500">
                   {h.label}
                 </div>
@@ -1082,17 +1115,19 @@ function Specs() {
           ))}
         </div>
 
-        {/* Spec list — Apple tech-specs style, 3 columns of definition lists */}
-        <Reveal>
-          <div className="grid sm:grid-cols-3 gap-x-12 gap-y-12">
-            {SPECS.map((g) => (
-              <div key={g.group}>
+        {/* Spec list - staggered per-row reveals */}
+        <div className="grid sm:grid-cols-3 gap-x-12 gap-y-12">
+          {SPECS.map((g, gi) => (
+            <div key={g.group}>
+              <Reveal delay={gi * 120}>
                 <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-900 pb-3 mb-5 border-b border-slate-300">
                   {g.group}
                 </div>
-                <dl className="space-y-5">
-                  {g.items.map(([k, v]) => (
-                    <div key={k}>
+              </Reveal>
+              <dl className="space-y-5">
+                {g.items.map(([k, v], ii) => (
+                  <Reveal key={k} delay={gi * 120 + 100 + ii * 90}>
+                    <div>
                       <dt className="text-[11px] uppercase tracking-[0.1em] text-slate-500 font-medium mb-1">
                         {k}
                       </dt>
@@ -1100,18 +1135,18 @@ function Specs() {
                         {v}
                       </dd>
                     </div>
-                  ))}
-                </dl>
-              </div>
-            ))}
-          </div>
-        </Reveal>
+                  </Reveal>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-// Scroll-bound pinned showcase — laptop transforms continuously with scroll.
+// Scroll-bound pinned showcase - laptop transforms continuously with scroll.
 function PinnedShowcase() {
   const { ref, progress } = useScrollProgress<HTMLDivElement>();
 
@@ -1144,7 +1179,7 @@ function PinnedShowcase() {
   const scale = 0.82 + 0.18 * tEnter - 0.06 * tExit;
   const translateY = 60 * (1 - tEnter) - 24 * tExit;
 
-  // Which of 3 stages: 0,1,2 — split equally between p=0.15..0.85
+  // Which of 3 stages: 0,1,2 - split equally between p=0.15..0.85
   const middle = Math.max(0, Math.min(1, (progress - 0.15) / 0.7));
   const stage = middle < 0.34 ? 0 : middle < 0.67 ? 1 : 2;
   const stageProgress = (middle - stage / 3) * 3; // 0..1 within current stage
@@ -1183,7 +1218,7 @@ function PinnedShowcase() {
           </div>
         </div>
 
-        {/* Laptop — takes remaining middle space */}
+        {/* Laptop - takes remaining middle space */}
         <div
           className="flex-1 flex items-center justify-center w-full px-6 min-h-0"
           style={{ perspective: "1800px" }}
@@ -1734,7 +1769,7 @@ function ScreenGSTR({ show }: { show: boolean }) {
   );
 }
 
-// Pharmacy bill — printed invoice mockup
+// Pharmacy bill - printed invoice mockup
 function PharmacyBill() {
   return (
     <div

@@ -6,7 +6,7 @@ export default function NoAccess() {
   const nav = useNavigate();
   const params = new URLSearchParams(useLocation().search);
   const required = params.get("need")?.split(",").filter(Boolean) || [];
-  const currentRole = (user as any)?.role || "—";
+  const currentRole = (user as any)?.role || "-";
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] px-4">

@@ -435,7 +435,7 @@ function CustomerSearch({
                   <div className="text-xs text-slate-400 mt-0.5">
                     {c.city || "-"}
                     {c.state ? `, ${c.state}` : ""} ·{" "}
-                    {c.gstin || "B2C — No GSTIN"}
+                    {c.gstin || "B2C, No GSTIN"}
                   </div>
                 </div>
                 <span
@@ -770,7 +770,7 @@ export default function SaleEntry() {
                     </span>
                   ) : (
                     <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600">
-                      B2C — No GSTIN
+                      B2C, No GSTIN
                     </span>
                   )}
                   {customer.category && (
@@ -1034,7 +1034,7 @@ export default function SaleEntry() {
                         {calc.netValue > 0 ? (
                           `₹${fmt(r2(calc.basicAmt - calc.discAmt))}`
                         ) : (
-                          <span className="text-slate-200">—</span>
+                          <span className="text-slate-200">-</span>
                         )}
                       </td>
                       <td className="px-3 py-2 text-right">
@@ -1043,7 +1043,7 @@ export default function SaleEntry() {
                             ₹{fmt(calc.netValue)}
                           </span>
                         ) : (
-                          <span className="text-slate-200 text-xs">—</span>
+                          <span className="text-slate-200 text-xs">-</span>
                         )}
                       </td>
                       <td className="px-2 py-2 text-center">

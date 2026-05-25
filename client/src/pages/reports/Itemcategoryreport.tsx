@@ -221,7 +221,7 @@ export default function ItemCategoryReport() {
                               }
                               className={`text-xs px-2 py-1 rounded w-full text-center hover:bg-blue-50 ${p?.price ? "text-slate-800 font-medium" : "text-slate-300"}`}
                             >
-                              {p?.price ? `₹${p.price}` : "—"}
+                              {p?.price ? `₹${p.price}` : "-"}
                             </button>
                           )}
                         </td>

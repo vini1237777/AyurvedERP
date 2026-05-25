@@ -22,7 +22,7 @@ function getStatus(openingQty: number, currentQty: number) {
 }
 
 function getCompany(itemName: string) {
-  // Extract company from item name — usually after last "-" or in parentheses
+  // Extract company from item name - usually after last "-" or in parentheses
   const parts = itemName.split("-");
   if (parts.length > 1) return parts[parts.length - 1].trim();
   return "Other";
@@ -290,7 +290,7 @@ export default function StockReport() {
                                 -{fmt(row.openingQty - row.currentQty)} ⚠
                               </span>
                             ) : (
-                              <span className="text-slate-300">—</span>
+                              <span className="text-slate-300">-</span>
                             )}
                           </td>
                           <td className="px-5 py-3">

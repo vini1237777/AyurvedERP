@@ -45,7 +45,7 @@ export default function GstR3Report() {
     <div>
       <PageHeader
         title="GST R3B Report"
-        subtitle="Summary return — outward supplies"
+        subtitle="Summary return · outward supplies"
       />
       <div className="flex items-center gap-3 mb-4">
         <label className="text-xs font-semibold text-slate-500">
@@ -182,7 +182,7 @@ export default function GstR3Report() {
                   <tbody>
                     <tr className="border-b">
                       <td className="px-5 py-4 text-sm font-medium">
-                        ITC available — inward supplies
+                        ITC available · inward supplies
                       </td>
                       <td className="px-5 py-4 text-sm font-bold text-slate-800">
                         ₹{fmt(data.itc.taxable)}
