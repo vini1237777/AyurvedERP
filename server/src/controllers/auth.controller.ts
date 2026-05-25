@@ -54,7 +54,6 @@ export const login = async (req: Request, res: Response) => {
     res.json({
       accessToken,
       refreshToken,
-      token: accessToken,
       user: safe,
     });
   } catch (err: any) {
@@ -94,7 +93,7 @@ export const refresh = async (req: Request, res: Response) => {
       role: user.role,
     };
     const accessToken = signAccessToken(safe);
-    res.json({ accessToken, token: accessToken, user: safe });
+    res.json({ accessToken, user: safe });
   } catch (err: any) {
     console.error("[auth:refresh]", err);
     res.status(500).json({ error: "Refresh failed" });

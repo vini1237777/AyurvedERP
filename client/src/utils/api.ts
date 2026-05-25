@@ -159,7 +159,6 @@ export async function authFetch(
 export type LoginResponse = {
   accessToken: string;
   refreshToken: string;
-  token?: string;
   user: AuthUser;
 };
 
