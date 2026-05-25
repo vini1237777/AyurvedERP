@@ -671,10 +671,10 @@ export default function PurchaseEntry() {
                         />
                       </td>
                       <td className="px-3 py-2 text-right text-xs text-slate-500">
-                        {calc.taxable > 0 ? `₹${fmt(calc.taxable)}` : "—"}
+                        {calc.taxable > 0 ? `₹${fmt(calc.taxable)}` : "-"}
                       </td>
                       <td className="px-3 py-2 text-right text-sm font-bold text-slate-800">
-                        {calc.netValue > 0 ? `₹${fmt(calc.netValue)}` : "—"}
+                        {calc.netValue > 0 ? `₹${fmt(calc.netValue)}` : "-"}
                       </td>
                       <td className="px-2 py-2 text-center">
                         <button
@@ -714,7 +714,7 @@ export default function PurchaseEntry() {
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional — internal remarks, supplier notes, PO reference, etc."
+                placeholder="Optional: internal remarks, supplier notes, PO reference, etc."
                 className={`${inp} w-full h-full px-3 py-2.5 resize-none min-h-[140px]`}
               />
             </div>

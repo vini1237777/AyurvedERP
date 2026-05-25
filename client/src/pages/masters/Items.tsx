@@ -353,7 +353,7 @@ export default function ItemMaster() {
                                 )}
                               </div>
                             ) : (
-                              <span className="text-xs text-slate-400">—</span>
+                              <span className="text-xs text-slate-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-sm text-slate-600">
@@ -457,7 +457,7 @@ export default function ItemMaster() {
                 { value: "", label: "-- Select HSN Code --" },
                 ...hsnList.map((h) => ({
                   value: String(h.id),
-                  label: `${h.code} — ${h.description || "Ayurvedic"} (${h.gstRate}%)`,
+                  label: `${h.code} · ${h.description || "Ayurvedic"} (${h.gstRate}%)`,
                 })),
               ]}
               error={errors.hsnId}
@@ -560,7 +560,7 @@ export default function ItemMaster() {
         {/* Category Prices inline */}
         <div className="col-span-2 mt-9">
           <div className="text-xs font-semibold text-slate-600 mb-2">
-            Category Prices (A–Z) — optional
+            Category Prices (A-Z), optional
           </div>
           <div className="grid grid-cols-6 gap-2">
             {CATEGORIES.map((cat) => (
@@ -573,7 +573,7 @@ export default function ItemMaster() {
                 <input
                   type="number"
                   value={catPrices[cat] || ""}
-                  placeholder="—"
+                  placeholder="-"
                   onChange={(e) =>
                     setCatPrices((p) => ({ ...p, [cat]: e.target.value }))
                   }
@@ -598,7 +598,7 @@ export default function ItemMaster() {
       <Modal
         open={!!catModal}
         onClose={() => setCatModal(null)}
-        title={`Category Prices — ${catModal?.name || ""}`}
+        title={`Category Prices · ${catModal?.name || ""}`}
         width="max-w-lg"
       >
         <p className="text-xs text-slate-500 mb-4">
@@ -617,7 +617,7 @@ export default function ItemMaster() {
               <input
                 type="number"
                 value={catPrices[cat] || ""}
-                placeholder="—"
+                placeholder="-"
                 onChange={(e) =>
                   setCatPrices((p) => ({ ...p, [cat]: e.target.value }))
                 }

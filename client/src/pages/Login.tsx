@@ -2,6 +2,48 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
+function LoginHalo() {
+  return (
+    <>
+      <style>{`
+        @keyframes loginHaloSpin { to { transform: rotate(360deg); } }
+        @keyframes loginHaloShift {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+          50% { transform: translate(-50%, -50%) scale(1.04); opacity: 0.7; }
+        }
+      `}</style>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 -z-0"
+        style={{
+          width: "min(120%, 1100px)",
+          aspectRatio: "1 / 0.7",
+          transform: "translate(-50%, -50%)",
+          filter: "blur(90px)",
+          animation: "loginHaloShift 10s ease-in-out infinite",
+        }}
+      >
+        <div
+          className="absolute inset-0 rounded-[50%]"
+          style={{
+            background:
+              "conic-gradient(from 0deg, #ff8a8a, #ffd28a, #fff48a, #a8f0c2, #8acdff, #b69cff, #ff9cce, #ff8a8a)",
+            opacity: 0.35,
+            animation: "loginHaloSpin 24s linear infinite",
+          }}
+        />
+        <div
+          className="absolute inset-[12%] rounded-[50%]"
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(255,255,255,0.9), rgba(255,255,255,0.45) 55%, transparent 85%)",
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function useScrollY() {
   const [y, setY] = useState(0);
   useEffect(() => {
@@ -144,7 +186,7 @@ export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
   const loc = useLocation() as { state?: { from?: { pathname?: string } } };
-  const from = loc.state?.from?.pathname || "/";
+  const from = loc.state?.from?.pathname || "/dashboard";
 
   const DEMO_ROLES: {
     role: "ADMIN" | "SELLER" | "ACCOUNTANT" | "RETAILER";
@@ -209,11 +251,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-white via-emerald-50/40 to-white relative overflow-hidden">
+      <LoginHalo />
       {/* Rotating botanical sprigs */}
-      <Sprig className="top-16 -left-8 sm:left-2 opacity-70" factor={0.05} scale={1.1} variant={1} />
-      <Sprig className="top-28 -right-8 sm:right-2 opacity-70" factor={-0.07} offset={200} scale={0.9} variant={2} />
-      <Sprig className="bottom-20 left-1/4 opacity-40 hidden lg:block" factor={0.04} offset={400} scale={0.7} variant={3} />
-      <Sprig className="bottom-32 right-1/4 opacity-40 hidden lg:block" factor={-0.05} offset={600} scale={0.6} variant={1} />
+      <Sprig className="top-16 -left-8 sm:left-2 opacity-50" factor={0.05} scale={1.1} variant={1} />
+      <Sprig className="bottom-32 right-1/4 opacity-30 hidden lg:block" factor={-0.05} offset={600} scale={0.6} variant={1} />
 
       {/* Header — matches Landing exactly */}
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/70">

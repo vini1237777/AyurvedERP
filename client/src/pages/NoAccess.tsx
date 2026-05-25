@@ -6,7 +6,7 @@ export default function NoAccess() {
   const nav = useNavigate();
   const params = new URLSearchParams(useLocation().search);
   const required = params.get("need")?.split(",").filter(Boolean) || [];
-  const currentRole = (user as any)?.role || "—";
+  const currentRole = (user as any)?.role || "-";
 
   return (
     <div className="flex items-center justify-center min-h-[60vh] px-4">
@@ -62,7 +62,7 @@ export default function NoAccess() {
             Go back
           </button>
           <Link
-            to="/"
+            to="/dashboard"
             className="px-4 py-2 text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg"
           >
             Dashboard

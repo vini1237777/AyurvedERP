@@ -61,7 +61,7 @@ export default function SaleReturn() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Infinite scroll — load more when sentinel visible
+  // Infinite scroll - load more when sentinel visible
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -501,12 +501,12 @@ export default function SaleReturn() {
                       <td className="px-3 py-2.5 text-xs text-slate-600 text-center">
                         {row.selected && calc.taxable > 0
                           ? `₹${fmt(calc.taxable)}`
-                          : "—"}
+                          : "-"}
                       </td>
                       <td className="px-3 py-2.5 text-sm font-bold text-red-600 text-center">
                         {row.selected && calc.netValue > 0
                           ? `₹${fmt(calc.netValue)}`
-                          : "—"}
+                          : "-"}
                       </td>
                     </tr>
                   );

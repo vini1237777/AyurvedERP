@@ -104,7 +104,7 @@ export default function TrialBalance() {
               title="Double-entry audit"
             >
               {data.balanced ? (
-                <>✓ Balanced — Double-entry audit</>
+                <>✓ Balanced · Double-entry audit</>
               ) : (
                 <>✗ Out of balance by ₹{fmt(Math.abs(data.difference))}</>
               )}

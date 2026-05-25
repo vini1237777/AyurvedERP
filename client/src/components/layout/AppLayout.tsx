@@ -14,7 +14,7 @@ type NavItem =
 // roles undefined = visible to everyone authenticated
 const ALL: Role[] = ["ADMIN", "SELLER", "ACCOUNTANT", "RETAILER"];
 const NAV: { group: string; roles?: Role[]; items: NavItem[] }[] = [
-  { group: "Main", items: [{ path: "/", label: "Dashboard" }] },
+  { group: "Main", items: [{ path: "/dashboard", label: "Dashboard" }] },
   {
     group: "Sales",
     roles: ["ADMIN", "SELLER", "ACCOUNTANT", "RETAILER"],
@@ -251,7 +251,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         title={
                           cLocked
                             ? `Requires ${(c.required || item.required || group.required)?.join(" or ") || "another"} role`
-                            : `${item.label} — ${c.label}`
+                            : `${item.label} · ${c.label}`
                         }
                         className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${
                           cLocked

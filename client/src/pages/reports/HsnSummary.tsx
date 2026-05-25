@@ -99,7 +99,7 @@ export default function HsnSummary() {
     <div>
       <PageHeader
         title="HSN Summary"
-        subtitle="GSTR-1 §12 — HSN-wise outward supplies"
+        subtitle="GSTR-1 §12 · HSN-wise outward supplies"
       />
 
       <Card className="mb-4 p-4">
@@ -209,7 +209,7 @@ export default function HsnSummary() {
                       {r.hsnCode}
                     </td>
                     <td className="px-4 py-2.5 text-slate-600 text-xs">
-                      {r.description || "—"}
+                      {r.description || "-"}
                     </td>
                     <td className="px-4 py-2.5 text-slate-700">{r.gstPercent}%</td>
                     <td className="px-4 py-2.5 text-right font-mono text-slate-700">

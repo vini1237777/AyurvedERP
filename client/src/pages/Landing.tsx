@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 // Returns 0..1 progress as the element scrolls through the viewport.
 // 0 = top edge of element just entered the bottom of viewport
@@ -57,7 +58,7 @@ function useScrollY() {
   return y;
 }
 
-// Decorative botanical sprig — rotates and drifts with scroll.
+// Decorative botanical sprig - rotates and drifts with scroll.
 function Sprig({
   className,
   factor = 0.06,
@@ -162,12 +163,50 @@ function Reveal({
   children,
   delay = 0,
   className = "",
+  noFadeOut = false,
 }: {
   children: React.ReactNode;
   delay?: number;
   className?: string;
+  noFadeOut?: boolean;
 }) {
   const { ref, visible } = useReveal<HTMLDivElement>();
+  const innerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (noFadeOut) return;
+    const outer = ref.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    let raf = 0;
+    let ticking = false;
+
+    const update = () => {
+      const rect = outer.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const center = rect.top + rect.height / 2;
+      const trigger = vh * 0.25;
+      let o = 1;
+      if (center < trigger) {
+        o = Math.max(0, Math.min(1, center / trigger));
+      }
+      inner.style.opacity = String(o);
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        raf = requestAnimationFrame(update);
+      }
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [noFadeOut, ref]);
+
   return (
     <div
       ref={ref}
@@ -176,7 +215,9 @@ function Reveal({
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
       } ${className}`}
     >
-      {children}
+      <div ref={innerRef} style={{ transition: "opacity 220ms linear" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -187,6 +228,9 @@ export default function Landing() {
       <Header />
       <Hero />
       <PinnedShowcase />
+      <Modules />
+      <Performance />
+      <Architecture />
       <BillSection />
       <Specs />
       <CTA />
@@ -196,8 +240,9 @@ export default function Landing() {
 }
 
 function Header() {
+  const { user } = useAuth();
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/70">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl/70">
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-slate-900 flex items-center justify-center text-white text-xs font-bold">
@@ -216,12 +261,34 @@ function Header() {
           >
             GitHub
           </a>
-          <Link
-            to="/login"
-            className="font-semibold text-slate-900 hover:text-slate-700"
-          >
-            Sign in
-          </Link>
+          {user ? (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1 font-semibold text-white bg-emerald-700 hover:bg-emerald-800 px-3 py-1 rounded-full"
+            >
+              Continue to dashboard
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="font-semibold text-slate-900 hover:text-slate-700"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>
@@ -229,8 +296,9 @@ function Header() {
 }
 
 function Hero() {
+  const { user } = useAuth();
   return (
-    <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-white via-emerald-50/40 to-white">
+    <section className="relative overflow-hidden bg-gradient-to-b from-white via-emerald-50/40 to-white">
       <Sprig className="top-10 -left-6 sm:left-2 opacity-90" factor={0.06} scale={1.1} variant={1} />
       <Sprig className="top-28 -right-6 sm:right-4 opacity-80" factor={-0.08} offset={200} scale={0.9} variant={2} />
       <Sprig className="bottom-20 left-1/4 opacity-50 hidden lg:block" factor={0.04} offset={400} scale={0.7} variant={3} />
@@ -254,10 +322,10 @@ function Hero() {
         <Reveal delay={240}>
           <div className="flex items-center justify-center gap-5 text-sm">
             <Link
-              to="/login"
+              to={user ? "/dashboard" : "/login"}
               className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-2.5 rounded-full shadow-md shadow-emerald-700/20 transition-colors"
             >
-              Try the demo
+              {user ? "Open dashboard" : "Try the demo"}
             </Link>
             <a
               href="https://github.com/vini1237777/AyurvedERP"
@@ -276,20 +344,45 @@ function Hero() {
         </Reveal>
       </div>
       <Reveal delay={320}>
-        <div className="max-w-5xl mx-auto px-6 pb-16">
-          <div className="relative mx-auto" style={{ perspective: "1800px" }}>
-            <div
-              style={{
-                transform: "rotateX(2deg)",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <LaptopFrame>
-                <ScreenDashboard show />
-              </LaptopFrame>
+        <div className="max-w-6xl mx-auto px-6 pb-16">
+          <div
+            className="relative mx-auto"
+            style={{ perspective: "2200px" }}
+          >
+            <IridescentHalo spread={1.5} />
+
+            <div className="relative flex items-end justify-center gap-4 sm:gap-6">
+              {/* Laptop — left, slight 3D tilt */}
+              <div
+                className="relative flex-1 max-w-[860px]"
+                style={{
+                  transform: "rotateX(3deg) rotateY(-4deg)",
+                  transformStyle: "preserve-3d",
+                  transformOrigin: "right center",
+                }}
+              >
+                <LaptopFrame>
+                  <ScreenDashboard show />
+                </LaptopFrame>
+              </div>
+
+              {/* Phone — right, floats up, opposite tilt */}
+              <div
+                className="relative hidden sm:block w-[180px] lg:w-[220px] -mb-6 lg:-mb-12"
+                style={{
+                  transform: "rotateX(3deg) rotateY(8deg) translateY(-10%)",
+                  transformStyle: "preserve-3d",
+                  transformOrigin: "left center",
+                }}
+              >
+                <PhoneFrame>
+                  <ScreenPhone />
+                </PhoneFrame>
+              </div>
             </div>
-            {/* Subtle ground shadow */}
-            <div className="mx-auto mt-2 h-6 w-[70%] bg-slate-900/10 blur-2xl rounded-full" />
+
+            {/* Shared ground shadow */}
+            <div className="mx-auto mt-2 h-8 w-[78%] bg-slate-900/10 blur-2xl rounded-full" />
           </div>
         </div>
       </Reveal>
@@ -297,12 +390,1008 @@ function Hero() {
   );
 }
 
+function Typewriter({
+  text,
+  split,
+  speed = 32,
+  className = "",
+  splitClassName = "",
+  caret = true,
+  once = false,
+}: {
+  text: string;
+  split?: number;
+  speed?: number;
+  className?: string;
+  splitClassName?: string;
+  caret?: boolean;
+  once?: boolean;
+}) {
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [visible, setVisible] = useState(false);
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            if (once) {
+              setVisible(true);
+              obs.unobserve(e.target);
+            } else {
+              setShown(0);
+              setVisible(true);
+            }
+          } else if (!once) {
+            setVisible(false);
+          }
+        }
+      },
+      { threshold: 0.2, rootMargin: "0px 0px -80px 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [once]);
+
+  useEffect(() => {
+    if (!visible) return;
+    let i = 0;
+    const id = window.setInterval(() => {
+      i++;
+      setShown(i);
+      if (i >= text.length) window.clearInterval(id);
+    }, speed);
+    return () => window.clearInterval(id);
+  }, [visible, text, speed]);
+
+  const done = shown >= text.length;
+  const caretEl = caret && (
+    <span
+      aria-hidden="true"
+      className={`inline-block w-[3px] h-[0.8em] ml-[2px] align-[-0.05em] bg-emerald-600 ${done ? "animate-pulse" : ""}`}
+    />
+  );
+
+  if (split !== undefined) {
+    const a = text.slice(0, Math.min(shown, split));
+    const b = shown > split ? text.slice(split, shown) : "";
+    return (
+      <span ref={ref} className={className}>
+        {a}
+        {b && <span className={splitClassName}>{b}</span>}
+        {caretEl}
+      </span>
+    );
+  }
+
+  return (
+    <span ref={ref} className={className}>
+      {text.slice(0, shown)}
+      {caretEl}
+    </span>
+  );
+}
+
+function TiltCard({
+  children,
+  intensity = 6,
+  className = "",
+}: {
+  children: React.ReactNode;
+  intensity?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0, glow: { x: 50, y: 50 } });
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) / rect.width;
+    const cy = (e.clientY - rect.top) / rect.height;
+    setTilt({
+      x: (0.5 - cy) * intensity,
+      y: (cx - 0.5) * intensity,
+      glow: { x: cx * 100, y: cy * 100 },
+    });
+  };
+
+  const onLeave = () => setTilt({ x: 0, y: 0, glow: { x: 50, y: 50 } });
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      className={`relative h-full ${className}`}
+      style={{
+        perspective: "1200px",
+      }}
+    >
+      <div
+        className="relative h-full transition-transform duration-300 ease-out will-change-transform"
+        style={{
+          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+          transformStyle: "preserve-3d",
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+          style={{
+            background: `radial-gradient(circle 200px at ${tilt.glow.x}% ${tilt.glow.y}%, rgba(16,185,129,0.10), transparent 70%)`,
+          }}
+        />
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Modules() {
+  const SECONDARY = [
+    {
+      name: "Inventory",
+      sub: "Batch-wise stock, expiry alerts, low-stock thresholds.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 8l8-4 8 4v8l-8 4-8-4z" />
+          <path d="M4 8l8 4 8-4" />
+          <path d="M12 12v8" />
+        </svg>
+      ),
+    },
+    {
+      name: "Purchases",
+      sub: "GRN flow, supplier ledgers, ITC capture per invoice.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 7h3l2 11h9l2-8H7" />
+          <circle cx="10" cy="20" r="1.4" />
+          <circle cx="17" cy="20" r="1.4" />
+        </svg>
+      ),
+    },
+    {
+      name: "Reports",
+      sub: "GSTR-1, GSTR-3B, Trial Balance, P&L straight from the ledger.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 20V8M10 20V4M16 20v-8M22 20H2" />
+        </svg>
+      ),
+    },
+    {
+      name: "Auth & Roles",
+      sub: "JWT with refresh tokens, four roles, per-route RBAC.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden bg-white">
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
+        <IridescentHalo spread={1.4} intensity={0.35} />
+        <div className="max-w-2xl mb-16">
+          <h2 className="text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05]">
+            <Typewriter
+              text="One workspace for the whole distributor cycle, billing to ledger to compliance."
+              split={48}
+              splitClassName="text-slate-400"
+              speed={55}
+              once
+            />
+          </h2>
+        </div>
+
+        <div className="bg-slate-200/70 rounded-2xl overflow-hidden border border-slate-200/80">
+        <div className="grid lg:grid-cols-3 gap-px">
+          {/* Featured: Sales & Billing - spans 2 columns on lg */}
+          <Reveal className="lg:col-span-2">
+            <TiltCard intensity={4}>
+            <div className="group h-full bg-white p-10 sm:p-12 relative overflow-hidden">
+              <div className="flex items-start justify-between mb-10">
+                <div>
+                  <div className="text-[10px] tracking-[0.25em] uppercase text-emerald-700 font-semibold mb-3">
+                    Featured
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">
+                    Sales & Billing
+                  </div>
+                </div>
+                <div className="w-12 h-12 text-emerald-700 opacity-90">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h12l4 4v12H4z" />
+                    <path d="M16 4v4h4" />
+                    <path d="M8 13h8M8 17h5" />
+                  </svg>
+                </div>
+              </div>
+
+              <p className="text-slate-600 text-base leading-relaxed max-w-md mb-10">
+                Multi-item invoices with batch + expiry pickers, automatic
+                CGST/SGST vs IGST routing based on state, and HSN-linked tax
+                rules. Cancels reverse the stock and the ledger atomically.
+              </p>
+
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Batch + expiry",
+                  "Auto GST routing",
+                  "Cancel + return",
+                  "Print / PDF",
+                ].map((chip) => (
+                  <span
+                    key={chip}
+                    className="text-xs text-slate-700 bg-slate-100 border border-slate-200/70 px-2.5 py-1 rounded-full"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
+            </div>
+            </TiltCard>
+          </Reveal>
+
+          {/* Side featured: Ledger */}
+          <Reveal delay={80}>
+            <TiltCard intensity={5}>
+            <div className="group h-full bg-white p-10 sm:p-12 relative">
+              <div className="w-10 h-10 mb-8 text-emerald-700">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 4h11a2 2 0 012 2v14H8a2 2 0 01-2-2z" />
+                  <path d="M6 4v16" />
+                  <path d="M10 9h6M10 13h6" />
+                </svg>
+              </div>
+              <div className="text-xl font-semibold text-slate-900 tracking-tight mb-3">
+                Double-entry ledger
+              </div>
+              <p className="text-sm text-slate-500 leading-relaxed">
+                Every sale, purchase and return posts a balanced journal entry
+                inside the same DB transaction. Reversals link both sides.
+              </p>
+
+              <div className="mt-8 pt-6 border-t border-slate-100">
+                <pre className="text-[11px] text-slate-600 font-mono leading-relaxed">
+{`Dr  Sundry Debtors    11,800
+Cr  Sales               10,000
+Cr  GST Output - CGST      900
+Cr  GST Output - SGST      900`}
+                </pre>
+              </div>
+            </div>
+            </TiltCard>
+          </Reveal>
+
+        </div>
+
+        {/* Secondary row: 4 narrower modules */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px border-t border-slate-200/80">
+          {SECONDARY.map((m, i) => (
+            <Reveal key={m.name} delay={140 + i * 60}>
+              <TiltCard intensity={6}>
+              <div className="group h-full bg-white p-7 sm:p-8 transition-colors hover:bg-slate-50">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-6 h-6 text-emerald-700">{m.icon}</div>
+                  <div className="text-sm font-semibold text-slate-900 tracking-tight">
+                    {m.name}
+                  </div>
+                </div>
+                <div className="text-xs text-slate-500 leading-relaxed">
+                  {m.sub}
+                </div>
+              </div>
+              </TiltCard>
+            </Reveal>
+          ))}
+        </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Performance() {
+  const STATS = [
+    { value: 1146, suffix: "/s", label: "throughput", sub: "k6 · 2,000 VUs · 4 cores" },
+    { value: 47, suffix: " ms", label: "p95 latency", sub: "dashboard hot path" },
+    { value: 0, suffix: " %", label: "errors", sub: "213k requests · zero 5xx" },
+    { value: 15300, suffix: "", label: "active users / box", sub: "ready for GSTR" },
+  ];
+
+  return (
+    <section className="relative overflow-hidden bg-white text-slate-900">
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
+        <IridescentHalo spread={1.55} intensity={0.45} />
+
+        <Reveal>
+          <h2 className="relative text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05] max-w-2xl mb-16">
+            The cluster doesn&apos;t blink,
+            <span className="text-slate-400"> even at 2,000 VUs.</span>
+          </h2>
+        </Reveal>
+
+        <div className="relative grid sm:grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 lg:gap-x-10 mb-16">
+          {STATS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 100}>
+              <BigStat
+                target={s.value}
+                suffix={s.suffix}
+                label={s.label}
+                sub={s.sub}
+              />
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Footer: stack chips + link */}
+        <Reveal delay={500}>
+          <div className="relative flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-mono">
+            <span className="text-slate-400 mr-1">stack ↦</span>
+            {["k6", "Redis", "Postgres", "Node cluster", "compression"].map(
+              (t) => (
+                <span
+                  key={t}
+                  className="px-2.5 py-1 rounded-full border border-slate-200 bg-white/60 backdrop-blur text-slate-700 hover:text-emerald-700 hover:border-emerald-300 transition-colors"
+                >
+                  {t}
+                </span>
+              ),
+            )}
+            <a
+              href="https://github.com/vini1237777/AyurvedERP/tree/main/server/load-tests"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto text-emerald-700 hover:text-emerald-900 font-semibold"
+            >
+              load-tests/ →
+            </a>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function BigStat({
+  target,
+  suffix,
+  label,
+  sub,
+}: {
+  target: number;
+  suffix: string;
+  label: string;
+  sub: string;
+}) {
+  const { ref, visible } = useReveal<HTMLDivElement>();
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    let raf = 0;
+    const start = performance.now();
+    const dur = 1400;
+    const tick = (t: number) => {
+      const pp = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - pp, 3);
+      setV(target * eased);
+      if (pp < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, target]);
+
+  return (
+    <div ref={ref}>
+      <div
+        className="text-[56px] sm:text-[72px] leading-[0.95] font-semibold tracking-[-0.045em] tabular-nums text-slate-900"
+        style={{ fontFeatureSettings: '"tnum"' }}
+      >
+        {Math.round(v).toLocaleString()}
+        <span className="text-emerald-600">{suffix}</span>
+      </div>
+      <div
+        className="mt-3 h-px bg-emerald-500/60 transition-all duration-1000 ease-out"
+        style={{ width: visible ? "60%" : "0%" }}
+      />
+      <div className="mt-3 text-[11px] tracking-[0.2em] uppercase text-slate-700 font-semibold">
+        {label}
+      </div>
+      <div className="mt-1 text-xs text-slate-500 font-mono">{sub}</div>
+    </div>
+  );
+}
+
+function Architecture() {
+  return (
+    <section className="relative overflow-hidden bg-white">
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
+        <IridescentHalo spread={1.5} intensity={0.4} />
+        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
+          {/* Left: diagram, takes 7 of 12 cols */}
+          <Reveal className="lg:col-span-7">
+            <div className="relative">
+              <ArchitectureDiagram />
+            </div>
+          </Reveal>
+
+          {/* Right: heading + layered annotations */}
+          <div className="lg:col-span-5">
+            <div>
+              <h2 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-[-0.025em] leading-[1.1] mb-8 min-h-[3em]">
+                <Typewriter
+                  text="Built to scale sideways, not up."
+                  speed={55}
+                />
+              </h2>
+
+              <ol className="relative border-l border-slate-200 pl-6 space-y-7">
+                <li className="relative">
+                  <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-700" />
+                  <div className="text-xs font-mono text-emerald-700 mb-1">
+                    <Typewriter text="01 · edge" speed={50} caret={false} />
+                  </div>
+                  <div className="text-sm text-slate-900 font-semibold mb-1">
+                    <Typewriter
+                      text="Stateless workers"
+                      speed={45}
+                      caret={false}
+                    />
+                  </div>
+                  <Reveal>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Node cluster forks one Express worker per CPU. The kernel
+                      load-balances connections; a crashed worker respawns
+                      without dropping the rest.
+                    </p>
+                  </Reveal>
+                </li>
+                <li className="relative">
+                  <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-700" />
+                  <div className="text-xs font-mono text-emerald-700 mb-1">
+                    <Typewriter text="02 · cache" speed={50} caret={false} />
+                  </div>
+                  <div className="text-sm text-slate-900 font-semibold mb-1">
+                    <Typewriter
+                      text="Read-through Redis"
+                      speed={45}
+                      caret={false}
+                    />
+                  </div>
+                  <Reveal>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Hot reads wrap in{" "}
+                      <code className="text-emerald-700 text-[12px] px-1 bg-emerald-50 rounded">
+                        cache.wrap
+                      </code>{" "}
+                      with TTL invalidation. Falls back to no-cache gracefully
+                      if Redis is unreachable.
+                    </p>
+                  </Reveal>
+                </li>
+                <li className="relative">
+                  <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-700" />
+                  <div className="text-xs font-mono text-emerald-700 mb-1">
+                    <Typewriter text="03 · data" speed={50} caret={false} />
+                  </div>
+                  <div className="text-sm text-slate-900 font-semibold mb-1">
+                    <Typewriter
+                      text="Postgres + Prisma"
+                      speed={45}
+                      caret={false}
+                    />
+                  </div>
+                  <Reveal>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      21-table relational schema. Atomic transactions for
+                      invoice + stock + ledger writes. Prisma keeps the type
+                      story end-to-end.
+                    </p>
+                  </Reveal>
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OpsCanvas({ stage }: { stage: number }) {
+  return (
+    <div className="relative bg-gradient-to-b from-slate-50 to-white px-5 sm:px-8 py-6 sm:py-8">
+      <style>{`
+        @keyframes ledBlink {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
+        }
+        @keyframes cpuBar {
+          0%   { height: 30%; }
+          25%  { height: 78%; }
+          50%  { height: 52%; }
+          75%  { height: 92%; }
+          100% { height: 30%; }
+        }
+        @keyframes wirePulse {
+          0%, 100% { opacity: 0.45; }
+          50%      { opacity: 1; }
+        }
+        .ops-led {
+          animation: ledBlink 1.4s ease-in-out infinite;
+        }
+        .ops-cpu-bar {
+          animation: cpuBar 1.6s ease-in-out infinite;
+        }
+        .ops-wire-on {
+          animation: wirePulse 1.4s ease-in-out infinite;
+        }
+      `}</style>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+        {/* Left: Redis tower */}
+        <div
+          className="transition-opacity duration-400"
+          style={{ opacity: stage === 1 ? 1 : 0.4 }}
+        >
+          <RedisCube active={stage === 1} />
+          <div className="mt-2 text-center">
+            <div className="text-xs font-semibold text-slate-900">Redis</div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              ttl 30s · graceful
+            </div>
+          </div>
+        </div>
+
+        {/* Middle: server rack */}
+        <ServerRack active={stage === 0} />
+
+        {/* Right: Postgres cylinder */}
+        <div
+          className="transition-opacity duration-400"
+          style={{ opacity: stage === 2 ? 1 : 0.4 }}
+        >
+          <PostgresCylinder active={stage === 2} />
+          <div className="mt-2 text-center">
+            <div className="text-xs font-semibold text-slate-900">PostgreSQL</div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              prisma · 21 tables
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Connector wires */}
+      <div className="mt-1 h-px relative">
+        <div
+          className="absolute left-[16%] right-[50%] top-0 h-px"
+          style={{
+            background: stage === 1
+              ? "linear-gradient(to right, #10b981, transparent)"
+              : "linear-gradient(to right, #cbd5e1, transparent)",
+          }}
+        />
+        <div
+          className="absolute left-[50%] right-[16%] top-0 h-px"
+          style={{
+            background: stage === 2
+              ? "linear-gradient(to left, #10b981, transparent)"
+              : "linear-gradient(to left, #cbd5e1, transparent)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ServerRack({ active }: { active: boolean }) {
+  return (
+    <div className="bg-slate-900 rounded-xl p-2.5 shadow-lg shadow-slate-900/20 w-[200px] sm:w-[240px]">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="text-[8.5px] font-mono uppercase tracking-[0.18em] text-emerald-400">
+          Node cluster
+        </div>
+        <span
+          className={`inline-block h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-400 ops-led" : "bg-slate-600"}`}
+        />
+      </div>
+      <div className="space-y-1.5">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-slate-800 rounded-md px-2 py-1.5 flex items-center gap-2 border border-slate-700"
+          >
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-400 ops-led" : "bg-slate-500"}`}
+              style={{ animationDelay: `${i * 0.3}s` }}
+            />
+            <span className="text-[9px] font-mono text-slate-400 w-12">
+              worker {i + 1}
+            </span>
+            <span className="text-[9px] font-mono text-slate-500">
+              :3000
+            </span>
+            <div className="ml-auto flex items-end gap-[2px] h-3">
+              {[0, 1, 2, 3, 4].map((b) => (
+                <span
+                  key={b}
+                  className={`w-[3px] rounded-sm ${active ? "bg-emerald-400 ops-cpu-bar" : "bg-slate-600"}`}
+                  style={{
+                    height: active ? "30%" : "30%",
+                    animationDelay: `${i * 0.18 + b * 0.12}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RedisCube({ active }: { active: boolean }) {
+  return (
+    <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 relative">
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <defs>
+          <linearGradient id="redis-top" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={active ? "#fca5a5" : "#e2e8f0"} />
+            <stop offset="100%" stopColor={active ? "#dc2626" : "#cbd5e1"} />
+          </linearGradient>
+        </defs>
+        {/* Cube faces */}
+        <polygon points="40,8 72,22 40,36 8,22" fill="url(#redis-top)" stroke={active ? "#7f1d1d" : "#94a3b8"} strokeWidth="0.8" />
+        <polygon points="8,22 8,58 40,72 40,36" fill={active ? "#b91c1c" : "#cbd5e1"} stroke={active ? "#7f1d1d" : "#94a3b8"} strokeWidth="0.8" />
+        <polygon points="72,22 72,58 40,72 40,36" fill={active ? "#991b1b" : "#94a3b8"} stroke={active ? "#7f1d1d" : "#94a3b8"} strokeWidth="0.8" />
+        {/* Lattice dots on top face */}
+        {[[24,18],[40,12],[56,18],[24,28],[40,22],[56,28]].map(([x,y],i) => (
+          <circle key={i} cx={x} cy={y} r="1.3" fill={active ? "#fee2e2" : "#f1f5f9"} />
+        ))}
+        {/* Active glow */}
+        {active && <circle cx="40" cy="40" r="38" fill="none" stroke="#ef4444" strokeWidth="0.8" opacity="0.3" className="ops-wire-on" />}
+      </svg>
+    </div>
+  );
+}
+
+function PostgresCylinder({ active }: { active: boolean }) {
+  const blue = active ? "#1e40af" : "#94a3b8";
+  const blueLight = active ? "#3b82f6" : "#cbd5e1";
+  return (
+    <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 relative">
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <defs>
+          <linearGradient id="pg-side" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={active ? "#60a5fa" : "#e2e8f0"} />
+            <stop offset="100%" stopColor={blueLight} />
+          </linearGradient>
+        </defs>
+        {/* Top ellipse */}
+        <ellipse cx="40" cy="18" rx="26" ry="8" fill="url(#pg-side)" stroke={blue} strokeWidth="0.8" />
+        {/* Body */}
+        <path d="M 14 18 L 14 60 Q 14 68 40 68 Q 66 68 66 60 L 66 18" fill="url(#pg-side)" stroke={blue} strokeWidth="0.8" />
+        {/* Strata lines */}
+        {[30, 42, 54].map((y) => (
+          <ellipse key={y} cx="40" cy={y} rx="26" ry="8" fill="none" stroke={blue} strokeWidth="0.6" opacity="0.55" />
+        ))}
+        {/* Active glow */}
+        {active && <ellipse cx="40" cy="18" rx="26" ry="8" fill="none" stroke="#3b82f6" strokeWidth="1" opacity="0.5" className="ops-wire-on" />}
+      </svg>
+    </div>
+  );
+}
+
+function ArchitectureDiagram() {
+  const [stage, setStage] = useState(0);
+  const stages = ["edge", "cache", "data"] as const;
+
+  const STAGE_INFO = [
+    {
+      title: "Edge · cluster",
+      lead: "Requests fan out across workers.",
+      body: "Node's cluster module forks one Express worker per CPU core. They all share port 3000 via the OS accept queue — the kernel hands each new connection to the least busy worker. A crashed worker is respawned by the primary process; in-flight requests on it die, the rest keep serving.",
+      metrics: [
+        { k: "throughput", v: "1,146 req/s" },
+        { k: "workers", v: "4 active" },
+        { k: "respawn", v: "auto" },
+      ],
+      code: "for (let i = 0; i < os.cpus().length; i++) cluster.fork();",
+    },
+    {
+      title: "Read-through cache",
+      lead: "Hot reads skip Postgres entirely.",
+      body: "Endpoints like /reports/dashboard-summary wrap their query in cache.wrap(key, ttl, fetch). First request computes and stores; every request in the next 30 seconds returns the cached JSON in ~6 ms. If Redis is unreachable the wrapper silently falls back to running fetch directly — no errors, just slower.",
+      metrics: [
+        { k: "p95 hit", v: "6.34 ms" },
+        { k: "ttl", v: "30 s" },
+        { k: "fallback", v: "graceful" },
+      ],
+      code: 'cache.wrap("dashboard:v1", 30, () => prisma.invoice.findMany(...))',
+    },
+    {
+      title: "Atomic write path",
+      lead: "Invoice + stock + ledger commit together.",
+      body: "Every sale opens a single Prisma transaction. It writes the invoice row, decrements batch stock, and posts a balanced double-entry journal — Dr debtors, Cr sales, Cr GST output. Either all three land or none do. Read-committed isolation keeps concurrent invoice numbers from colliding without serializing the table.",
+      metrics: [
+        { k: "tables", v: "21" },
+        { k: "isolation", v: "read-committed" },
+        { k: "tx", v: "single" },
+      ],
+      code: "prisma.$transaction([invoice, batch, journalEntry])",
+    },
+  ];
+  const info = STAGE_INFO[stage];
+
+  const pill = (
+    x: number,
+    y: number,
+    w: number,
+    label: string,
+    sub: string,
+    tone: "ink" | "leaf" = "ink",
+    dim: boolean = false,
+  ) => {
+    const fill = tone === "leaf" ? "#ecfdf5" : "#ffffff";
+    const stroke = tone === "leaf" ? "#a7f3d0" : "#e2e8f0";
+    const labelFill = tone === "leaf" ? "#065f46" : "#0f172a";
+    return (
+      <g
+        style={{
+          opacity: dim ? 0.35 : 1,
+          transition: "opacity 400ms ease-out",
+        }}
+      >
+        <rect
+          x={x - w / 2}
+          y={y - 22}
+          width={w}
+          height="44"
+          rx="22"
+          fill={fill}
+          stroke={stroke}
+          strokeWidth="1.2"
+          className="arch-pill"
+        />
+        <text
+          x={x}
+          y={y - 3}
+          textAnchor="middle"
+          fontSize="12"
+          fontWeight="600"
+          fill={labelFill}
+          fontFamily="ui-sans-serif, system-ui"
+        >
+          {label}
+        </text>
+        <text
+          x={x}
+          y={y + 12}
+          textAnchor="middle"
+          fontSize="10"
+          fill="#64748b"
+          fontFamily="ui-monospace, SFMono-Regular, monospace"
+        >
+          {sub}
+        </text>
+      </g>
+    );
+  };
+
+  return (
+    <div className="relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <style>{`
+        @keyframes archFlow {
+          to { stroke-dashoffset: -14; }
+        }
+        @keyframes archPulse {
+          0%, 100% { opacity: 0.5; r: 3; }
+          50% { opacity: 1; r: 5; }
+        }
+        @keyframes archBreathe {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.008); }
+        }
+        @keyframes archWorkerGlow {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 0.55; }
+        }
+        @keyframes archLiveBlink {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
+        }
+        .arch-flow { stroke-dasharray: 6 6; animation: archFlow 1.2s linear infinite; }
+        .arch-flow-slow { stroke-dasharray: 4 6; animation: archFlow 1.6s linear infinite; }
+        .arch-pulse { transform-origin: center; animation: archPulse 1.6s ease-in-out infinite; }
+        .arch-pulse-2 { animation: archPulse 1.6s ease-in-out infinite; animation-delay: 0.4s; }
+        .arch-pulse-3 { animation: archPulse 1.6s ease-in-out infinite; animation-delay: 0.8s; }
+        .arch-pulse-4 { animation: archPulse 1.6s ease-in-out infinite; animation-delay: 1.2s; }
+        .arch-cluster { transform-origin: center; animation: archBreathe 4s ease-in-out infinite; }
+        .arch-worker-glow { animation: archWorkerGlow 1.8s ease-in-out infinite; }
+        .arch-live { animation: archLiveBlink 1.4s ease-in-out infinite; }
+      `}</style>
+
+      {/* Devtools-style top bar: window dots + tab strip */}
+      <div className="flex items-center gap-3 bg-slate-50 border-b border-slate-200 px-3 py-2">
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
+        </div>
+        <div className="flex-1 flex items-center gap-1 ml-2">
+          {stages.map((s, i) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStage(i)}
+              className={`text-[10px] font-mono uppercase tracking-wider px-3 py-1.5 rounded-md transition-colors ${
+                i === stage
+                  ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
+              }`}
+            >
+              <span className="text-slate-400 mr-1.5">0{i + 1}</span>
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="text-[9px] font-mono text-slate-400 tracking-wider">
+          {info.title}
+        </span>
+      </div>
+
+      <OpsCanvas stage={stage} />
+
+
+      {/* Explanation — updates per stage, cross-fades on click */}
+      <div className="border-t border-slate-200 px-4 sm:px-6 py-4 bg-white">
+        <div className="relative min-h-[5.5em]">
+          {STAGE_INFO.map((s, i) => (
+            <div
+              key={s.title}
+              className="absolute inset-0 transition-opacity duration-500 ease-in-out"
+              style={{
+                opacity: i === stage ? 1 : 0,
+                pointerEvents: i === stage ? "auto" : "none",
+              }}
+            >
+              <div className="text-sm font-semibold text-slate-900 tracking-tight mb-1">
+                {s.lead}
+              </div>
+              <p className="text-[12.5px] text-slate-600 leading-relaxed">
+                {s.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Metrics strip — updates per stage */}
+      <div className="border-t border-slate-200 bg-slate-50/50 px-4 sm:px-6 py-3 grid grid-cols-3 gap-4">
+        {info.metrics.map((m) => (
+          <div key={m.k}>
+            <div className="text-[9px] tracking-[0.2em] uppercase text-slate-400 font-mono">
+              {m.k}
+            </div>
+            <div className="text-sm text-slate-900 font-semibold tabular-nums mt-0.5">
+              {m.v}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Code snippet */}
+      <div className="bg-slate-950 px-4 sm:px-6 py-2.5 flex items-center gap-2">
+        <span className="text-[9px] font-mono text-slate-500">›_</span>
+        <code className="text-[11px] font-mono text-emerald-300 truncate">
+          {info.code}
+        </code>
+      </div>
+
+      {/* Footer: prev / dots / next — with attention pulse on next while at stage 0 */}
+      <div className="border-t border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between bg-white">
+        <button
+          type="button"
+          onClick={() => setStage((s) => Math.max(0, s - 1))}
+          disabled={stage === 0}
+          aria-label="Previous stage"
+          className="text-[11px] font-medium text-slate-500 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Prev
+        </button>
+
+        <div className="flex gap-1.5">
+          {stages.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setStage(i)}
+              aria-label={`Stage ${i + 1}`}
+              className="block h-1.5 rounded-full transition-all duration-300"
+              style={{
+                width: i === stage ? 28 : 8,
+                backgroundColor: i === stage ? "#047857" : "#e2e8f0",
+                cursor: "pointer",
+              }}
+            />
+          ))}
+        </div>
+
+        <div className="relative">
+          {stage < stages.length - 1 && (
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-emerald-500 opacity-50 animate-ping" />
+          )}
+          <button
+            type="button"
+            onClick={() => setStage((s) => Math.min(stages.length - 1, s + 1))}
+            disabled={stage === stages.length - 1}
+            aria-label="Next stage"
+            className="relative text-[11px] font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-30 disabled:cursor-not-allowed px-3 py-1.5 rounded-full flex items-center gap-1.5"
+          >
+            {stage === stages.length - 1 ? "End" : "Next"}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SpecsCountNumber({
+  target,
+  suffix = "",
+}: {
+  target: number;
+  suffix?: string;
+}) {
+  const { ref, visible } = useReveal<HTMLDivElement>();
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    let raf = 0;
+    const start = performance.now();
+    const dur = 1400;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setV(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, target]);
+
+  return (
+    <div
+      ref={ref}
+      className="text-5xl sm:text-6xl font-semibold text-slate-900 tracking-[-0.035em] mb-2 tabular-nums"
+    >
+      {Math.round(v).toLocaleString()}
+      {suffix && <span className="text-emerald-700">{suffix}</span>}
+    </div>
+  );
+}
+
 function Specs() {
   const HIGHLIGHTS = [
-    { value: "1,000+", label: "seeded invoices" },
-    { value: "20", label: "relational tables" },
-    { value: "4", label: "user roles" },
-    { value: "3", label: "GST returns" },
+    { n: 1000, suffix: "+", label: "seeded invoices" },
+    { n: 20, suffix: "", label: "relational tables" },
+    { n: 4, suffix: "", label: "user roles" },
+    { n: 3, suffix: "", label: "GST returns" },
   ];
 
   const SPECS = [
@@ -333,7 +1422,7 @@ function Specs() {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-white border-b border-slate-200">
+    <section className="relative overflow-hidden bg-white">
       <Sprig
         className="top-[30%] -left-10 opacity-30 hidden lg:block"
         factor={0.04}
@@ -349,25 +1438,21 @@ function Specs() {
         variant={3}
       />
       <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-36">
+        <IridescentHalo spread={1.5} intensity={0.35} />
         <Reveal>
           <div className="text-center mb-20">
-            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-emerald-700 mb-4">
-              Real data, real ledger
-            </div>
             <h2 className="text-[52px] sm:text-7xl font-semibold text-slate-900 tracking-[-0.04em] leading-[0.95]">
               Built in the open.
             </h2>
           </div>
         </Reveal>
 
-        {/* Highlight numbers — integrated, light, no dark band */}
+        {/* Highlight numbers - count up when scrolled in */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-10 mb-24 border-y border-slate-200 py-12">
           {HIGHLIGHTS.map((h, i) => (
-            <Reveal key={h.label} delay={i * 80}>
+            <Reveal key={h.label} delay={i * 100}>
               <div className="text-center">
-                <div className="text-5xl sm:text-6xl font-semibold text-slate-900 tracking-[-0.035em] mb-2">
-                  {h.value}
-                </div>
+                <SpecsCountNumber target={h.n} suffix={h.suffix} />
                 <div className="text-[11px] tracking-[0.15em] uppercase text-slate-500">
                   {h.label}
                 </div>
@@ -376,17 +1461,19 @@ function Specs() {
           ))}
         </div>
 
-        {/* Spec list — Apple tech-specs style, 3 columns of definition lists */}
-        <Reveal>
-          <div className="grid sm:grid-cols-3 gap-x-12 gap-y-12">
-            {SPECS.map((g) => (
-              <div key={g.group}>
+        {/* Spec list - staggered per-row reveals */}
+        <div className="grid sm:grid-cols-3 gap-x-12 gap-y-12">
+          {SPECS.map((g, gi) => (
+            <div key={g.group}>
+              <Reveal delay={gi * 120}>
                 <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-900 pb-3 mb-5 border-b border-slate-300">
                   {g.group}
                 </div>
-                <dl className="space-y-5">
-                  {g.items.map(([k, v]) => (
-                    <div key={k}>
+              </Reveal>
+              <dl className="space-y-5">
+                {g.items.map(([k, v], ii) => (
+                  <Reveal key={k} delay={gi * 120 + 100 + ii * 90}>
+                    <div>
                       <dt className="text-[11px] uppercase tracking-[0.1em] text-slate-500 font-medium mb-1">
                         {k}
                       </dt>
@@ -394,18 +1481,71 @@ function Specs() {
                         {v}
                       </dd>
                     </div>
-                  ))}
-                </dl>
-              </div>
-            ))}
-          </div>
-        </Reveal>
+                  </Reveal>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-// Scroll-bound pinned showcase — laptop transforms continuously with scroll.
+// Scroll-bound pinned showcase - laptop transforms continuously with scroll.
+function IridescentHalo({
+  spread = 1.1,
+  intensity = 0.45,
+}: {
+  spread?: number;
+  intensity?: number;
+}) {
+  return (
+    <>
+      <style>{`
+        @keyframes haloSpin {
+          to { transform: rotate(360deg); }
+        }
+        @keyframes haloShift {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.55; }
+          50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.72; }
+        }
+      `}</style>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 -z-0"
+        style={{
+          width: `${spread * 100}%`,
+          maxWidth: 1400,
+          aspectRatio: "1 / 0.6",
+          transform: "translate(-50%, -50%)",
+          filter: "blur(90px)",
+          animation: "haloShift 9s ease-in-out infinite",
+        }}
+      >
+        <div
+          className="absolute inset-0 rounded-[50%]"
+          style={{
+            background:
+              "conic-gradient(from 0deg, #ff8a8a 0%, #ffd28a 14%, #fff48a 28%, #a8f0c2 42%, #8acdff 56%, #b69cff 70%, #ff9cce 84%, #ff8a8a 100%)",
+            opacity: intensity,
+            animation: "haloSpin 22s linear infinite",
+            transformOrigin: "center",
+          }}
+        />
+        {/* Stronger inner mask so content over the halo stays crisp */}
+        <div
+          className="absolute inset-[8%] rounded-[50%]"
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(255,255,255,0.85), rgba(255,255,255,0.4) 55%, transparent 85%)",
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function PinnedShowcase() {
   const { ref, progress } = useScrollProgress<HTMLDivElement>();
 
@@ -438,7 +1578,7 @@ function PinnedShowcase() {
   const scale = 0.82 + 0.18 * tEnter - 0.06 * tExit;
   const translateY = 60 * (1 - tEnter) - 24 * tExit;
 
-  // Which of 3 stages: 0,1,2 — split equally between p=0.15..0.85
+  // Which of 3 stages: 0,1,2 - split equally between p=0.15..0.85
   const middle = Math.max(0, Math.min(1, (progress - 0.15) / 0.7));
   const stage = middle < 0.34 ? 0 : middle < 0.67 ? 1 : 2;
   const stageProgress = (middle - stage / 3) * 3; // 0..1 within current stage
@@ -446,7 +1586,7 @@ function PinnedShowcase() {
   return (
     <section
       ref={ref}
-      className="relative bg-gradient-to-b from-white via-emerald-50/40 to-white border-b border-slate-200"
+      className="relative bg-gradient-to-b from-white via-emerald-50/40 to-white"
       style={{ height: "320vh" }}
     >
       <Sprig
@@ -466,24 +1606,22 @@ function PinnedShowcase() {
 
       <div className="sticky top-0 h-screen flex flex-col overflow-hidden">
         {/* Heading row */}
-        <div className="pt-[5vh] px-6 text-center min-h-[140px]">
+        <div className="pt-[10vh] pb-10 px-6 text-center min-h-[200px]">
           <div key={`title-${stage}`} className="stage-fade">
-            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-500 mb-3">
-              {sections[stage].eyebrow}
-            </div>
             <h3 className="text-[40px] sm:text-[56px] font-semibold text-slate-900 tracking-[-0.035em] leading-[0.98]">
               {sections[stage].title}
             </h3>
           </div>
         </div>
 
-        {/* Laptop — takes remaining middle space */}
+        {/* Laptop - takes remaining middle space */}
         <div
-          className="flex-1 flex items-center justify-center w-full px-6 min-h-0"
+          className="relative flex-1 flex items-center justify-center w-full px-6 min-h-0"
           style={{ perspective: "1800px" }}
         >
+          <IridescentHalo />
           <div
-            className="w-full max-w-4xl"
+            className="relative w-full max-w-4xl"
             style={{
               transform: `rotateX(${rotateX}deg) scale(${scale}) translateY(${translateY}px)`,
               transformStyle: "preserve-3d",
@@ -570,9 +1708,6 @@ function BillSection() {
       <div className="relative max-w-6xl mx-auto px-6 py-32 sm:py-40 grid lg:grid-cols-2 gap-16 items-center">
         <Reveal>
           <div>
-            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-stone-500 mb-4">
-              The printed bill
-            </div>
             <h2 className="text-[44px] sm:text-6xl font-semibold text-slate-900 tracking-[-0.035em] leading-[0.98] mb-5">
               Tax compliant.
               <br />
@@ -671,6 +1806,141 @@ function Footer() {
   );
 }
 
+function PhoneFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mx-auto w-full">
+      <div className="bg-slate-900 rounded-[34px] p-1.5 shadow-2xl shadow-slate-900/30 ring-1 ring-slate-800/60">
+        <div className="bg-white rounded-[28px] overflow-hidden aspect-[9/19] relative">
+          {/* Notch */}
+          <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 h-4 w-16 bg-slate-900 rounded-full" />
+          <div className="relative h-full">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScreenPhone() {
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-b from-white to-slate-50">
+      {/* Status bar */}
+      <div className="h-7 flex items-center justify-between px-4 text-[8px] font-semibold text-slate-900 pt-2">
+        <span>9:41</span>
+        <div className="flex items-center gap-0.5">
+          <span className="inline-block w-1 h-1 rounded-full bg-slate-900" />
+          <span className="inline-block w-1 h-1.5 rounded-full bg-slate-900" />
+          <span className="inline-block w-1 h-2 rounded-full bg-slate-900" />
+        </div>
+      </div>
+
+      {/* App header */}
+      <div className="px-3.5 pt-2">
+        <div className="text-[8px] tracking-[0.15em] uppercase text-emerald-700 font-semibold">
+          GSTR-3B · live
+        </div>
+        <div className="text-base font-semibold text-slate-900 tracking-tight mt-0.5">
+          ₹48,120
+          <span className="text-emerald-600 text-[10px] ml-1 font-medium">
+            net payable
+          </span>
+        </div>
+      </div>
+
+      {/* Sparkline */}
+      <div className="px-3.5 mt-3">
+        <svg viewBox="0 0 220 70" className="w-full h-12">
+          <defs>
+            <linearGradient id="ph-spark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0 50 L25 45 L50 55 L75 30 L100 35 L125 18 L150 25 L175 12 L200 20 L220 6"
+            stroke="#10b981"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M0 50 L25 45 L50 55 L75 30 L100 35 L125 18 L150 25 L175 12 L200 20 L220 6 L220 70 L0 70 Z"
+            fill="url(#ph-spark)"
+          />
+        </svg>
+      </div>
+
+      {/* Mini stat cards */}
+      <div className="px-3.5 mt-2 grid grid-cols-2 gap-1.5">
+        {[
+          { l: "Output", v: "₹62,400", c: "text-slate-900" },
+          { l: "Input ITC", v: "₹14,280", c: "text-emerald-700" },
+        ].map((c) => (
+          <div key={c.l} className="bg-white border border-slate-200 rounded-md px-2 py-1.5">
+            <div className="text-[7px] uppercase tracking-wider text-slate-400">
+              {c.l}
+            </div>
+            <div className={`text-[10px] font-semibold ${c.c}`}>{c.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* List rows */}
+      <div className="mt-3 px-3.5 flex-1">
+        <div className="text-[8px] uppercase tracking-wider text-slate-400 mb-1.5">
+          Recent invoices
+        </div>
+        {[
+          ["INV-1247", "Sunrise Pharma", "₹3,240"],
+          ["INV-1246", "Dilip Salunkhe", "₹1,820"],
+          ["INV-1245", "Mod Mane Agencies", "₹5,610"],
+          ["INV-1244", "Vinod Joshi", "₹4,150"],
+        ].map(([no, name, amt]) => (
+          <div
+            key={no}
+            className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0"
+          >
+            <div className="min-w-0">
+              <div className="text-[8.5px] font-semibold text-slate-900">
+                {no}
+              </div>
+              <div className="text-[7.5px] text-slate-500 truncate">
+                {name}
+              </div>
+            </div>
+            <div className="text-[8.5px] font-semibold text-slate-900">
+              {amt}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom tab bar */}
+      <div className="h-9 bg-white/80 backdrop-blur border-t border-slate-100 flex items-center justify-around px-3 pb-1">
+        {[
+          { d: "M3 12l9-9 9 9M5 10v10h14V10" },
+          { d: "M4 4h16v4H4zM4 12h16v4H4z" },
+          { d: "M4 6h16M4 12h16M4 18h16" },
+        ].map((i, idx) => (
+          <svg
+            key={idx}
+            viewBox="0 0 24 24"
+            className={`w-3.5 h-3.5 ${idx === 0 ? "text-emerald-700" : "text-slate-400"}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d={i.d} />
+          </svg>
+        ))}
+      </div>
+      <div className="mx-auto mb-1 h-0.5 w-10 bg-slate-900 rounded-full opacity-70" />
+    </div>
+  );
+}
+
 function LaptopFrame({
   children,
   url = "aushadhi.app/",
@@ -683,7 +1953,7 @@ function LaptopFrame({
       <div className="bg-slate-900 rounded-[20px] p-3 shadow-2xl shadow-slate-900/30 ring-1 ring-slate-800/60">
         <div className="bg-white rounded-[14px] overflow-hidden aspect-[16/10] relative">
           {/* Browser chrome */}
-          <div className="h-8 bg-slate-100 border-b border-slate-200 flex items-center px-3 gap-1.5">
+          <div className="h-8 bg-slate-100 flex items-center px-3 gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
             <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
@@ -878,7 +2148,7 @@ function ScreenInvoices({ show }: { show: boolean }) {
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded overflow-hidden">
-            <div className="grid grid-cols-[60px_70px_1fr_70px_50px_60px] text-[6px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1.5 bg-slate-50 border-b border-slate-200">
+            <div className="grid grid-cols-[60px_70px_1fr_70px_50px_60px] text-[6px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1.5 bg-slate-50">
               <span>No.</span>
               <span>Date</span>
               <span>Customer</span>
@@ -1028,7 +2298,7 @@ function ScreenGSTR({ show }: { show: boolean }) {
   );
 }
 
-// Pharmacy bill — printed invoice mockup
+// Pharmacy bill - printed invoice mockup
 function PharmacyBill() {
   return (
     <div
@@ -1061,7 +2331,7 @@ function PharmacyBill() {
           <span className="font-semibold text-slate-800">Patel Medical</span>
         </div>
         <div className="border-t border-b border-slate-300 py-2 space-y-1 mb-2.5">
-          <div className="grid grid-cols-[1fr_22px_46px] text-[7px] text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 pb-0.5">
+          <div className="grid grid-cols-[1fr_22px_46px] text-[7px] text-slate-500 font-semibold uppercase tracking-wider pb-0.5">
             <span>Item</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Amount</span>
