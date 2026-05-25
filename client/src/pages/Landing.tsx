@@ -321,7 +321,9 @@ function Hero() {
       <Reveal delay={320}>
         <div className="max-w-5xl mx-auto px-6 pb-16">
           <div className="relative mx-auto" style={{ perspective: "1800px" }}>
+            <IridescentHalo spread={1.35} />
             <div
+              className="relative"
               style={{
                 transform: "rotateX(2deg)",
                 transformStyle: "preserve-3d",
@@ -1187,26 +1189,27 @@ function Specs() {
 }
 
 // Scroll-bound pinned showcase - laptop transforms continuously with scroll.
-function IridescentHalo() {
+function IridescentHalo({ spread = 1.1 }: { spread?: number }) {
   return (
     <>
       <style>{`
         @keyframes haloSpin {
-          to { transform: translate(-50%, -50%) rotate(360deg); }
+          to { transform: rotate(360deg); }
         }
         @keyframes haloShift {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.55; }
-          50% { transform: translate(-50%, -50%) scale(1.06); opacity: 0.75; }
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+          50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.85; }
         }
       `}</style>
       <div
         aria-hidden="true"
         className="pointer-events-none absolute left-1/2 top-1/2 -z-0"
         style={{
-          width: "min(110%, 1100px)",
-          aspectRatio: "1 / 0.55",
+          width: `${spread * 100}%`,
+          maxWidth: 1400,
+          aspectRatio: "1 / 0.6",
           transform: "translate(-50%, -50%)",
-          filter: "blur(60px)",
+          filter: "blur(70px)",
           animation: "haloShift 8s ease-in-out infinite",
         }}
       >
@@ -1215,16 +1218,16 @@ function IridescentHalo() {
           style={{
             background:
               "conic-gradient(from 0deg, #ff8a8a 0%, #ffd28a 14%, #fff48a 28%, #a8f0c2 42%, #8acdff 56%, #b69cff 70%, #ff9cce 84%, #ff8a8a 100%)",
-            opacity: 0.5,
+            opacity: 0.55,
             animation: "haloSpin 18s linear infinite",
             transformOrigin: "center",
           }}
         />
         <div
-          className="absolute inset-[10%] rounded-[50%]"
+          className="absolute inset-[12%] rounded-[50%]"
           style={{
             background:
-              "radial-gradient(closest-side, rgba(255,255,255,0.5), transparent 70%)",
+              "radial-gradient(closest-side, rgba(255,255,255,0.45), transparent 75%)",
           }}
         />
       </div>
