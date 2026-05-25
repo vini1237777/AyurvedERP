@@ -590,159 +590,159 @@ Cr  GST Output - SGST      900`}
 
 function Performance() {
   const { ref: sectionRef, progress } = useScrollProgress<HTMLDivElement>();
-
-  // Pin range: 0..1 across the section's full scroll. Carve into 3 acts.
   const p = Math.max(0, Math.min(1, progress));
 
-  // Stage index: 0 (throughput), 1 (latency), 2 (errors), 3 (users)
+  // 4 stages, 3 of which map to a laptop screen view
   const stage = p < 0.25 ? 0 : p < 0.5 ? 1 : p < 0.75 ? 2 : 3;
 
   const STATS = [
     { value: 1146, suffix: "/s", label: "sustained throughput", sub: "k6 · 2,000 VUs · 4 cores" },
     { value: 47, suffix: " ms", label: "p95 read latency", sub: "dashboard hot path" },
     { value: 0, suffix: " %", label: "errors across 213k requests", sub: "zero 5xx, zero drops" },
-    { value: 15300, suffix: "", label: "active users per box", sub: "extrapolated at 0.075 req/s/user" },
+    { value: 15300, suffix: "", label: "active users / box", sub: "ready for GSTR · extrapolated at 0.075 req/s/user" },
   ];
-
   const active = STATS[stage];
-
-  // Scroll-driven transforms on the hero number
-  const heroScale = 0.85 + p * 0.25;
-  const heroRotate = (0.5 - p) * 6;
-  const heroBlur = stage === 0 ? 0 : 0;
-
-  // Pulsing dot at stage transitions
-  const stageProgress = (p % 0.25) / 0.25;
 
   return (
     <section
       ref={sectionRef}
       className="relative bg-slate-950 text-white"
-      style={{ minHeight: "260vh" }}
+      style={{ minHeight: "240vh" }}
     >
       <div className="sticky top-0 h-screen overflow-hidden flex items-center">
-        {/* Layered ambient glows that drift with scroll */}
-        <div
-          className="absolute inset-0 pointer-events-none transition-opacity"
-          style={{
-            background: `radial-gradient(ellipse 70% 50% at ${20 + p * 60}% ${15 + p * 30}%, rgba(16,185,129,0.35) 0%, transparent 55%)`,
-            opacity: 0.6 + p * 0.4,
-          }}
-        />
+        {/* Calm ambient gradient — no longer drifting frantically */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse 50% 30% at ${80 - p * 60}% ${70 + p * 20}%, rgba(20,184,166,0.25) 0%, transparent 50%)`,
+            background:
+              "radial-gradient(ellipse 70% 50% at 30% 25%, rgba(16,185,129,0.25) 0%, transparent 55%), radial-gradient(ellipse 50% 35% at 80% 80%, rgba(20,184,166,0.18) 0%, transparent 55%)",
           }}
         />
-
-        {/* Grid texture, drifts subtly */}
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
-            backgroundSize: "56px 56px",
-            backgroundPosition: `0 ${-p * 200}px`,
+              "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
+            backgroundSize: "64px 64px",
           }}
         />
 
         <div className="relative w-full max-w-6xl mx-auto px-6">
-          <div className="flex flex-col items-start gap-8">
-            {/* Live eyebrow with stage pips */}
-            <div className="flex items-center gap-3">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-              </span>
-              <span className="text-[11px] tracking-[0.3em] uppercase font-semibold text-emerald-400 font-mono">
-                Numbers, live
-              </span>
-              <div className="flex gap-1.5 ml-3">
-                {[0, 1, 2, 3].map((i) => (
-                  <span
-                    key={i}
-                    className="block h-px transition-all duration-500"
-                    style={{
-                      width: i === stage ? 24 : 10,
-                      backgroundColor:
-                        i < stage
-                          ? "#10b981"
-                          : i === stage
-                            ? "#34d399"
-                            : "#1e293b",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Hero number - rotates + scales with scroll, label crossfades */}
-            <div
-              className="relative"
-              style={{
-                perspective: "1200px",
-              }}
-            >
-              <div
-                style={{
-                  transform: `rotateX(${heroRotate}deg) scale(${heroScale})`,
-                  transformOrigin: "left center",
-                  transition: "transform 100ms linear",
-                  filter: `blur(${heroBlur}px)`,
-                }}
-              >
-                <PinnedStatDisplay
-                  key={stage}
-                  value={active.value}
-                  suffix={active.suffix}
-                />
-              </div>
-            </div>
-
-            {/* Cross-fading label band - opacity-only, WhatsApp-style soft */}
-            <div className="relative h-14 w-full max-w-3xl">
-              {STATS.map((s, i) => (
-                <div
-                  key={s.label}
-                  className="absolute inset-0 transition-opacity duration-700 ease-in-out"
+          {/* Eyebrow with stage pips */}
+          <div className="flex items-center gap-3 mb-10">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+            </span>
+            <span className="text-[11px] tracking-[0.3em] uppercase font-semibold text-emerald-400 font-mono">
+              Numbers, live
+            </span>
+            <div className="flex gap-1.5 ml-3">
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  className="block h-px transition-all duration-500"
                   style={{
-                    opacity: i === stage ? 1 : 0,
-                    pointerEvents: i === stage ? "auto" : "none",
+                    width: i === stage ? 24 : 10,
+                    backgroundColor:
+                      i < stage ? "#10b981" : i === stage ? "#34d399" : "#1e293b",
                   }}
-                >
-                  <div className="text-xl sm:text-2xl text-white font-semibold tracking-tight leading-tight">
-                    {s.label}
-                  </div>
-                  <div className="mt-1 text-sm text-emerald-300/80 font-mono">
-                    {s.sub}
-                  </div>
-                </div>
+                />
               ))}
             </div>
+          </div>
 
-            {/* Bottom progress bar - fills as you scroll the pinned section */}
-            <div className="w-full max-w-xl mt-4">
-              <div className="h-px bg-slate-800 relative overflow-hidden">
-                <div
-                  className="absolute inset-y-0 left-0 bg-emerald-400"
-                  style={{ width: `${p * 100}%` }}
-                />
+          {/* Side-by-side: number on the left, laptop on the right */}
+          <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
+            <div className="lg:col-span-6">
+              <PinnedStatDisplay
+                key={stage}
+                value={active.value}
+                suffix={active.suffix}
+              />
+
+              {/* Cross-fading label band */}
+              <div className="relative h-16 mt-6 max-w-md">
+                {STATS.map((s, i) => (
+                  <div
+                    key={s.label}
+                    className="absolute inset-0 transition-opacity duration-700 ease-in-out"
+                    style={{ opacity: i === stage ? 1 : 0 }}
+                  >
+                    <div className="text-lg sm:text-xl text-white font-semibold tracking-tight leading-tight">
+                      {s.label}
+                    </div>
+                    <div className="mt-1 text-xs text-emerald-300/80 font-mono">
+                      {s.sub}
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="mt-2 flex justify-between text-[10px] tracking-[0.2em] uppercase text-slate-600 font-mono">
-                <span>throughput</span>
-                <span>latency</span>
-                <span>errors</span>
-                <span>users / box</span>
+
+              {/* Progress + axis labels */}
+              <div className="mt-12 max-w-md">
+                <div className="h-px bg-slate-800 relative overflow-hidden">
+                  <div
+                    className="absolute inset-y-0 left-0 bg-emerald-400 transition-[width] duration-150"
+                    style={{ width: `${p * 100}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex justify-between text-[9px] tracking-[0.2em] uppercase text-slate-600 font-mono">
+                  <span>throughput</span>
+                  <span>latency</span>
+                  <span>errors</span>
+                  <span>users</span>
+                </div>
               </div>
             </div>
 
-            {/* Within-stage pulse indicator */}
-            <div className="text-[10px] tracking-[0.25em] uppercase text-slate-600 font-mono">
-              scroll to advance ·{" "}
-              <span className="text-emerald-400">
-                {Math.round(stageProgress * 100)}%
-              </span>
+            {/* Right — laptop showing the stage-relevant screen */}
+            <div className="lg:col-span-6 relative">
+              <div
+                className="relative"
+                style={{ perspective: "1800px" }}
+              >
+                <div
+                  style={{
+                    transform: "rotateX(3deg) rotateY(-4deg)",
+                    transformStyle: "preserve-3d",
+                    transition: "transform 200ms ease-out",
+                  }}
+                >
+                  <LaptopFrame
+                    url={
+                      stage <= 1
+                        ? "aushadhi.app/"
+                        : stage === 2
+                          ? "aushadhi.app/sales"
+                          : "aushadhi.app/reports/gst-r3"
+                    }
+                  >
+                    <ScreenDashboard show={stage <= 1} />
+                    <ScreenInvoices show={stage === 2} />
+                    <ScreenGSTR show={stage === 3} />
+                  </LaptopFrame>
+                </div>
+                <div className="mx-auto mt-2 h-5 w-[72%] bg-black/40 blur-2xl rounded-full" />
+              </div>
+
+              {/* Caption that changes with the stage */}
+              <div className="mt-5 relative h-6">
+                {[
+                  "Dashboard - 30s cache, 6ms p95.",
+                  "Dashboard - cached, sub-frame.",
+                  "Sale list - paginated, 50-row pages.",
+                  "Ready for GSTR.",
+                ].map((c, i) => (
+                  <div
+                    key={c}
+                    className="absolute inset-0 text-center text-sm text-slate-400 transition-opacity duration-700 ease-in-out"
+                    style={{ opacity: i === stage ? 1 : 0 }}
+                  >
+                    {c}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -758,7 +758,6 @@ function PinnedStatDisplay({
   value: number;
   suffix: string;
 }) {
-  // count-up from 0 to value when this stage mounts (key swap remounts)
   const [v, setV] = useState(0);
   useEffect(() => {
     let raf = 0;
@@ -776,11 +775,8 @@ function PinnedStatDisplay({
 
   return (
     <div
-      className="text-[96px] sm:text-[200px] leading-[0.85] font-semibold tracking-[-0.06em] tabular-nums"
-      style={{
-        fontFeatureSettings: '"tnum","ss01"',
-        textShadow: "0 0 100px rgba(16,185,129,0.25)",
-      }}
+      className="text-[76px] sm:text-[120px] leading-[0.9] font-semibold tracking-[-0.045em] tabular-nums"
+      style={{ fontFeatureSettings: '"tnum"' }}
     >
       {value === 0 && v < 0.5 ? "0" : Math.round(v).toLocaleString()}
       <span className="text-emerald-400">{suffix}</span>
@@ -1212,7 +1208,13 @@ function Specs() {
 }
 
 // Scroll-bound pinned showcase - laptop transforms continuously with scroll.
-function IridescentHalo({ spread = 1.1 }: { spread?: number }) {
+function IridescentHalo({
+  spread = 1.1,
+  intensity = 0.45,
+}: {
+  spread?: number;
+  intensity?: number;
+}) {
   return (
     <>
       <style>{`
@@ -1220,8 +1222,8 @@ function IridescentHalo({ spread = 1.1 }: { spread?: number }) {
           to { transform: rotate(360deg); }
         }
         @keyframes haloShift {
-          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-          50% { transform: translate(-50%, -50%) scale(1.08); opacity: 0.85; }
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.55; }
+          50% { transform: translate(-50%, -50%) scale(1.05); opacity: 0.72; }
         }
       `}</style>
       <div
@@ -1232,8 +1234,8 @@ function IridescentHalo({ spread = 1.1 }: { spread?: number }) {
           maxWidth: 1400,
           aspectRatio: "1 / 0.6",
           transform: "translate(-50%, -50%)",
-          filter: "blur(70px)",
-          animation: "haloShift 8s ease-in-out infinite",
+          filter: "blur(90px)",
+          animation: "haloShift 9s ease-in-out infinite",
         }}
       >
         <div
@@ -1241,16 +1243,17 @@ function IridescentHalo({ spread = 1.1 }: { spread?: number }) {
           style={{
             background:
               "conic-gradient(from 0deg, #ff8a8a 0%, #ffd28a 14%, #fff48a 28%, #a8f0c2 42%, #8acdff 56%, #b69cff 70%, #ff9cce 84%, #ff8a8a 100%)",
-            opacity: 0.55,
-            animation: "haloSpin 18s linear infinite",
+            opacity: intensity,
+            animation: "haloSpin 22s linear infinite",
             transformOrigin: "center",
           }}
         />
+        {/* Stronger inner mask so content over the halo stays crisp */}
         <div
-          className="absolute inset-[12%] rounded-[50%]"
+          className="absolute inset-[8%] rounded-[50%]"
           style={{
             background:
-              "radial-gradient(closest-side, rgba(255,255,255,0.45), transparent 75%)",
+              "radial-gradient(closest-side, rgba(255,255,255,0.85), rgba(255,255,255,0.4) 55%, transparent 85%)",
           }}
         />
       </div>
