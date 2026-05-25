@@ -889,30 +889,36 @@ function ArchitectureDiagram() {
   const STAGE_INFO = [
     {
       title: "Edge · cluster",
+      lead: "Requests fan out across workers.",
+      body: "Node's cluster module forks one Express worker per CPU core. They all share port 3000 via the OS accept queue — the kernel hands each new connection to the least busy worker. A crashed worker is respawned by the primary process; in-flight requests on it die, the rest keep serving.",
       metrics: [
         { k: "throughput", v: "1,146 req/s" },
         { k: "workers", v: "4 active" },
         { k: "respawn", v: "auto" },
       ],
-      code: "cluster.fork(); // per cpu",
+      code: "for (let i = 0; i < os.cpus().length; i++) cluster.fork();",
     },
     {
       title: "Read-through cache",
+      lead: "Hot reads skip Postgres entirely.",
+      body: "Endpoints like /reports/dashboard-summary wrap their query in cache.wrap(key, ttl, fetch). First request computes and stores; every request in the next 30 seconds returns the cached JSON in ~6 ms. If Redis is unreachable the wrapper silently falls back to running fetch directly — no errors, just slower.",
       metrics: [
         { k: "p95 hit", v: "6.34 ms" },
         { k: "ttl", v: "30 s" },
         { k: "fallback", v: "graceful" },
       ],
-      code: 'cache.wrap("dashboard:v1", 30, fetch)',
+      code: 'cache.wrap("dashboard:v1", 30, () => prisma.invoice.findMany(...))',
     },
     {
       title: "Atomic write path",
+      lead: "Invoice + stock + ledger commit together.",
+      body: "Every sale opens a single Prisma transaction. It writes the invoice row, decrements batch stock, and posts a balanced double-entry journal — Dr debtors, Cr sales, Cr GST output. Either all three land or none do. Read-committed isolation keeps concurrent invoice numbers from colliding without serializing the table.",
       metrics: [
         { k: "tables", v: "21" },
         { k: "isolation", v: "read-committed" },
         { k: "tx", v: "single" },
       ],
-      code: "prisma.$transaction([invoice, stock, ledger])",
+      code: "prisma.$transaction([invoice, batch, journalEntry])",
     },
   ];
   const info = STAGE_INFO[stage];
@@ -1242,6 +1248,29 @@ function ArchitectureDiagram() {
           <circle cx="260" cy="295" r="2.5" fill="#10b981" className="arch-live" />
         )}
       </svg>
+      </div>
+
+      {/* Explanation — updates per stage, cross-fades on click */}
+      <div className="border-t border-slate-200 px-4 sm:px-6 py-4 bg-white">
+        <div className="relative min-h-[5.5em]">
+          {STAGE_INFO.map((s, i) => (
+            <div
+              key={s.title}
+              className="absolute inset-0 transition-opacity duration-500 ease-in-out"
+              style={{
+                opacity: i === stage ? 1 : 0,
+                pointerEvents: i === stage ? "auto" : "none",
+              }}
+            >
+              <div className="text-sm font-semibold text-slate-900 tracking-tight mb-1">
+                {s.lead}
+              </div>
+              <p className="text-[12.5px] text-slate-600 leading-relaxed">
+                {s.body}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Metrics strip — updates per stage */}
