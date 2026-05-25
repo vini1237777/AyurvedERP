@@ -14,7 +14,7 @@ type NavItem =
 // roles undefined = visible to everyone authenticated
 const ALL: Role[] = ["ADMIN", "SELLER", "ACCOUNTANT", "RETAILER"];
 const NAV: { group: string; roles?: Role[]; items: NavItem[] }[] = [
-  { group: "Main", items: [{ path: "/", label: "Dashboard" }] },
+  { group: "Main", items: [{ path: "/dashboard", label: "Dashboard" }] },
   {
     group: "Sales",
     roles: ["ADMIN", "SELLER", "ACCOUNTANT", "RETAILER"],

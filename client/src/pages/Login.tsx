@@ -186,7 +186,7 @@ export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
   const loc = useLocation() as { state?: { from?: { pathname?: string } } };
-  const from = loc.state?.from?.pathname || "/";
+  const from = loc.state?.from?.pathname || "/dashboard";
 
   const DEMO_ROLES: {
     role: "ADMIN" | "SELLER" | "ACCOUNTANT" | "RETAILER";

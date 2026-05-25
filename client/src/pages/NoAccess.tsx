@@ -62,7 +62,7 @@ export default function NoAccess() {
             Go back
           </button>
           <Link
-            to="/"
+            to="/dashboard"
             className="px-4 py-2 text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-white rounded-lg"
           >
             Dashboard
