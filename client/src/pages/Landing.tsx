@@ -184,7 +184,7 @@ function Reveal({
       const rect = outer.getBoundingClientRect();
       const vh = window.innerHeight;
       const center = rect.top + rect.height / 2;
-      const trigger = vh * 0.2;
+      const trigger = vh * 0.25;
       let o = 1;
       if (center < trigger) {
         o = Math.max(0, Math.min(1, center / trigger));
