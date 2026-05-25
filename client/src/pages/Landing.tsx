@@ -186,7 +186,10 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-slate-900">
       <Header />
       <Hero />
+      <Modules />
       <PinnedShowcase />
+      <Performance />
+      <Architecture />
       <BillSection />
       <Specs />
       <CTA />
@@ -294,6 +297,416 @@ function Hero() {
         </div>
       </Reveal>
     </section>
+  );
+}
+
+function Modules() {
+  const MODULES = [
+    {
+      name: "Sales & Billing",
+      copy: "Multi-item invoices with batch, expiry and live GST routing.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 4h12l4 4v12H4z" />
+          <path d="M16 4v4h4" />
+          <path d="M8 13h8M8 17h5" />
+        </svg>
+      ),
+    },
+    {
+      name: "Purchases",
+      copy: "Supplier ledgers, GRN-style stock-in and ITC capture per invoice.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 7h3l2 11h9l2-8H7" />
+          <circle cx="10" cy="20" r="1.4" />
+          <circle cx="17" cy="20" r="1.4" />
+        </svg>
+      ),
+    },
+    {
+      name: "Inventory & Batches",
+      copy: "Batch-wise stock with expiry alerts and low-stock thresholds.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 8l8-4 8 4v8l-8 4-8-4z" />
+          <path d="M4 8l8 4 8-4" />
+          <path d="M12 12v8" />
+        </svg>
+      ),
+    },
+    {
+      name: "Double-Entry Ledger",
+      copy: "Atomic journal entries, balanced postings, instant reversals.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6 4h11a2 2 0 012 2v14H8a2 2 0 01-2-2z" />
+          <path d="M6 4v16" />
+          <path d="M10 9h6M10 13h6" />
+        </svg>
+      ),
+    },
+    {
+      name: "Reports & Returns",
+      copy: "GSTR-1, GSTR-3B, HSN §12, Trial Balance, P&L from the ledger.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 20V8M10 20V4M16 20v-8M22 20H2" />
+        </svg>
+      ),
+    },
+    {
+      name: "Auth & Roles",
+      copy: "JWT with refresh tokens, four roles, per-route RBAC.",
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l8 4v5c0 5-3.5 8.5-8 9-4.5-.5-8-4-8-9V7z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden bg-white border-b border-slate-200">
+      <Sprig
+        className="top-20 -right-8 opacity-30 hidden lg:block"
+        factor={-0.05}
+        offset={1000}
+        scale={0.9}
+        variant={2}
+      />
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-36">
+        <Reveal>
+          <div className="text-center mb-20">
+            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-emerald-700 mb-4">
+              Capabilities
+            </div>
+            <h2 className="text-[52px] sm:text-7xl font-semibold text-slate-900 tracking-[-0.04em] leading-[0.95]">
+              Everything a
+              <br />
+              distributor needs.
+            </h2>
+          </div>
+        </Reveal>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-slate-200 border border-slate-200 rounded-3xl overflow-hidden">
+          {MODULES.map((m, i) => (
+            <Reveal key={m.name} delay={i * 60}>
+              <div className="group h-full bg-white p-8 sm:p-10 transition-colors hover:bg-emerald-50/30">
+                <div className="w-10 h-10 mb-6 text-emerald-700 group-hover:scale-110 transition-transform">
+                  {m.icon}
+                </div>
+                <div className="text-lg font-semibold text-slate-900 tracking-tight mb-2">
+                  {m.name}
+                </div>
+                <div className="text-sm text-slate-500 leading-relaxed">
+                  {m.copy}
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function useCountUp(target: number, durationMs = 1400) {
+  const { ref, visible } = useReveal<HTMLDivElement>();
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!visible) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / durationMs);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setValue(target * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [visible, target, durationMs]);
+  return { ref, value };
+}
+
+function StatCounter({
+  target,
+  suffix = "",
+  decimals = 0,
+  format = "comma",
+}: {
+  target: number;
+  suffix?: string;
+  decimals?: number;
+  format?: "comma" | "plain";
+}) {
+  const { ref, value } = useCountUp(target);
+  const display =
+    format === "comma"
+      ? value.toLocaleString(undefined, {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+        })
+      : value.toFixed(decimals);
+  return (
+    <div
+      ref={ref}
+      className="text-6xl sm:text-7xl font-semibold text-slate-900 tracking-[-0.04em] tabular-nums"
+    >
+      {display}
+      <span className="text-emerald-700">{suffix}</span>
+    </div>
+  );
+}
+
+function Performance() {
+  const STATS = [
+    {
+      target: 1146,
+      suffix: " req/s",
+      label: "sustained throughput",
+      sub: "k6, 2,000 VUs, 4-core cluster",
+    },
+    {
+      target: 47,
+      suffix: " ms",
+      label: "p95 latency",
+      sub: "at 500 VUs, dashboard read path",
+    },
+    {
+      target: 0,
+      suffix: " %",
+      label: "error rate",
+      sub: "213k requests, zero 5xx",
+      decimals: 0,
+    },
+    {
+      target: 15300,
+      suffix: "",
+      label: "active users / box",
+      sub: "extrapolated at 0.075 req/s/user",
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden bg-slate-50 border-y border-slate-200">
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-36">
+        <Reveal>
+          <div className="text-center mb-20">
+            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-emerald-700 mb-4">
+              Engineered for scale
+            </div>
+            <h2 className="text-[52px] sm:text-7xl font-semibold text-slate-900 tracking-[-0.04em] leading-[0.95]">
+              Numbers that hold
+              <br />
+              up under load.
+            </h2>
+            <p className="mt-6 text-slate-500 text-lg font-light max-w-2xl mx-auto leading-relaxed">
+              Benchmarked end-to-end with k6, Redis, and Postgres on a single
+              4-core box. The architecture is stateless — every number below
+              scales horizontally behind a load balancer.
+            </p>
+          </div>
+        </Reveal>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8">
+          {STATS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 100}>
+              <div className="text-center">
+                <StatCounter
+                  target={s.target}
+                  suffix={s.suffix}
+                  decimals={s.decimals ?? 0}
+                />
+                <div className="mt-4 text-[11px] tracking-[0.2em] uppercase text-slate-700 font-semibold">
+                  {s.label}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{s.sub}</div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={400}>
+          <div className="mt-20 text-center">
+            <a
+              href="https://github.com/vini1237777/AyurvedERP/tree/main/server/load-tests"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-emerald-700 hover:text-emerald-900"
+            >
+              View the k6 scripts &rsaquo;
+            </a>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function Architecture() {
+  const LAYERS = [
+    {
+      tag: "Edge",
+      title: "Stateless workers",
+      copy: "Node.js cluster forks one Express worker per CPU. The OS load-balances connections across them; any worker can crash without dropping the rest.",
+    },
+    {
+      tag: "Cache",
+      title: "Read-through Redis",
+      copy: "Hot reads (dashboard, customers, items) wrap in cache.wrap with TTL invalidation. Falls back to no-cache gracefully if Redis is unreachable.",
+    },
+    {
+      tag: "Data",
+      title: "Postgres + Prisma",
+      copy: "21-table relational schema. Atomic transactions for invoice + stock + ledger writes. Prisma keeps the type story end-to-end.",
+    },
+  ];
+
+  return (
+    <section className="relative overflow-hidden bg-white border-b border-slate-200">
+      <Sprig
+        className="top-1/3 -left-10 opacity-25 hidden lg:block"
+        factor={0.04}
+        offset={2000}
+        scale={1}
+        variant={3}
+      />
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-36">
+        <Reveal>
+          <div className="text-center mb-20">
+            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-emerald-700 mb-4">
+              Architecture
+            </div>
+            <h2 className="text-[52px] sm:text-7xl font-semibold text-slate-900 tracking-[-0.04em] leading-[0.95]">
+              Cluster-ready.
+              <br />
+              Cache-first.
+            </h2>
+          </div>
+        </Reveal>
+
+        <Reveal delay={120}>
+          <div className="mx-auto max-w-3xl mb-24">
+            <ArchitectureDiagram />
+          </div>
+        </Reveal>
+
+        <div className="grid sm:grid-cols-3 gap-x-12 gap-y-12">
+          {LAYERS.map((l, i) => (
+            <Reveal key={l.tag} delay={i * 100}>
+              <div>
+                <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-900 pb-3 mb-5 border-b border-slate-300">
+                  {l.tag}
+                </div>
+                <div className="text-lg font-semibold text-slate-900 tracking-tight mb-2">
+                  {l.title}
+                </div>
+                <p className="text-sm text-slate-500 leading-relaxed">
+                  {l.copy}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ArchitectureDiagram() {
+  const node = (x: number, y: number, label: string, sub?: string) => (
+    <g>
+      <rect
+        x={x - 60}
+        y={y - 22}
+        width="120"
+        height="44"
+        rx="8"
+        fill="white"
+        stroke="#cbd5e1"
+        strokeWidth="1"
+      />
+      <text
+        x={x}
+        y={sub ? y - 2 : y + 4}
+        textAnchor="middle"
+        fontSize="11"
+        fontWeight="600"
+        fill="#0f172a"
+      >
+        {label}
+      </text>
+      {sub && (
+        <text
+          x={x}
+          y={y + 12}
+          textAnchor="middle"
+          fontSize="9"
+          fill="#64748b"
+        >
+          {sub}
+        </text>
+      )}
+    </g>
+  );
+
+  return (
+    <svg viewBox="0 0 600 360" className="w-full h-auto">
+      <defs>
+        <marker
+          id="arrow"
+          viewBox="0 0 10 10"
+          refX="8"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8" />
+        </marker>
+      </defs>
+
+      {/* Top: browser */}
+      {node(300, 30, "Browser", "React + Vite")}
+
+      {/* Edge: load balancer */}
+      {node(300, 110, "Load Balancer", "Nginx / Vercel Edge")}
+
+      {/* Cluster workers */}
+      {node(120, 200, "Worker 1", "Express")}
+      {node(240, 200, "Worker 2", "Express")}
+      {node(360, 200, "Worker 3", "Express")}
+      {node(480, 200, "Worker 4", "Express")}
+
+      {/* Cache + DB */}
+      {node(200, 310, "Redis", "Read-through cache")}
+      {node(400, 310, "PostgreSQL", "Prisma · 21 tables")}
+
+      {/* Lines */}
+      <g stroke="#cbd5e1" strokeWidth="1.2" fill="none">
+        <line x1="300" y1="52" x2="300" y2="88" markerEnd="url(#arrow)" />
+
+        <line x1="260" y1="132" x2="140" y2="178" markerEnd="url(#arrow)" />
+        <line x1="285" y1="132" x2="250" y2="178" markerEnd="url(#arrow)" />
+        <line x1="315" y1="132" x2="350" y2="178" markerEnd="url(#arrow)" />
+        <line x1="340" y1="132" x2="460" y2="178" markerEnd="url(#arrow)" />
+
+        <line x1="160" y1="222" x2="190" y2="288" markerEnd="url(#arrow)" />
+        <line x1="220" y1="222" x2="200" y2="288" markerEnd="url(#arrow)" />
+        <line x1="340" y1="222" x2="380" y2="288" markerEnd="url(#arrow)" />
+        <line x1="440" y1="222" x2="410" y2="288" markerEnd="url(#arrow)" />
+      </g>
+
+      {/* Side labels */}
+      <g fontSize="9" fontWeight="600" fill="#047857" letterSpacing="1.4">
+        <text x="14" y="115">EDGE</text>
+        <text x="14" y="205">CLUSTER</text>
+        <text x="14" y="315">DATA</text>
+      </g>
+    </svg>
   );
 }
 
