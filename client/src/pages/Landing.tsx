@@ -792,58 +792,82 @@ function Architecture() {
           </Reveal>
 
           {/* Right: heading + layered annotations */}
-          <Reveal className="lg:col-span-5" delay={120}>
+          <div className="lg:col-span-5">
             <div>
-              <h2 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-[-0.025em] leading-[1.1] mb-8">
-                Built to scale sideways, not up.
+              <h2 className="text-3xl sm:text-4xl font-semibold text-slate-900 tracking-[-0.025em] leading-[1.1] mb-8 min-h-[3em]">
+                <Typewriter
+                  text="Built to scale sideways, not up."
+                  speed={55}
+                />
               </h2>
 
               <ol className="relative border-l border-slate-200 pl-6 space-y-7">
                 <li className="relative">
                   <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-700" />
                   <div className="text-xs font-mono text-emerald-700 mb-1">
-                    01 · edge
+                    <Typewriter text="01 · edge" speed={50} caret={false} />
                   </div>
                   <div className="text-sm text-slate-900 font-semibold mb-1">
-                    Stateless workers
+                    <Typewriter
+                      text="Stateless workers"
+                      speed={45}
+                      caret={false}
+                    />
                   </div>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    Node cluster forks one Express worker per CPU. The kernel
-                    load-balances connections; a crashed worker respawns
-                    without dropping the rest.
-                  </p>
+                  <Reveal>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Node cluster forks one Express worker per CPU. The kernel
+                      load-balances connections; a crashed worker respawns
+                      without dropping the rest.
+                    </p>
+                  </Reveal>
                 </li>
                 <li className="relative">
                   <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-700" />
                   <div className="text-xs font-mono text-emerald-700 mb-1">
-                    02 · cache
+                    <Typewriter text="02 · cache" speed={50} caret={false} />
                   </div>
                   <div className="text-sm text-slate-900 font-semibold mb-1">
-                    Read-through Redis
+                    <Typewriter
+                      text="Read-through Redis"
+                      speed={45}
+                      caret={false}
+                    />
                   </div>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    Hot reads wrap in <code className="text-emerald-700 text-[12px] px-1 bg-emerald-50 rounded">cache.wrap</code>{" "}
-                    with TTL invalidation. Falls back to no-cache gracefully
-                    if Redis is unreachable.
-                  </p>
+                  <Reveal>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      Hot reads wrap in{" "}
+                      <code className="text-emerald-700 text-[12px] px-1 bg-emerald-50 rounded">
+                        cache.wrap
+                      </code>{" "}
+                      with TTL invalidation. Falls back to no-cache gracefully
+                      if Redis is unreachable.
+                    </p>
+                  </Reveal>
                 </li>
                 <li className="relative">
                   <span className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-emerald-700" />
                   <div className="text-xs font-mono text-emerald-700 mb-1">
-                    03 · data
+                    <Typewriter text="03 · data" speed={50} caret={false} />
                   </div>
                   <div className="text-sm text-slate-900 font-semibold mb-1">
-                    Postgres + Prisma
+                    <Typewriter
+                      text="Postgres + Prisma"
+                      speed={45}
+                      caret={false}
+                    />
                   </div>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    21-table relational schema. Atomic transactions for
-                    invoice + stock + ledger writes. Prisma keeps the type
-                    story end-to-end.
-                  </p>
+                  <Reveal>
+                    <p className="text-sm text-slate-500 leading-relaxed">
+                      21-table relational schema. Atomic transactions for
+                      invoice + stock + ledger writes. Prisma keeps the type
+                      story end-to-end.
+                    </p>
+                  </Reveal>
                 </li>
               </ol>
             </div>
-          </Reveal>
+          </div>
         </div>
       </div>
     </section>
@@ -907,41 +931,30 @@ function ArchitectureDiagram() {
           to { stroke-dashoffset: -14; }
         }
         @keyframes archPulse {
-          0%, 100% { opacity: 0.55; r: 3; }
-          50% { opacity: 1; r: 4.5; }
+          0%, 100% { opacity: 0.5; r: 3; }
+          50% { opacity: 1; r: 5; }
         }
         @keyframes archBreathe {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.008); }
         }
-        .arch-flow {
-          stroke-dasharray: 6 6;
-          animation: archFlow 1.2s linear infinite;
+        @keyframes archWorkerGlow {
+          0%, 100% { opacity: 0; }
+          50% { opacity: 0.55; }
         }
-        .arch-flow-slow {
-          stroke-dasharray: 4 6;
-          animation: archFlow 1.6s linear infinite;
+        @keyframes archLiveBlink {
+          0%, 100% { opacity: 0.4; }
+          50% { opacity: 1; }
         }
-        .arch-pulse {
-          transform-origin: center;
-          animation: archPulse 2s ease-in-out infinite;
-        }
-        .arch-pulse-2 {
-          animation: archPulse 2s ease-in-out infinite;
-          animation-delay: 0.4s;
-        }
-        .arch-pulse-3 {
-          animation: archPulse 2s ease-in-out infinite;
-          animation-delay: 0.8s;
-        }
-        .arch-pulse-4 {
-          animation: archPulse 2s ease-in-out infinite;
-          animation-delay: 1.2s;
-        }
-        .arch-cluster {
-          transform-origin: center;
-          animation: archBreathe 4s ease-in-out infinite;
-        }
+        .arch-flow { stroke-dasharray: 6 6; animation: archFlow 1.2s linear infinite; }
+        .arch-flow-slow { stroke-dasharray: 4 6; animation: archFlow 1.6s linear infinite; }
+        .arch-pulse { transform-origin: center; animation: archPulse 1.6s ease-in-out infinite; }
+        .arch-pulse-2 { animation: archPulse 1.6s ease-in-out infinite; animation-delay: 0.4s; }
+        .arch-pulse-3 { animation: archPulse 1.6s ease-in-out infinite; animation-delay: 0.8s; }
+        .arch-pulse-4 { animation: archPulse 1.6s ease-in-out infinite; animation-delay: 1.2s; }
+        .arch-cluster { transform-origin: center; animation: archBreathe 4s ease-in-out infinite; }
+        .arch-worker-glow { animation: archWorkerGlow 1.8s ease-in-out infinite; }
+        .arch-live { animation: archLiveBlink 1.4s ease-in-out infinite; }
       `}</style>
       <svg viewBox="0 0 460 360" className="w-full h-auto">
         <defs>
@@ -955,19 +968,42 @@ function ArchitectureDiagram() {
           </radialGradient>
         </defs>
 
-        {/* Top: Load Balancer */}
+        {/* Top: Load Balancer with live indicator */}
         {pill(230, 36, 180, "Load Balancer", "edge · accept-balanced")}
+        <circle
+          cx="148"
+          cy="36"
+          r="2.5"
+          fill="#10b981"
+          className="arch-live"
+        />
 
-        {/* Animated flow line to cluster */}
-        <line
-          x1="230"
-          y1="58"
-          x2="230"
-          y2="98"
+        {/* Flow LB → cluster (path + traveling packets) */}
+        <path
+          d="M 230 58 L 230 98"
           stroke="#10b981"
           strokeWidth="1.5"
+          fill="none"
           className="arch-flow"
         />
+        {[0, 0.6, 1.2].map((d, i) => (
+          <circle key={i} r="2.5" fill="#10b981" opacity="0">
+            <animateMotion
+              dur="1.8s"
+              repeatCount="indefinite"
+              begin={`${d}s`}
+              path="M 230 58 L 230 98"
+            />
+            <animate
+              attributeName="opacity"
+              values="0;1;1;0"
+              keyTimes="0;0.15;0.85;1"
+              dur="1.8s"
+              repeatCount="indefinite"
+              begin={`${d}s`}
+            />
+          </circle>
+        ))}
 
         {/* Cluster container - breathes */}
         <g className="arch-cluster" style={{ transformBox: "fill-box" }}>
@@ -1045,15 +1081,55 @@ function ArchitectureDiagram() {
           </g>
         ))}
 
-        {/* Animated flow lines down to cache + db */}
+        {/* Flow lines to cache + db (with traveling packets) */}
         <g stroke="#10b981" strokeWidth="1.5" fill="none">
           <path d="M 150 226 L 150 270 L 130 270" className="arch-flow-slow" />
           <path d="M 310 226 L 310 270 L 330 270" className="arch-flow-slow" />
         </g>
+        {[0, 0.8].map((d, i) => (
+          <circle key={`r${i}`} r="2.2" fill="#10b981" opacity="0">
+            <animateMotion
+              dur="1.6s"
+              repeatCount="indefinite"
+              begin={`${d}s`}
+              path="M 150 226 L 150 270 L 130 270"
+            />
+            <animate
+              attributeName="opacity"
+              values="0;1;1;0"
+              keyTimes="0;0.15;0.85;1"
+              dur="1.6s"
+              repeatCount="indefinite"
+              begin={`${d}s`}
+            />
+          </circle>
+        ))}
+        {[0.2, 1].map((d, i) => (
+          <circle key={`p${i}`} r="2.2" fill="#10b981" opacity="0">
+            <animateMotion
+              dur="1.6s"
+              repeatCount="indefinite"
+              begin={`${d}s`}
+              path="M 310 226 L 310 270 L 330 270"
+            />
+            <animate
+              attributeName="opacity"
+              values="0;1;1;0"
+              keyTimes="0;0.15;0.85;1"
+              dur="1.6s"
+              repeatCount="indefinite"
+              begin={`${d}s`}
+            />
+          </circle>
+        ))}
 
         {/* Cache + DB */}
         {pill(130, 295, 170, "Redis", "TTL · graceful fallback", "leaf")}
         {pill(330, 295, 170, "PostgreSQL", "Prisma · 21 tables", "leaf")}
+
+        {/* Live indicators on Redis & Postgres */}
+        <circle cx="60" cy="295" r="2.5" fill="#10b981" className="arch-live" />
+        <circle cx="260" cy="295" r="2.5" fill="#10b981" className="arch-live" />
       </svg>
     </div>
   );
