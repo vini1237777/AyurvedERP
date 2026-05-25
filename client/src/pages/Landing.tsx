@@ -319,22 +319,45 @@ function Hero() {
         </Reveal>
       </div>
       <Reveal delay={320}>
-        <div className="max-w-5xl mx-auto px-6 pb-16">
-          <div className="relative mx-auto" style={{ perspective: "1800px" }}>
-            <IridescentHalo spread={1.35} />
-            <div
-              className="relative"
-              style={{
-                transform: "rotateX(2deg)",
-                transformStyle: "preserve-3d",
-              }}
-            >
-              <LaptopFrame>
-                <ScreenDashboard show />
-              </LaptopFrame>
+        <div className="max-w-6xl mx-auto px-6 pb-16">
+          <div
+            className="relative mx-auto"
+            style={{ perspective: "2200px" }}
+          >
+            <IridescentHalo spread={1.5} />
+
+            <div className="relative flex items-end justify-center gap-4 sm:gap-6">
+              {/* Laptop — left, slight 3D tilt */}
+              <div
+                className="relative flex-1 max-w-[860px]"
+                style={{
+                  transform: "rotateX(3deg) rotateY(-4deg)",
+                  transformStyle: "preserve-3d",
+                  transformOrigin: "right center",
+                }}
+              >
+                <LaptopFrame>
+                  <ScreenDashboard show />
+                </LaptopFrame>
+              </div>
+
+              {/* Phone — right, floats up, opposite tilt */}
+              <div
+                className="relative hidden sm:block w-[180px] lg:w-[220px] -mb-6 lg:-mb-12"
+                style={{
+                  transform: "rotateX(3deg) rotateY(8deg) translateY(-10%)",
+                  transformStyle: "preserve-3d",
+                  transformOrigin: "left center",
+                }}
+              >
+                <PhoneFrame>
+                  <ScreenPhone />
+                </PhoneFrame>
+              </div>
             </div>
-            {/* Subtle ground shadow */}
-            <div className="mx-auto mt-2 h-6 w-[70%] bg-slate-900/10 blur-2xl rounded-full" />
+
+            {/* Shared ground shadow */}
+            <div className="mx-auto mt-2 h-8 w-[78%] bg-slate-900/10 blur-2xl rounded-full" />
           </div>
         </div>
       </Reveal>
@@ -1498,6 +1521,141 @@ function Footer() {
         <span>A portfolio demo</span>
       </div>
     </footer>
+  );
+}
+
+function PhoneFrame({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative mx-auto w-full">
+      <div className="bg-slate-900 rounded-[34px] p-1.5 shadow-2xl shadow-slate-900/30 ring-1 ring-slate-800/60">
+        <div className="bg-white rounded-[28px] overflow-hidden aspect-[9/19] relative">
+          {/* Notch */}
+          <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-10 h-4 w-16 bg-slate-900 rounded-full" />
+          <div className="relative h-full">{children}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScreenPhone() {
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-b from-white to-slate-50">
+      {/* Status bar */}
+      <div className="h-7 flex items-center justify-between px-4 text-[8px] font-semibold text-slate-900 pt-2">
+        <span>9:41</span>
+        <div className="flex items-center gap-0.5">
+          <span className="inline-block w-1 h-1 rounded-full bg-slate-900" />
+          <span className="inline-block w-1 h-1.5 rounded-full bg-slate-900" />
+          <span className="inline-block w-1 h-2 rounded-full bg-slate-900" />
+        </div>
+      </div>
+
+      {/* App header */}
+      <div className="px-3.5 pt-2">
+        <div className="text-[8px] tracking-[0.15em] uppercase text-emerald-700 font-semibold">
+          GSTR-3B · live
+        </div>
+        <div className="text-base font-semibold text-slate-900 tracking-tight mt-0.5">
+          ₹48,120
+          <span className="text-emerald-600 text-[10px] ml-1 font-medium">
+            net payable
+          </span>
+        </div>
+      </div>
+
+      {/* Sparkline */}
+      <div className="px-3.5 mt-3">
+        <svg viewBox="0 0 220 70" className="w-full h-12">
+          <defs>
+            <linearGradient id="ph-spark" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0 50 L25 45 L50 55 L75 30 L100 35 L125 18 L150 25 L175 12 L200 20 L220 6"
+            stroke="#10b981"
+            strokeWidth="2"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M0 50 L25 45 L50 55 L75 30 L100 35 L125 18 L150 25 L175 12 L200 20 L220 6 L220 70 L0 70 Z"
+            fill="url(#ph-spark)"
+          />
+        </svg>
+      </div>
+
+      {/* Mini stat cards */}
+      <div className="px-3.5 mt-2 grid grid-cols-2 gap-1.5">
+        {[
+          { l: "Output", v: "₹62,400", c: "text-slate-900" },
+          { l: "Input ITC", v: "₹14,280", c: "text-emerald-700" },
+        ].map((c) => (
+          <div key={c.l} className="bg-white border border-slate-200 rounded-md px-2 py-1.5">
+            <div className="text-[7px] uppercase tracking-wider text-slate-400">
+              {c.l}
+            </div>
+            <div className={`text-[10px] font-semibold ${c.c}`}>{c.v}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* List rows */}
+      <div className="mt-3 px-3.5 flex-1">
+        <div className="text-[8px] uppercase tracking-wider text-slate-400 mb-1.5">
+          Recent invoices
+        </div>
+        {[
+          ["INV-1247", "Sunrise Pharma", "₹3,240"],
+          ["INV-1246", "Dilip Salunkhe", "₹1,820"],
+          ["INV-1245", "Mod Mane Agencies", "₹5,610"],
+          ["INV-1244", "Vinod Joshi", "₹4,150"],
+        ].map(([no, name, amt]) => (
+          <div
+            key={no}
+            className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0"
+          >
+            <div className="min-w-0">
+              <div className="text-[8.5px] font-semibold text-slate-900">
+                {no}
+              </div>
+              <div className="text-[7.5px] text-slate-500 truncate">
+                {name}
+              </div>
+            </div>
+            <div className="text-[8.5px] font-semibold text-slate-900">
+              {amt}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom tab bar */}
+      <div className="h-9 bg-white/80 backdrop-blur border-t border-slate-100 flex items-center justify-around px-3 pb-1">
+        {[
+          { d: "M3 12l9-9 9 9M5 10v10h14V10" },
+          { d: "M4 4h16v4H4zM4 12h16v4H4z" },
+          { d: "M4 6h16M4 12h16M4 18h16" },
+        ].map((i, idx) => (
+          <svg
+            key={idx}
+            viewBox="0 0 24 24"
+            className={`w-3.5 h-3.5 ${idx === 0 ? "text-emerald-700" : "text-slate-400"}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d={i.d} />
+          </svg>
+        ))}
+      </div>
+      <div className="mx-auto mb-1 h-0.5 w-10 bg-slate-900 rounded-full opacity-70" />
+    </div>
   );
 }
 
