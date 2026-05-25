@@ -1248,7 +1248,7 @@ function PinnedShowcase() {
 
       <div className="sticky top-0 h-screen flex flex-col overflow-hidden">
         {/* Heading row */}
-        <div className="pt-[5vh] px-6 text-center min-h-[140px]">
+        <div className="pt-[10vh] px-6 text-center min-h-[140px]">
           <div key={`title-${stage}`} className="stage-fade">
             <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-500 mb-3">
               {sections[stage].eyebrow}
