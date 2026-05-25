@@ -184,11 +184,10 @@ function Reveal({
       const rect = outer.getBoundingClientRect();
       const vh = window.innerHeight;
       const center = rect.top + rect.height / 2;
-      const half = vh * 0.5;
+      const trigger = vh * 0.3;
       let o = 1;
-      if (center < half) {
-        const span = half * 0.85;
-        o = Math.max(0, Math.min(1, center / span));
+      if (center < trigger) {
+        o = Math.max(0, Math.min(1, center / trigger));
       }
       inner.style.opacity = String(o);
       ticking = false;
