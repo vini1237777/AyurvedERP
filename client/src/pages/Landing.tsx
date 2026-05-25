@@ -226,8 +226,8 @@ export default function Landing() {
     <div className="min-h-screen bg-white text-slate-900">
       <Header />
       <Hero />
-      <Modules />
       <PinnedShowcase />
+      <Modules />
       <Performance />
       <Architecture />
       <BillSection />
@@ -1187,6 +1187,51 @@ function Specs() {
 }
 
 // Scroll-bound pinned showcase - laptop transforms continuously with scroll.
+function IridescentHalo() {
+  return (
+    <>
+      <style>{`
+        @keyframes haloSpin {
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        @keyframes haloShift {
+          0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.55; }
+          50% { transform: translate(-50%, -50%) scale(1.06); opacity: 0.75; }
+        }
+      `}</style>
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-1/2 -z-0"
+        style={{
+          width: "min(110%, 1100px)",
+          aspectRatio: "1 / 0.55",
+          transform: "translate(-50%, -50%)",
+          filter: "blur(60px)",
+          animation: "haloShift 8s ease-in-out infinite",
+        }}
+      >
+        <div
+          className="absolute inset-0 rounded-[50%]"
+          style={{
+            background:
+              "conic-gradient(from 0deg, #ff8a8a 0%, #ffd28a 14%, #fff48a 28%, #a8f0c2 42%, #8acdff 56%, #b69cff 70%, #ff9cce 84%, #ff8a8a 100%)",
+            opacity: 0.5,
+            animation: "haloSpin 18s linear infinite",
+            transformOrigin: "center",
+          }}
+        />
+        <div
+          className="absolute inset-[10%] rounded-[50%]"
+          style={{
+            background:
+              "radial-gradient(closest-side, rgba(255,255,255,0.5), transparent 70%)",
+          }}
+        />
+      </div>
+    </>
+  );
+}
+
 function PinnedShowcase() {
   const { ref, progress } = useScrollProgress<HTMLDivElement>();
 
@@ -1260,11 +1305,12 @@ function PinnedShowcase() {
 
         {/* Laptop - takes remaining middle space */}
         <div
-          className="flex-1 flex items-center justify-center w-full px-6 min-h-0"
+          className="relative flex-1 flex items-center justify-center w-full px-6 min-h-0"
           style={{ perspective: "1800px" }}
         >
+          <IridescentHalo />
           <div
-            className="w-full max-w-4xl"
+            className="relative w-full max-w-4xl"
             style={{
               transform: `rotateX(${rotateX}deg) scale(${scale}) translateY(${translateY}px)`,
               transformStyle: "preserve-3d",
