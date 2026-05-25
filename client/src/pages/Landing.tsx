@@ -365,6 +365,63 @@ function Hero() {
   );
 }
 
+function Typewriter({
+  text,
+  split,
+  speed = 32,
+  className = "",
+  splitClassName = "",
+  caret = true,
+}: {
+  text: string;
+  split?: number;
+  speed?: number;
+  className?: string;
+  splitClassName?: string;
+  caret?: boolean;
+}) {
+  const { ref, visible } = useReveal<HTMLSpanElement>();
+  const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    if (!visible) return;
+    let i = 0;
+    const id = window.setInterval(() => {
+      i++;
+      setShown(i);
+      if (i >= text.length) window.clearInterval(id);
+    }, speed);
+    return () => window.clearInterval(id);
+  }, [visible, text, speed]);
+
+  const done = shown >= text.length;
+  const caretEl = caret && (
+    <span
+      aria-hidden="true"
+      className={`inline-block w-[3px] h-[0.8em] ml-[2px] align-[-0.05em] bg-emerald-600 ${done ? "animate-pulse" : ""}`}
+    />
+  );
+
+  if (split !== undefined) {
+    const a = text.slice(0, Math.min(shown, split));
+    const b = shown > split ? text.slice(split, shown) : "";
+    return (
+      <span ref={ref} className={className}>
+        {a}
+        {b && <span className={splitClassName}>{b}</span>}
+        {caretEl}
+      </span>
+    );
+  }
+
+  return (
+    <span ref={ref} className={className}>
+      {text.slice(0, shown)}
+      {caretEl}
+    </span>
+  );
+}
+
 function TiltCard({
   children,
   intensity = 6,
@@ -470,16 +527,16 @@ function Modules() {
     <section className="relative overflow-hidden bg-white">
       <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
         <IridescentHalo spread={1.4} intensity={0.35} />
-        <Reveal>
-          <div className="max-w-2xl mb-16">
-            <h2 className="text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05]">
-              One workspace for the whole distributor cycle,
-              <span className="text-slate-400">
-                {" "}billing to ledger to compliance.
-              </span>
-            </h2>
-          </div>
-        </Reveal>
+        <div className="max-w-2xl mb-16">
+          <h2 className="text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05]">
+            <Typewriter
+              text="One workspace for the whole distributor cycle, billing to ledger to compliance."
+              split={48}
+              splitClassName="text-slate-400"
+              speed={28}
+            />
+          </h2>
+        </div>
 
         <div className="bg-slate-200/70 rounded-2xl overflow-hidden border border-slate-200/80">
         <div className="grid lg:grid-cols-3 gap-px">
