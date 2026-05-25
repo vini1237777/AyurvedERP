@@ -372,6 +372,7 @@ function Typewriter({
   className = "",
   splitClassName = "",
   caret = true,
+  once = false,
 }: {
   text: string;
   split?: number;
@@ -379,6 +380,7 @@ function Typewriter({
   className?: string;
   splitClassName?: string;
   caret?: boolean;
+  once?: boolean;
 }) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const [visible, setVisible] = useState(false);
@@ -391,9 +393,14 @@ function Typewriter({
       (entries) => {
         for (const e of entries) {
           if (e.isIntersecting) {
-            setShown(0);
-            setVisible(true);
-          } else {
+            if (once) {
+              setVisible(true);
+              obs.unobserve(e.target);
+            } else {
+              setShown(0);
+              setVisible(true);
+            }
+          } else if (!once) {
             setVisible(false);
           }
         }
@@ -402,7 +409,7 @@ function Typewriter({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [once]);
 
   useEffect(() => {
     if (!visible) return;
@@ -555,6 +562,7 @@ function Modules() {
               split={48}
               splitClassName="text-slate-400"
               speed={55}
+              once
             />
           </h2>
         </div>
@@ -875,6 +883,9 @@ function Architecture() {
 }
 
 function ArchitectureDiagram() {
+  const [stage, setStage] = useState(0);
+  const stages = ["edge", "cache", "data"] as const;
+
   const pill = (
     x: number,
     y: number,
@@ -882,12 +893,18 @@ function ArchitectureDiagram() {
     label: string,
     sub: string,
     tone: "ink" | "leaf" = "ink",
+    dim: boolean = false,
   ) => {
     const fill = tone === "leaf" ? "#ecfdf5" : "#ffffff";
     const stroke = tone === "leaf" ? "#a7f3d0" : "#e2e8f0";
     const labelFill = tone === "leaf" ? "#065f46" : "#0f172a";
     return (
-      <g>
+      <g
+        style={{
+          opacity: dim ? 0.35 : 1,
+          transition: "opacity 400ms ease-out",
+        }}
+      >
         <rect
           x={x - w / 2}
           y={y - 22}
@@ -969,24 +986,28 @@ function ArchitectureDiagram() {
         </defs>
 
         {/* Top: Load Balancer with live indicator */}
-        {pill(230, 36, 180, "Load Balancer", "edge · accept-balanced")}
-        <circle
-          cx="148"
-          cy="36"
-          r="2.5"
-          fill="#10b981"
-          className="arch-live"
-        />
+        {pill(230, 36, 180, "Load Balancer", "edge · accept-balanced", "ink", stage !== 0)}
+        {stage === 0 && (
+          <circle
+            cx="148"
+            cy="36"
+            r="2.5"
+            fill="#10b981"
+            className="arch-live"
+          />
+        )}
 
-        {/* Flow LB → cluster (path + traveling packets) */}
+        {/* Flow LB → cluster (only animates on stage 0) */}
         <path
           d="M 230 58 L 230 98"
-          stroke="#10b981"
+          stroke={stage === 0 ? "#10b981" : "#cbd5e1"}
           strokeWidth="1.5"
           fill="none"
-          className="arch-flow"
+          className={stage === 0 ? "arch-flow" : ""}
+          strokeDasharray={stage === 0 ? undefined : "3 3"}
+          style={{ transition: "stroke 400ms ease-out" }}
         />
-        {[0, 0.6, 1.2].map((d, i) => (
+        {stage === 0 && [0, 0.6, 1.2].map((d, i) => (
           <circle key={i} r="2.5" fill="#10b981" opacity="0">
             <animateMotion
               dur="1.8s"
@@ -1030,14 +1051,20 @@ function ArchitectureDiagram() {
           NODE CLUSTER · ×4 WORKERS
         </text>
 
-        {/* 4 worker chips with staggered pulse */}
+        {/* 4 worker chips — active visual only on stage 0 */}
         {[
           { x: 100, n: "worker 1", cls: "arch-pulse" },
           { x: 190, n: "worker 2", cls: "arch-pulse-2" },
           { x: 280, n: "worker 3", cls: "arch-pulse-3" },
           { x: 370, n: "worker 4", cls: "arch-pulse-4" },
         ].map((w) => (
-          <g key={w.n}>
+          <g
+            key={w.n}
+            style={{
+              opacity: stage === 0 ? 1 : 0.45,
+              transition: "opacity 400ms ease-out",
+            }}
+          >
             <rect
               x={w.x - 38}
               y={150}
@@ -1045,17 +1072,18 @@ function ArchitectureDiagram() {
               height="56"
               rx="8"
               fill="#ffffff"
-              stroke="#cbd5e1"
+              stroke={stage === 0 ? "#a7f3d0" : "#cbd5e1"}
               strokeWidth="1"
             />
-            {/* glow halo behind the dot */}
-            <circle cx={w.x} cy={166} r="10" fill="url(#node-glow)" />
+            {stage === 0 && (
+              <circle cx={w.x} cy={166} r="10" fill="url(#node-glow)" />
+            )}
             <circle
               cx={w.x}
               cy={166}
               r="3"
               fill="#10b981"
-              className={w.cls}
+              className={stage === 0 ? w.cls : ""}
             />
             <text
               x={w.x}
@@ -1081,12 +1109,17 @@ function ArchitectureDiagram() {
           </g>
         ))}
 
-        {/* Flow lines to cache + db (with traveling packets) */}
-        <g stroke="#10b981" strokeWidth="1.5" fill="none">
-          <path d="M 150 226 L 150 270 L 130 270" className="arch-flow-slow" />
-          <path d="M 310 226 L 310 270 L 330 270" className="arch-flow-slow" />
-        </g>
-        {[0, 0.8].map((d, i) => (
+        {/* Flow line cluster → Redis (active only on stage 1) */}
+        <path
+          d="M 150 226 L 150 270 L 130 270"
+          stroke={stage === 1 ? "#10b981" : "#cbd5e1"}
+          strokeWidth="1.5"
+          fill="none"
+          className={stage === 1 ? "arch-flow-slow" : ""}
+          strokeDasharray={stage === 1 ? undefined : "3 3"}
+          style={{ transition: "stroke 400ms ease-out" }}
+        />
+        {stage === 1 && [0, 0.8].map((d, i) => (
           <circle key={`r${i}`} r="2.2" fill="#10b981" opacity="0">
             <animateMotion
               dur="1.6s"
@@ -1104,7 +1137,18 @@ function ArchitectureDiagram() {
             />
           </circle>
         ))}
-        {[0.2, 1].map((d, i) => (
+
+        {/* Flow line cluster → Postgres (active only on stage 2) */}
+        <path
+          d="M 310 226 L 310 270 L 330 270"
+          stroke={stage === 2 ? "#10b981" : "#cbd5e1"}
+          strokeWidth="1.5"
+          fill="none"
+          className={stage === 2 ? "arch-flow-slow" : ""}
+          strokeDasharray={stage === 2 ? undefined : "3 3"}
+          style={{ transition: "stroke 400ms ease-out" }}
+        />
+        {stage === 2 && [0.2, 1].map((d, i) => (
           <circle key={`p${i}`} r="2.2" fill="#10b981" opacity="0">
             <animateMotion
               dur="1.6s"
@@ -1123,14 +1167,67 @@ function ArchitectureDiagram() {
           </circle>
         ))}
 
-        {/* Cache + DB */}
-        {pill(130, 295, 170, "Redis", "TTL · graceful fallback", "leaf")}
-        {pill(330, 295, 170, "PostgreSQL", "Prisma · 21 tables", "leaf")}
+        {/* Cache + DB pills — dim when not the active stage */}
+        {pill(130, 295, 170, "Redis", "TTL · graceful fallback", "leaf", stage !== 1)}
+        {pill(330, 295, 170, "PostgreSQL", "Prisma · 21 tables", "leaf", stage !== 2)}
 
-        {/* Live indicators on Redis & Postgres */}
-        <circle cx="60" cy="295" r="2.5" fill="#10b981" className="arch-live" />
-        <circle cx="260" cy="295" r="2.5" fill="#10b981" className="arch-live" />
+        {/* Live indicators — only on the active data tier */}
+        {stage === 1 && (
+          <circle cx="60" cy="295" r="2.5" fill="#10b981" className="arch-live" />
+        )}
+        {stage === 2 && (
+          <circle cx="260" cy="295" r="2.5" fill="#10b981" className="arch-live" />
+        )}
       </svg>
+
+      {/* Manual prev/next controls + stage label */}
+      <div className="mt-5 flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setStage((s) => Math.max(0, s - 1))}
+          disabled={stage === 0}
+          aria-label="Previous stage"
+          className="w-9 h-9 rounded-full border border-slate-200 bg-white text-slate-700 hover:text-slate-900 hover:border-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
+        <div className="flex flex-col items-center">
+          <div className="text-[10px] font-mono text-emerald-700 mb-1">
+            {`0${stage + 1} · ${stages[stage]}`}
+          </div>
+          <div className="flex gap-1.5">
+            {stages.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setStage(i)}
+                aria-label={`Stage ${i + 1}`}
+                className="block h-1.5 rounded-full transition-all duration-300"
+                style={{
+                  width: i === stage ? 28 : 8,
+                  backgroundColor: i === stage ? "#047857" : "#e2e8f0",
+                  cursor: "pointer",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setStage((s) => Math.min(stages.length - 1, s + 1))}
+          disabled={stage === stages.length - 1}
+          aria-label="Next stage"
+          className="w-9 h-9 rounded-full border border-emerald-300 bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
