@@ -162,12 +162,51 @@ function Reveal({
   children,
   delay = 0,
   className = "",
+  noFadeOut = false,
 }: {
   children: React.ReactNode;
   delay?: number;
   className?: string;
+  noFadeOut?: boolean;
 }) {
   const { ref, visible } = useReveal<HTMLDivElement>();
+  const innerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (noFadeOut) return;
+    const outer = ref.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+    let raf = 0;
+    let ticking = false;
+
+    const update = () => {
+      const rect = outer.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const center = rect.top + rect.height / 2;
+      const half = vh * 0.5;
+      let o = 1;
+      if (center < half) {
+        const span = half * 0.85;
+        o = Math.max(0, Math.min(1, center / span));
+      }
+      inner.style.opacity = String(o);
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        raf = requestAnimationFrame(update);
+      }
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [noFadeOut, ref]);
+
   return (
     <div
       ref={ref}
@@ -176,7 +215,9 @@ function Reveal({
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
       } ${className}`}
     >
-      {children}
+      <div ref={innerRef} style={{ transition: "opacity 220ms linear" }}>
+        {children}
+      </div>
     </div>
   );
 }
