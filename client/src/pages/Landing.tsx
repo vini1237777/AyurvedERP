@@ -882,6 +882,218 @@ function Architecture() {
   );
 }
 
+function OpsCanvas({ stage }: { stage: number }) {
+  // Live req/s ticker — drifts around 1,146 to feel "alive"
+  const [reqs, setReqs] = useState(1146);
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setReqs(1146 + Math.round((Math.random() - 0.5) * 24));
+    }, 700);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <div className="relative bg-gradient-to-b from-slate-50 to-white px-5 sm:px-8 py-6 sm:py-8">
+      <style>{`
+        @keyframes ledBlink {
+          0%, 100% { opacity: 0.3; }
+          50% { opacity: 1; }
+        }
+        @keyframes cpuBar {
+          0%   { height: 30%; }
+          25%  { height: 78%; }
+          50%  { height: 52%; }
+          75%  { height: 92%; }
+          100% { height: 30%; }
+        }
+        @keyframes wirePulse {
+          0%, 100% { opacity: 0.45; }
+          50%      { opacity: 1; }
+        }
+        .ops-led {
+          animation: ledBlink 1.4s ease-in-out infinite;
+        }
+        .ops-cpu-bar {
+          animation: cpuBar 1.6s ease-in-out infinite;
+        }
+        .ops-wire-on {
+          animation: wirePulse 1.4s ease-in-out infinite;
+        }
+      `}</style>
+
+      {/* Top status bar */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-slate-500">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
+            <span className="relative rounded-full h-1.5 w-1.5 bg-emerald-500" />
+          </span>
+          system · healthy
+        </div>
+        <div className="text-right">
+          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-mono">
+            req/s
+          </div>
+          <div className="text-2xl font-semibold text-slate-900 tabular-nums leading-none">
+            {reqs.toLocaleString()}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
+        {/* Left: Redis tower */}
+        <div
+          className="transition-opacity duration-400"
+          style={{ opacity: stage === 1 ? 1 : 0.4 }}
+        >
+          <RedisCube active={stage === 1} />
+          <div className="mt-2 text-center">
+            <div className="text-xs font-semibold text-slate-900">Redis</div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              ttl 30s · graceful
+            </div>
+          </div>
+        </div>
+
+        {/* Middle: server rack */}
+        <ServerRack active={stage === 0} />
+
+        {/* Right: Postgres cylinder */}
+        <div
+          className="transition-opacity duration-400"
+          style={{ opacity: stage === 2 ? 1 : 0.4 }}
+        >
+          <PostgresCylinder active={stage === 2} />
+          <div className="mt-2 text-center">
+            <div className="text-xs font-semibold text-slate-900">PostgreSQL</div>
+            <div className="text-[10px] text-slate-500 font-mono">
+              prisma · 21 tables
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Connector wires */}
+      <div className="mt-1 h-px relative">
+        <div
+          className="absolute left-[16%] right-[50%] top-0 h-px"
+          style={{
+            background: stage === 1
+              ? "linear-gradient(to right, #10b981, transparent)"
+              : "linear-gradient(to right, #cbd5e1, transparent)",
+          }}
+        />
+        <div
+          className="absolute left-[50%] right-[16%] top-0 h-px"
+          style={{
+            background: stage === 2
+              ? "linear-gradient(to left, #10b981, transparent)"
+              : "linear-gradient(to left, #cbd5e1, transparent)",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ServerRack({ active }: { active: boolean }) {
+  return (
+    <div className="bg-slate-900 rounded-xl p-2.5 shadow-lg shadow-slate-900/20 w-[200px] sm:w-[240px]">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="text-[8.5px] font-mono uppercase tracking-[0.18em] text-emerald-400">
+          Node cluster
+        </div>
+        <span
+          className={`inline-block h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-400 ops-led" : "bg-slate-600"}`}
+        />
+      </div>
+      <div className="space-y-1.5">
+        {[0, 1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="bg-slate-800 rounded-md px-2 py-1.5 flex items-center gap-2 border border-slate-700"
+          >
+            <span
+              className={`inline-block h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-400 ops-led" : "bg-slate-500"}`}
+              style={{ animationDelay: `${i * 0.3}s` }}
+            />
+            <span className="text-[9px] font-mono text-slate-400 w-12">
+              worker {i + 1}
+            </span>
+            <span className="text-[9px] font-mono text-slate-500">
+              :3000
+            </span>
+            <div className="ml-auto flex items-end gap-[2px] h-3">
+              {[0, 1, 2, 3, 4].map((b) => (
+                <span
+                  key={b}
+                  className={`w-[3px] rounded-sm ${active ? "bg-emerald-400 ops-cpu-bar" : "bg-slate-600"}`}
+                  style={{
+                    height: active ? "30%" : "30%",
+                    animationDelay: `${i * 0.18 + b * 0.12}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RedisCube({ active }: { active: boolean }) {
+  return (
+    <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 relative">
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <defs>
+          <linearGradient id="redis-top" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor={active ? "#fca5a5" : "#e2e8f0"} />
+            <stop offset="100%" stopColor={active ? "#dc2626" : "#cbd5e1"} />
+          </linearGradient>
+        </defs>
+        {/* Cube faces */}
+        <polygon points="40,8 72,22 40,36 8,22" fill="url(#redis-top)" stroke={active ? "#7f1d1d" : "#94a3b8"} strokeWidth="0.8" />
+        <polygon points="8,22 8,58 40,72 40,36" fill={active ? "#b91c1c" : "#cbd5e1"} stroke={active ? "#7f1d1d" : "#94a3b8"} strokeWidth="0.8" />
+        <polygon points="72,22 72,58 40,72 40,36" fill={active ? "#991b1b" : "#94a3b8"} stroke={active ? "#7f1d1d" : "#94a3b8"} strokeWidth="0.8" />
+        {/* Lattice dots on top face */}
+        {[[24,18],[40,12],[56,18],[24,28],[40,22],[56,28]].map(([x,y],i) => (
+          <circle key={i} cx={x} cy={y} r="1.3" fill={active ? "#fee2e2" : "#f1f5f9"} />
+        ))}
+        {/* Active glow */}
+        {active && <circle cx="40" cy="40" r="38" fill="none" stroke="#ef4444" strokeWidth="0.8" opacity="0.3" className="ops-wire-on" />}
+      </svg>
+    </div>
+  );
+}
+
+function PostgresCylinder({ active }: { active: boolean }) {
+  const blue = active ? "#1e40af" : "#94a3b8";
+  const blueLight = active ? "#3b82f6" : "#cbd5e1";
+  return (
+    <div className="mx-auto w-16 h-16 sm:w-20 sm:h-20 relative">
+      <svg viewBox="0 0 80 80" className="w-full h-full">
+        <defs>
+          <linearGradient id="pg-side" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={active ? "#60a5fa" : "#e2e8f0"} />
+            <stop offset="100%" stopColor={blueLight} />
+          </linearGradient>
+        </defs>
+        {/* Top ellipse */}
+        <ellipse cx="40" cy="18" rx="26" ry="8" fill="url(#pg-side)" stroke={blue} strokeWidth="0.8" />
+        {/* Body */}
+        <path d="M 14 18 L 14 60 Q 14 68 40 68 Q 66 68 66 60 L 66 18" fill="url(#pg-side)" stroke={blue} strokeWidth="0.8" />
+        {/* Strata lines */}
+        {[30, 42, 54].map((y) => (
+          <ellipse key={y} cx="40" cy={y} rx="26" ry="8" fill="none" stroke={blue} strokeWidth="0.6" opacity="0.55" />
+        ))}
+        {/* Active glow */}
+        {active && <ellipse cx="40" cy="18" rx="26" ry="8" fill="none" stroke="#3b82f6" strokeWidth="1" opacity="0.5" className="ops-wire-on" />}
+      </svg>
+    </div>
+  );
+}
+
 function ArchitectureDiagram() {
   const [stage, setStage] = useState(0);
   const stages = ["edge", "cache", "data"] as const;
@@ -1040,215 +1252,8 @@ function ArchitectureDiagram() {
         </span>
       </div>
 
-      <div className="p-4 sm:p-6">
+      <OpsCanvas stage={stage} />
 
-      <svg viewBox="0 0 460 360" className="w-full h-auto">
-        <defs>
-          <linearGradient id="cluster-bg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#fafafa" />
-            <stop offset="100%" stopColor="#f1f5f9" />
-          </linearGradient>
-          <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-
-        {/* Top: Load Balancer with live indicator */}
-        {pill(230, 36, 180, "Load Balancer", "edge · accept-balanced", "ink", stage !== 0)}
-        {stage === 0 && (
-          <circle
-            cx="148"
-            cy="36"
-            r="2.5"
-            fill="#10b981"
-            className="arch-live"
-          />
-        )}
-
-        {/* Flow LB → cluster (only animates on stage 0) */}
-        <path
-          d="M 230 58 L 230 98"
-          stroke={stage === 0 ? "#10b981" : "#cbd5e1"}
-          strokeWidth="1.5"
-          fill="none"
-          className={stage === 0 ? "arch-flow" : ""}
-          strokeDasharray={stage === 0 ? undefined : "3 3"}
-          style={{ transition: "stroke 400ms ease-out" }}
-        />
-        {stage === 0 && [0, 0.6, 1.2].map((d, i) => (
-          <circle key={i} r="2.5" fill="#10b981" opacity="0">
-            <animateMotion
-              dur="1.8s"
-              repeatCount="indefinite"
-              begin={`${d}s`}
-              path="M 230 58 L 230 98"
-            />
-            <animate
-              attributeName="opacity"
-              values="0;1;1;0"
-              keyTimes="0;0.15;0.85;1"
-              dur="1.8s"
-              repeatCount="indefinite"
-              begin={`${d}s`}
-            />
-          </circle>
-        ))}
-
-        {/* Cluster container - breathes */}
-        <g className="arch-cluster" style={{ transformBox: "fill-box" }}>
-          <rect
-            x="40"
-            y="108"
-            width="380"
-            height="118"
-            rx="14"
-            fill="url(#cluster-bg)"
-            stroke="#e2e8f0"
-            strokeWidth="1"
-          />
-        </g>
-        <text
-          x="58"
-          y="130"
-          fontSize="9"
-          fontWeight="700"
-          fill="#047857"
-          letterSpacing="1.4"
-          fontFamily="ui-monospace, SFMono-Regular, monospace"
-        >
-          NODE CLUSTER · ×4 WORKERS
-        </text>
-
-        {/* 4 worker chips — active visual only on stage 0 */}
-        {[
-          { x: 100, n: "worker 1", cls: "arch-pulse" },
-          { x: 190, n: "worker 2", cls: "arch-pulse-2" },
-          { x: 280, n: "worker 3", cls: "arch-pulse-3" },
-          { x: 370, n: "worker 4", cls: "arch-pulse-4" },
-        ].map((w) => (
-          <g
-            key={w.n}
-            style={{
-              opacity: stage === 0 ? 1 : 0.45,
-              transition: "opacity 400ms ease-out",
-            }}
-          >
-            <rect
-              x={w.x - 38}
-              y={150}
-              width="76"
-              height="56"
-              rx="8"
-              fill="#ffffff"
-              stroke={stage === 0 ? "#a7f3d0" : "#cbd5e1"}
-              strokeWidth="1"
-            />
-            {stage === 0 && (
-              <circle cx={w.x} cy={166} r="10" fill="url(#node-glow)" />
-            )}
-            <circle
-              cx={w.x}
-              cy={166}
-              r="3"
-              fill="#10b981"
-              className={stage === 0 ? w.cls : ""}
-            />
-            <text
-              x={w.x}
-              y={186}
-              textAnchor="middle"
-              fontSize="10"
-              fontWeight="600"
-              fill="#0f172a"
-              fontFamily="ui-sans-serif, system-ui"
-            >
-              Express
-            </text>
-            <text
-              x={w.x}
-              y={199}
-              textAnchor="middle"
-              fontSize="8.5"
-              fill="#64748b"
-              fontFamily="ui-monospace, SFMono-Regular, monospace"
-            >
-              {w.n}
-            </text>
-          </g>
-        ))}
-
-        {/* Flow line cluster → Redis (active only on stage 1) */}
-        <path
-          d="M 150 226 L 150 270 L 130 270"
-          stroke={stage === 1 ? "#10b981" : "#cbd5e1"}
-          strokeWidth="1.5"
-          fill="none"
-          className={stage === 1 ? "arch-flow-slow" : ""}
-          strokeDasharray={stage === 1 ? undefined : "3 3"}
-          style={{ transition: "stroke 400ms ease-out" }}
-        />
-        {stage === 1 && [0, 0.8].map((d, i) => (
-          <circle key={`r${i}`} r="2.2" fill="#10b981" opacity="0">
-            <animateMotion
-              dur="1.6s"
-              repeatCount="indefinite"
-              begin={`${d}s`}
-              path="M 150 226 L 150 270 L 130 270"
-            />
-            <animate
-              attributeName="opacity"
-              values="0;1;1;0"
-              keyTimes="0;0.15;0.85;1"
-              dur="1.6s"
-              repeatCount="indefinite"
-              begin={`${d}s`}
-            />
-          </circle>
-        ))}
-
-        {/* Flow line cluster → Postgres (active only on stage 2) */}
-        <path
-          d="M 310 226 L 310 270 L 330 270"
-          stroke={stage === 2 ? "#10b981" : "#cbd5e1"}
-          strokeWidth="1.5"
-          fill="none"
-          className={stage === 2 ? "arch-flow-slow" : ""}
-          strokeDasharray={stage === 2 ? undefined : "3 3"}
-          style={{ transition: "stroke 400ms ease-out" }}
-        />
-        {stage === 2 && [0.2, 1].map((d, i) => (
-          <circle key={`p${i}`} r="2.2" fill="#10b981" opacity="0">
-            <animateMotion
-              dur="1.6s"
-              repeatCount="indefinite"
-              begin={`${d}s`}
-              path="M 310 226 L 310 270 L 330 270"
-            />
-            <animate
-              attributeName="opacity"
-              values="0;1;1;0"
-              keyTimes="0;0.15;0.85;1"
-              dur="1.6s"
-              repeatCount="indefinite"
-              begin={`${d}s`}
-            />
-          </circle>
-        ))}
-
-        {/* Cache + DB pills — dim when not the active stage */}
-        {pill(130, 295, 170, "Redis", "TTL · graceful fallback", "leaf", stage !== 1)}
-        {pill(330, 295, 170, "PostgreSQL", "Prisma · 21 tables", "leaf", stage !== 2)}
-
-        {/* Live indicators — only on the active data tier */}
-        {stage === 1 && (
-          <circle cx="60" cy="295" r="2.5" fill="#10b981" className="arch-live" />
-        )}
-        {stage === 2 && (
-          <circle cx="260" cy="295" r="2.5" fill="#10b981" className="arch-live" />
-        )}
-      </svg>
-      </div>
 
       {/* Explanation — updates per stage, cross-fades on click */}
       <div className="border-t border-slate-200 px-4 sm:px-6 py-4 bg-white">
