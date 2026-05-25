@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 // Returns 0..1 progress as the element scrolls through the viewport.
 // 0 = top edge of element just entered the bottom of viewport
@@ -239,6 +240,7 @@ export default function Landing() {
 }
 
 function Header() {
+  const { user } = useAuth();
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl/70">
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
@@ -259,12 +261,34 @@ function Header() {
           >
             GitHub
           </a>
-          <Link
-            to="/login"
-            className="font-semibold text-slate-900 hover:text-slate-700"
-          >
-            Sign in
-          </Link>
+          {user ? (
+            <Link
+              to="/dashboard"
+              className="inline-flex items-center gap-1 font-semibold text-white bg-emerald-700 hover:bg-emerald-800 px-3 py-1 rounded-full"
+            >
+              Continue to dashboard
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </Link>
+          ) : (
+            <Link
+              to="/login"
+              className="font-semibold text-slate-900 hover:text-slate-700"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>
@@ -272,6 +296,7 @@ function Header() {
 }
 
 function Hero() {
+  const { user } = useAuth();
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-white via-emerald-50/40 to-white">
       <Sprig className="top-10 -left-6 sm:left-2 opacity-90" factor={0.06} scale={1.1} variant={1} />
@@ -297,10 +322,10 @@ function Hero() {
         <Reveal delay={240}>
           <div className="flex items-center justify-center gap-5 text-sm">
             <Link
-              to="/login"
+              to={user ? "/dashboard" : "/login"}
               className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-2.5 rounded-full shadow-md shadow-emerald-700/20 transition-colors"
             >
-              Try the demo
+              {user ? "Open dashboard" : "Try the demo"}
             </Link>
             <a
               href="https://github.com/vini1237777/AyurvedERP"
