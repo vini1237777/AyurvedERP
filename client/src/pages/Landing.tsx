@@ -380,8 +380,29 @@ function Typewriter({
   splitClassName?: string;
   caret?: boolean;
 }) {
-  const { ref, visible } = useReveal<HTMLSpanElement>();
+  const ref = useRef<HTMLSpanElement | null>(null);
+  const [visible, setVisible] = useState(false);
   const [shown, setShown] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setShown(0);
+            setVisible(true);
+          } else {
+            setVisible(false);
+          }
+        }
+      },
+      { threshold: 0.2, rootMargin: "0px 0px -80px 0px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!visible) return;
