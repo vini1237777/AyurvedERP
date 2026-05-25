@@ -184,7 +184,7 @@ function Reveal({
       const rect = outer.getBoundingClientRect();
       const vh = window.innerHeight;
       const center = rect.top + rect.height / 2;
-      const trigger = vh * 0.3;
+      const trigger = vh * 0.2;
       let o = 1;
       if (center < trigger) {
         o = Math.max(0, Math.min(1, center / trigger));
@@ -240,7 +240,7 @@ export default function Landing() {
 
 function Header() {
   return (
-    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200/70">
+    <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl/70">
       <div className="max-w-6xl mx-auto px-6 h-12 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-slate-900 flex items-center justify-center text-white text-xs font-bold">
@@ -273,7 +273,7 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-b from-white via-emerald-50/40 to-white">
+    <section className="relative overflow-hidden bg-gradient-to-b from-white via-emerald-50/40 to-white">
       <Sprig className="top-10 -left-6 sm:left-2 opacity-90" factor={0.06} scale={1.1} variant={1} />
       <Sprig className="top-28 -right-6 sm:right-4 opacity-80" factor={-0.08} offset={200} scale={0.9} variant={2} />
       <Sprig className="bottom-20 left-1/4 opacity-50 hidden lg:block" factor={0.04} offset={400} scale={0.7} variant={3} />
@@ -469,6 +469,7 @@ function Modules() {
   return (
     <section className="relative overflow-hidden bg-white">
       <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
+        <IridescentHalo spread={1.4} intensity={0.35} />
         <Reveal>
           <div className="max-w-2xl mb-16">
             <h2 className="text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05]">
@@ -589,197 +590,126 @@ Cr  GST Output - SGST      900`}
 }
 
 function Performance() {
-  const { ref: sectionRef, progress } = useScrollProgress<HTMLDivElement>();
-  const p = Math.max(0, Math.min(1, progress));
-
-  // 4 stages, 3 of which map to a laptop screen view
-  const stage = p < 0.25 ? 0 : p < 0.5 ? 1 : p < 0.75 ? 2 : 3;
-
   const STATS = [
-    { value: 1146, suffix: "/s", label: "sustained throughput", sub: "k6 · 2,000 VUs · 4 cores" },
-    { value: 47, suffix: " ms", label: "p95 read latency", sub: "dashboard hot path" },
-    { value: 0, suffix: " %", label: "errors across 213k requests", sub: "zero 5xx, zero drops" },
-    { value: 15300, suffix: "", label: "active users / box", sub: "ready for GSTR · extrapolated at 0.075 req/s/user" },
+    { value: 1146, suffix: "/s", label: "throughput", sub: "k6 · 2,000 VUs · 4 cores" },
+    { value: 47, suffix: " ms", label: "p95 latency", sub: "dashboard hot path" },
+    { value: 0, suffix: " %", label: "errors", sub: "213k requests · zero 5xx" },
+    { value: 15300, suffix: "", label: "active users / box", sub: "ready for GSTR" },
   ];
-  const active = STATS[stage];
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative bg-slate-950 text-white"
-      style={{ minHeight: "240vh" }}
-    >
-      <div className="sticky top-0 h-screen overflow-hidden flex items-center">
-        {/* Calm ambient gradient — no longer drifting frantically */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 50% at 30% 25%, rgba(16,185,129,0.25) 0%, transparent 55%), radial-gradient(ellipse 50% 35% at 80% 80%, rgba(20,184,166,0.18) 0%, transparent 55%)",
-          }}
-        />
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-            backgroundSize: "64px 64px",
-          }}
-        />
+    <section className="relative overflow-hidden bg-white text-slate-900">
+      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
+        <IridescentHalo spread={1.55} intensity={0.45} />
 
-        <div className="relative w-full max-w-6xl mx-auto px-6">
-          {/* Eyebrow with stage pips */}
-          <div className="flex items-center gap-3 mb-10">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
-            </span>
-            <span className="text-[11px] tracking-[0.3em] uppercase font-semibold text-emerald-400 font-mono">
-              Numbers, live
-            </span>
-            <div className="flex gap-1.5 ml-3">
-              {[0, 1, 2, 3].map((i) => (
-                <span
-                  key={i}
-                  className="block h-px transition-all duration-500"
-                  style={{
-                    width: i === stage ? 24 : 10,
-                    backgroundColor:
-                      i < stage ? "#10b981" : i === stage ? "#34d399" : "#1e293b",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* Side-by-side: number on the left, laptop on the right */}
-          <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            <div className="lg:col-span-6">
-              <PinnedStatDisplay
-                key={stage}
-                value={active.value}
-                suffix={active.suffix}
-              />
-
-              {/* Cross-fading label band */}
-              <div className="relative h-16 mt-6 max-w-md">
-                {STATS.map((s, i) => (
-                  <div
-                    key={s.label}
-                    className="absolute inset-0 transition-opacity duration-700 ease-in-out"
-                    style={{ opacity: i === stage ? 1 : 0 }}
-                  >
-                    <div className="text-lg sm:text-xl text-white font-semibold tracking-tight leading-tight">
-                      {s.label}
-                    </div>
-                    <div className="mt-1 text-xs text-emerald-300/80 font-mono">
-                      {s.sub}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Progress + axis labels */}
-              <div className="mt-12 max-w-md">
-                <div className="h-px bg-slate-800 relative overflow-hidden">
-                  <div
-                    className="absolute inset-y-0 left-0 bg-emerald-400 transition-[width] duration-150"
-                    style={{ width: `${p * 100}%` }}
-                  />
-                </div>
-                <div className="mt-2 flex justify-between text-[9px] tracking-[0.2em] uppercase text-slate-600 font-mono">
-                  <span>throughput</span>
-                  <span>latency</span>
-                  <span>errors</span>
-                  <span>users</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Right — laptop showing the stage-relevant screen */}
-            <div className="lg:col-span-6 relative">
-              <div
-                className="relative"
-                style={{ perspective: "1800px" }}
-              >
-                <div
-                  style={{
-                    transform: "rotateX(3deg) rotateY(-4deg)",
-                    transformStyle: "preserve-3d",
-                    transition: "transform 200ms ease-out",
-                  }}
-                >
-                  <LaptopFrame
-                    url={
-                      stage <= 1
-                        ? "aushadhi.app/"
-                        : stage === 2
-                          ? "aushadhi.app/sales"
-                          : "aushadhi.app/reports/gst-r3"
-                    }
-                  >
-                    <ScreenDashboard show={stage <= 1} />
-                    <ScreenInvoices show={stage === 2} />
-                    <ScreenGSTR show={stage === 3} />
-                  </LaptopFrame>
-                </div>
-                <div className="mx-auto mt-2 h-5 w-[72%] bg-black/40 blur-2xl rounded-full" />
-              </div>
-
-              {/* Caption that changes with the stage */}
-              <div className="mt-5 relative h-6">
-                {[
-                  "Dashboard - 30s cache, 6ms p95.",
-                  "Dashboard - cached, sub-frame.",
-                  "Sale list - paginated, 50-row pages.",
-                  "Ready for GSTR.",
-                ].map((c, i) => (
-                  <div
-                    key={c}
-                    className="absolute inset-0 text-center text-sm text-slate-400 transition-opacity duration-700 ease-in-out"
-                    style={{ opacity: i === stage ? 1 : 0 }}
-                  >
-                    {c}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Eyebrow */}
+        <div className="relative flex items-center gap-2.5 mb-10">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
+          <span className="text-[11px] tracking-[0.3em] uppercase font-semibold text-emerald-700 font-mono">
+            Numbers, live
+          </span>
+          <span className="text-[11px] tracking-[0.15em] uppercase text-slate-400 font-mono">
+            · benchmarked with k6
+          </span>
         </div>
+
+        <Reveal>
+          <h2 className="relative text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05] max-w-2xl mb-16">
+            The cluster doesn&apos;t blink,
+            <span className="text-slate-400"> even at 2,000 VUs.</span>
+          </h2>
+        </Reveal>
+
+        <div className="relative grid sm:grid-cols-2 lg:grid-cols-4 gap-y-12 gap-x-8 lg:gap-x-10 mb-16">
+          {STATS.map((s, i) => (
+            <Reveal key={s.label} delay={i * 100}>
+              <BigStat
+                target={s.value}
+                suffix={s.suffix}
+                label={s.label}
+                sub={s.sub}
+              />
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Footer: stack chips + link */}
+        <Reveal delay={500}>
+          <div className="relative flex flex-wrap items-center gap-2 text-[11px] text-slate-500 font-mono">
+            <span className="text-slate-400 mr-1">stack ↦</span>
+            {["k6", "Redis", "Postgres", "Node cluster", "compression"].map(
+              (t) => (
+                <span
+                  key={t}
+                  className="px-2.5 py-1 rounded-full border border-slate-200 bg-white/60 backdrop-blur text-slate-700 hover:text-emerald-700 hover:border-emerald-300 transition-colors"
+                >
+                  {t}
+                </span>
+              ),
+            )}
+            <a
+              href="https://github.com/vini1237777/AyurvedERP/tree/main/server/load-tests"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto text-emerald-700 hover:text-emerald-900 font-semibold"
+            >
+              load-tests/ →
+            </a>
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-function PinnedStatDisplay({
-  value,
+function BigStat({
+  target,
   suffix,
+  label,
+  sub,
 }: {
-  value: number;
+  target: number;
   suffix: string;
+  label: string;
+  sub: string;
 }) {
+  const { ref, visible } = useReveal<HTMLDivElement>();
   const [v, setV] = useState(0);
   useEffect(() => {
+    if (!visible) return;
     let raf = 0;
     const start = performance.now();
-    const dur = 1000;
+    const dur = 1400;
     const tick = (t: number) => {
       const pp = Math.min(1, (t - start) / dur);
       const eased = 1 - Math.pow(1 - pp, 3);
-      setV(value * eased);
+      setV(target * eased);
       if (pp < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [value]);
+  }, [visible, target]);
 
   return (
-    <div
-      className="text-[76px] sm:text-[120px] leading-[0.9] font-semibold tracking-[-0.045em] tabular-nums"
-      style={{ fontFeatureSettings: '"tnum"' }}
-    >
-      {value === 0 && v < 0.5 ? "0" : Math.round(v).toLocaleString()}
-      <span className="text-emerald-400">{suffix}</span>
+    <div ref={ref}>
+      <div
+        className="text-[56px] sm:text-[72px] leading-[0.95] font-semibold tracking-[-0.045em] tabular-nums text-slate-900"
+        style={{ fontFeatureSettings: '"tnum"' }}
+      >
+        {Math.round(v).toLocaleString()}
+        <span className="text-emerald-600">{suffix}</span>
+      </div>
+      <div
+        className="mt-3 h-px bg-emerald-500/60 transition-all duration-1000 ease-out"
+        style={{ width: visible ? "60%" : "0%" }}
+      />
+      <div className="mt-3 text-[11px] tracking-[0.2em] uppercase text-slate-700 font-semibold">
+        {label}
+      </div>
+      <div className="mt-1 text-xs text-slate-500 font-mono">{sub}</div>
     </div>
   );
 }
@@ -788,6 +718,7 @@ function Architecture() {
   return (
     <section className="relative overflow-hidden bg-white">
       <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
+        <IridescentHalo spread={1.5} intensity={0.4} />
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           {/* Left: diagram, takes 7 of 12 cols */}
           <Reveal className="lg:col-span-7">
@@ -1135,7 +1066,7 @@ function Specs() {
   ];
 
   return (
-    <section className="relative overflow-hidden bg-white border-b border-slate-200">
+    <section className="relative overflow-hidden bg-white">
       <Sprig
         className="top-[30%] -left-10 opacity-30 hidden lg:block"
         factor={0.04}
@@ -1151,6 +1082,7 @@ function Specs() {
         variant={3}
       />
       <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-36">
+        <IridescentHalo spread={1.5} intensity={0.35} />
         <Reveal>
           <div className="text-center mb-20">
             <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-emerald-700 mb-4">
@@ -1301,7 +1233,7 @@ function PinnedShowcase() {
   return (
     <section
       ref={ref}
-      className="relative bg-gradient-to-b from-white via-emerald-50/40 to-white border-b border-slate-200"
+      className="relative bg-gradient-to-b from-white via-emerald-50/40 to-white"
       style={{ height: "320vh" }}
     >
       <Sprig
@@ -1674,7 +1606,7 @@ function LaptopFrame({
       <div className="bg-slate-900 rounded-[20px] p-3 shadow-2xl shadow-slate-900/30 ring-1 ring-slate-800/60">
         <div className="bg-white rounded-[14px] overflow-hidden aspect-[16/10] relative">
           {/* Browser chrome */}
-          <div className="h-8 bg-slate-100 border-b border-slate-200 flex items-center px-3 gap-1.5">
+          <div className="h-8 bg-slate-100 flex items-center px-3 gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
             <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
@@ -1869,7 +1801,7 @@ function ScreenInvoices({ show }: { show: boolean }) {
             </div>
           </div>
           <div className="bg-white border border-slate-200 rounded overflow-hidden">
-            <div className="grid grid-cols-[60px_70px_1fr_70px_50px_60px] text-[6px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1.5 bg-slate-50 border-b border-slate-200">
+            <div className="grid grid-cols-[60px_70px_1fr_70px_50px_60px] text-[6px] font-semibold text-slate-500 uppercase tracking-wider px-2 py-1.5 bg-slate-50">
               <span>No.</span>
               <span>Date</span>
               <span>Customer</span>
@@ -2052,7 +1984,7 @@ function PharmacyBill() {
           <span className="font-semibold text-slate-800">Patel Medical</span>
         </div>
         <div className="border-t border-b border-slate-300 py-2 space-y-1 mb-2.5">
-          <div className="grid grid-cols-[1fr_22px_46px] text-[7px] text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-200 pb-0.5">
+          <div className="grid grid-cols-[1fr_22px_46px] text-[7px] text-slate-500 font-semibold uppercase tracking-wider pb-0.5">
             <span>Item</span>
             <span className="text-right">Qty</span>
             <span className="text-right">Amount</span>
