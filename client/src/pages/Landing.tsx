@@ -533,7 +533,7 @@ function Modules() {
               text="One workspace for the whole distributor cycle, billing to ledger to compliance."
               split={48}
               splitClassName="text-slate-400"
-              speed={28}
+              speed={55}
             />
           </h2>
         </div>
