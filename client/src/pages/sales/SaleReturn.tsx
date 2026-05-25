@@ -55,8 +55,8 @@ export default function SaleReturn() {
 
   useEffect(() => {
     invoiceApi
-      .getAll()
-      .then((data) => setAll(data))
+      .getAll({ limit: 0 })
+      .then((data) => setAll(Array.isArray(data) ? data : data.rows || []))
       .catch(() => setError("Failed to load invoices"))
       .finally(() => setLoading(false));
   }, []);
