@@ -27,11 +27,45 @@ async function getNextPurchaseNo(): Promise<string> {
 
 export const getAll = async (req: Request, res: Response) => {
   try {
-    const { financialYear } = req.query;
+    const { financialYear, page, limit } = req.query;
+    
+    const requestedLimit =
+      limit !== undefined ? parseInt(String(limit), 10) : 50;
+    const limitNum = Number.isFinite(requestedLimit) ? requestedLimit : 50;
+    const pageNum = Math.max(1, parseInt(String(page || "1"), 10) || 1);
+
     const where = financialYear ? { financialYear: String(financialYear) } : {};
+
+   
+    const includeForList = { supplier: true };
+    const includeForAll = {
+      supplier: true,
+      items: { include: { batch: true } },
+    };
+
+    if (limitNum > 0) {
+      const [rows, total] = await Promise.all([
+        prisma.purchase.findMany({
+          where,
+          include: includeForList,
+          orderBy: { purchaseDate: "desc" },
+          skip: (pageNum - 1) * limitNum,
+          take: limitNum,
+        }),
+        prisma.purchase.count({ where }),
+      ]);
+      return res.json({
+        rows,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        hasMore: pageNum * limitNum < total,
+      });
+    }
+
     const purchases = await prisma.purchase.findMany({
       where,
-      include: { supplier: true, items: { include: { batch: true } } },
+      include: includeForAll,
       orderBy: { purchaseDate: "desc" },
     });
     res.json(purchases);
@@ -156,7 +190,6 @@ export const create = async (req: Request, res: Response) => {
         include: { supplier: true, items: true },
       });
 
-      // Update batch stock on purchase
       for (const row of calcedRows) {
         if (row.batchId) {
           const qty =

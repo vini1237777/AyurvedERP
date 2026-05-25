@@ -1,12 +1,18 @@
 import { Request, Response } from 'express'
 import prisma from '../utils/prisma'
+import { cache } from '../utils/cache'
+
+const CUSTOMERS_CACHE_KEY = 'customers:list:v1'
+const CUSTOMERS_CACHE_TTL = 300 
 
 export const getAll = async (_req: Request, res: Response) => {
   try {
-    const customers = await prisma.customer.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-    })
+    const customers = await cache.wrap(CUSTOMERS_CACHE_KEY, CUSTOMERS_CACHE_TTL, () =>
+      prisma.customer.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+      }),
+    )
     res.json(customers)
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch customers' })
@@ -30,7 +36,6 @@ export const create = async (req: Request, res: Response) => {
     const { name, gstin, pan, dlNo, state, stateCode, address, city, pincode, mobile, phone, email } = req.body
     if (!name) return res.status(400).json({ error: 'Name is required' })
 
-    // Validate GSTIN format if provided
     if (gstin) {
       const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/
       if (!gstinRegex.test(gstin)) {
@@ -41,6 +46,7 @@ export const create = async (req: Request, res: Response) => {
     const customer = await prisma.customer.create({
       data: { name, gstin, pan, dlNo, state: state || 'Maharashtra', stateCode: stateCode || '27', address, city, pincode, mobile, phone, email },
     })
+    await cache.del(CUSTOMERS_CACHE_KEY)
     res.status(201).json(customer)
   } catch (err) {
     res.status(500).json({ error: 'Failed to create customer' })
@@ -62,6 +68,7 @@ export const update = async (req: Request, res: Response) => {
       where: { id: parseInt(req.params.id) },
       data: { name, gstin, pan, dlNo, state, stateCode, address, city, pincode, mobile, phone, email },
     })
+    await cache.del(CUSTOMERS_CACHE_KEY)
     res.json(customer)
   } catch (err) {
     res.status(500).json({ error: 'Failed to update customer' })
@@ -74,6 +81,7 @@ export const remove = async (req: Request, res: Response) => {
       where: { id: parseInt(req.params.id) },
       data: { isActive: false },
     })
+    await cache.del(CUSTOMERS_CACHE_KEY)
     res.json({ message: 'Customer deleted' })
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete customer' })

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 
 import customerRoutes from "./routes/customer.routes";
@@ -28,6 +29,7 @@ const corsMiddleware = cors({
 
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
+app.use(compression({ level: 3 }));
 app.use(express.json());
 
 import prisma from "./utils/prisma";
