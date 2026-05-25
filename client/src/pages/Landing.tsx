@@ -883,15 +883,6 @@ function Architecture() {
 }
 
 function OpsCanvas({ stage }: { stage: number }) {
-  // Live req/s ticker — drifts around 1,146 to feel "alive"
-  const [reqs, setReqs] = useState(1146);
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      setReqs(1146 + Math.round((Math.random() - 0.5) * 24));
-    }, 700);
-    return () => window.clearInterval(id);
-  }, []);
-
   return (
     <div className="relative bg-gradient-to-b from-slate-50 to-white px-5 sm:px-8 py-6 sm:py-8">
       <style>{`
@@ -920,25 +911,6 @@ function OpsCanvas({ stage }: { stage: number }) {
           animation: wirePulse 1.4s ease-in-out infinite;
         }
       `}</style>
-
-      {/* Top status bar */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-wider text-slate-500">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60" />
-            <span className="relative rounded-full h-1.5 w-1.5 bg-emerald-500" />
-          </span>
-          system · healthy
-        </div>
-        <div className="text-right">
-          <div className="text-[9px] uppercase tracking-[0.2em] text-slate-400 font-mono">
-            req/s
-          </div>
-          <div className="text-2xl font-semibold text-slate-900 tabular-nums leading-none">
-            {reqs.toLocaleString()}
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-center">
         {/* Left: Redis tower */}
