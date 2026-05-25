@@ -794,7 +794,7 @@ function Architecture() {
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-start">
           {/* Left: diagram, takes 7 of 12 cols */}
           <Reveal className="lg:col-span-7">
-            <div className="relative bg-gradient-to-br from-slate-50 to-emerald-50/30 border border-slate-200/80 rounded-2xl p-6 sm:p-10">
+            <div className="relative">
               <ArchitectureDiagram />
             </div>
           </Reveal>
@@ -886,6 +886,37 @@ function ArchitectureDiagram() {
   const [stage, setStage] = useState(0);
   const stages = ["edge", "cache", "data"] as const;
 
+  const STAGE_INFO = [
+    {
+      title: "Edge · cluster",
+      metrics: [
+        { k: "throughput", v: "1,146 req/s" },
+        { k: "workers", v: "4 active" },
+        { k: "respawn", v: "auto" },
+      ],
+      code: "cluster.fork(); // per cpu",
+    },
+    {
+      title: "Read-through cache",
+      metrics: [
+        { k: "p95 hit", v: "6.34 ms" },
+        { k: "ttl", v: "30 s" },
+        { k: "fallback", v: "graceful" },
+      ],
+      code: 'cache.wrap("dashboard:v1", 30, fetch)',
+    },
+    {
+      title: "Atomic write path",
+      metrics: [
+        { k: "tables", v: "21" },
+        { k: "isolation", v: "read-committed" },
+        { k: "tx", v: "single" },
+      ],
+      code: "prisma.$transaction([invoice, stock, ledger])",
+    },
+  ];
+  const info = STAGE_INFO[stage];
+
   const pill = (
     x: number,
     y: number,
@@ -942,7 +973,7 @@ function ArchitectureDiagram() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <style>{`
         @keyframes archFlow {
           to { stroke-dashoffset: -14; }
@@ -973,6 +1004,38 @@ function ArchitectureDiagram() {
         .arch-worker-glow { animation: archWorkerGlow 1.8s ease-in-out infinite; }
         .arch-live { animation: archLiveBlink 1.4s ease-in-out infinite; }
       `}</style>
+
+      {/* Devtools-style top bar: window dots + tab strip */}
+      <div className="flex items-center gap-3 bg-slate-50 border-b border-slate-200 px-3 py-2">
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-rose-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
+        </div>
+        <div className="flex-1 flex items-center gap-1 ml-2">
+          {stages.map((s, i) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setStage(i)}
+              className={`text-[10px] font-mono uppercase tracking-wider px-3 py-1.5 rounded-md transition-colors ${
+                i === stage
+                  ? "bg-white text-emerald-700 shadow-sm border border-slate-200"
+                  : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
+              }`}
+            >
+              <span className="text-slate-400 mr-1.5">0{i + 1}</span>
+              {s}
+            </button>
+          ))}
+        </div>
+        <span className="text-[9px] font-mono text-slate-400 tracking-wider">
+          {info.title}
+        </span>
+      </div>
+
+      <div className="p-4 sm:p-6">
+
       <svg viewBox="0 0 460 360" className="w-full h-auto">
         <defs>
           <linearGradient id="cluster-bg" x1="0" y1="0" x2="0" y2="1">
@@ -1179,54 +1242,79 @@ function ArchitectureDiagram() {
           <circle cx="260" cy="295" r="2.5" fill="#10b981" className="arch-live" />
         )}
       </svg>
+      </div>
 
-      {/* Manual prev/next controls + stage label */}
-      <div className="mt-5 flex items-center justify-between">
+      {/* Metrics strip — updates per stage */}
+      <div className="border-t border-slate-200 bg-slate-50/50 px-4 sm:px-6 py-3 grid grid-cols-3 gap-4">
+        {info.metrics.map((m) => (
+          <div key={m.k}>
+            <div className="text-[9px] tracking-[0.2em] uppercase text-slate-400 font-mono">
+              {m.k}
+            </div>
+            <div className="text-sm text-slate-900 font-semibold tabular-nums mt-0.5">
+              {m.v}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Code snippet */}
+      <div className="bg-slate-950 px-4 sm:px-6 py-2.5 flex items-center gap-2">
+        <span className="text-[9px] font-mono text-slate-500">›_</span>
+        <code className="text-[11px] font-mono text-emerald-300 truncate">
+          {info.code}
+        </code>
+      </div>
+
+      {/* Footer: prev / dots / next — with attention pulse on next while at stage 0 */}
+      <div className="border-t border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between bg-white">
         <button
           type="button"
           onClick={() => setStage((s) => Math.max(0, s - 1))}
           disabled={stage === 0}
           aria-label="Previous stage"
-          className="w-9 h-9 rounded-full border border-slate-200 bg-white text-slate-700 hover:text-slate-900 hover:border-slate-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          className="text-[11px] font-medium text-slate-500 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed flex items-center gap-1"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="15 18 9 12 15 6" />
           </svg>
+          Prev
         </button>
 
-        <div className="flex flex-col items-center">
-          <div className="text-[10px] font-mono text-emerald-700 mb-1">
-            {`0${stage + 1} · ${stages[stage]}`}
-          </div>
-          <div className="flex gap-1.5">
-            {stages.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => setStage(i)}
-                aria-label={`Stage ${i + 1}`}
-                className="block h-1.5 rounded-full transition-all duration-300"
-                style={{
-                  width: i === stage ? 28 : 8,
-                  backgroundColor: i === stage ? "#047857" : "#e2e8f0",
-                  cursor: "pointer",
-                }}
-              />
-            ))}
-          </div>
+        <div className="flex gap-1.5">
+          {stages.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setStage(i)}
+              aria-label={`Stage ${i + 1}`}
+              className="block h-1.5 rounded-full transition-all duration-300"
+              style={{
+                width: i === stage ? 28 : 8,
+                backgroundColor: i === stage ? "#047857" : "#e2e8f0",
+                cursor: "pointer",
+              }}
+            />
+          ))}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setStage((s) => Math.min(stages.length - 1, s + 1))}
-          disabled={stage === stages.length - 1}
-          aria-label="Next stage"
-          className="w-9 h-9 rounded-full border border-emerald-300 bg-emerald-700 text-white hover:bg-emerald-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
+        <div className="relative">
+          {stage < stages.length - 1 && (
+            <span className="pointer-events-none absolute inset-0 rounded-full bg-emerald-500 opacity-50 animate-ping" />
+          )}
+          <button
+            type="button"
+            onClick={() => setStage((s) => Math.min(stages.length - 1, s + 1))}
+            disabled={stage === stages.length - 1}
+            aria-label="Next stage"
+            className="relative text-[11px] font-semibold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-30 disabled:cursor-not-allowed px-3 py-1.5 rounded-full flex items-center gap-1.5"
+          >
+            {stage === stages.length - 1 ? "End" : "Next"}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );
