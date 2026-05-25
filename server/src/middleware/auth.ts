@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+
+const JWT_SECRET =
+  process.env.JWT_ACCESS_SECRET ||
+  process.env.JWT_SECRET ||
+  "dev-secret-change-me";
 
 export type Role = "ADMIN" | "SELLER" | "ACCOUNTANT" | "RETAILER";
 
@@ -28,7 +32,7 @@ export function requireRole(...allowed: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const role = (req as any).userRole as Role | undefined;
     if (!role) return res.status(401).json({ error: "Unauthorized" });
-    if (role === "ADMIN") return next(); // ADMIN bypass
+    if (role === "ADMIN") return next();
     if (!allowed.includes(role))
       return res
         .status(403)
@@ -37,7 +41,6 @@ export function requireRole(...allowed: Role[]) {
   };
 }
 
-// Block POST/PUT/DELETE/PATCH for the given roles (read-only access).
 export function readOnlyForRoles(...readOnlyRoles: Role[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const role = (req as any).userRole as Role | undefined;

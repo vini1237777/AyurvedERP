@@ -39,14 +39,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { token, user } = await authApi.login(email, password);
-    localStorage.setItem("authToken", token);
-    localStorage.setItem("authUser", JSON.stringify(user));
-    setUser(user);
+    const res = await authApi.login(email, password);
+    localStorage.setItem("authToken", res.accessToken || res.token);
+    if (res.refreshToken)
+      localStorage.setItem("refreshToken", res.refreshToken);
+    localStorage.setItem("authUser", JSON.stringify(res.user));
+    setUser(res.user);
   };
 
   const logout = () => {
     localStorage.removeItem("authToken");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("authUser");
     setUser(null);
     window.location.href = "/login";
