@@ -602,20 +602,6 @@ function Performance() {
       <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-32">
         <IridescentHalo spread={1.55} intensity={0.45} />
 
-        {/* Eyebrow */}
-        <div className="relative flex items-center gap-2.5 mb-10">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-          </span>
-          <span className="text-[11px] tracking-[0.3em] uppercase font-semibold text-emerald-700 font-mono">
-            Numbers, live
-          </span>
-          <span className="text-[11px] tracking-[0.15em] uppercase text-slate-400 font-mono">
-            · benchmarked with k6
-          </span>
-        </div>
-
         <Reveal>
           <h2 className="relative text-4xl sm:text-5xl font-semibold text-slate-900 tracking-[-0.035em] leading-[1.05] max-w-2xl mb-16">
             The cluster doesn&apos;t blink,
@@ -1085,9 +1071,6 @@ function Specs() {
         <IridescentHalo spread={1.5} intensity={0.35} />
         <Reveal>
           <div className="text-center mb-20">
-            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-emerald-700 mb-4">
-              Real data, real ledger
-            </div>
             <h2 className="text-[52px] sm:text-7xl font-semibold text-slate-900 tracking-[-0.04em] leading-[0.95]">
               Built in the open.
             </h2>
@@ -1255,9 +1238,6 @@ function PinnedShowcase() {
         {/* Heading row */}
         <div className="pt-[10vh] pb-10 px-6 text-center min-h-[200px]">
           <div key={`title-${stage}`} className="stage-fade">
-            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-slate-500 mb-3">
-              {sections[stage].eyebrow}
-            </div>
             <h3 className="text-[40px] sm:text-[56px] font-semibold text-slate-900 tracking-[-0.035em] leading-[0.98]">
               {sections[stage].title}
             </h3>
@@ -1358,9 +1338,6 @@ function BillSection() {
       <div className="relative max-w-6xl mx-auto px-6 py-32 sm:py-40 grid lg:grid-cols-2 gap-16 items-center">
         <Reveal>
           <div>
-            <div className="text-[11px] tracking-[0.25em] uppercase font-semibold text-stone-500 mb-4">
-              The printed bill
-            </div>
             <h2 className="text-[44px] sm:text-6xl font-semibold text-slate-900 tracking-[-0.035em] leading-[0.98] mb-5">
               Tax compliant.
               <br />
