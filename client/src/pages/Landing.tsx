@@ -269,6 +269,11 @@ function Hero() {
             </a>
           </div>
         </Reveal>
+        <Reveal delay={320}>
+          <p className="mt-8 text-[11px] tracking-[0.2em] uppercase text-slate-400">
+            React · Vite · Express · Prisma · PostgreSQL
+          </p>
+        </Reveal>
       </div>
       <Reveal delay={320}>
         <div className="max-w-5xl mx-auto px-6 pb-16">
@@ -666,7 +671,6 @@ function Footer() {
   );
 }
 
-// ─── Laptop frame ────────────────────────────────────────────────────────────
 function LaptopFrame({
   children,
   url = "aushadhi.app/",
@@ -697,7 +701,6 @@ function LaptopFrame({
   );
 }
 
-// ─── Accurate mock of /pages/Dashboard.tsx ───────────────────────────────────
 function ScreenDashboard({ show }: { show: boolean }) {
   const row1 = [
     { l: "Today's Net Sales", v: "₹3,24,580" },

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
 import { fmt } from "../../utils/invoice.utils";
@@ -11,6 +11,7 @@ import {
   LoadingScreen,
   Toast,
 } from "../../components/ui";
+import { Pagination } from "../../components/ui/Pagination";
 import type { Invoice } from "../../types";
 
 // Current financial year helper
@@ -44,44 +45,56 @@ function matchesAlphabetMode(invoice: Invoice, query: string) {
   return invoiceNo.includes(q) || customerName.includes(q);
 }
 
+function recentFYs(): string[] {
+  const now = new Date();
+  const y = now.getFullYear();
+  const fy = (start: number) => `${start}-${String(start + 1).slice(2)}`;
+  const cur = now.getMonth() + 1 >= 4 ? y : y - 1;
+  return [fy(cur), fy(cur - 1), fy(cur - 2), fy(cur - 3)];
+}
+
 export default function SaleList() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(50);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
-  const [availableFYs, setAvailableFYs] = useState<string[]>([]);
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
   } | null>(null);
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const data = await invoiceApi.getAll();
-      setInvoices(data);
-
-      const fys = [
-        ...new Set(data.map((i: any) => i.financialYear || getCurrentFY())),
-      ]
-        .sort()
-        .reverse();
-
-      setAvailableFYs(fys as string[]);
+      const res = await invoiceApi.getAll({
+        financialYear: selectedFY,
+        page,
+        limit: perPage,
+      });
+      setInvoices(res.rows || []);
+      setTotal(res.total || 0);
     } catch {
       setToast({ msg: "Failed to load invoices", type: "error" });
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedFY, page, perPage]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedFY, perPage]);
 
   async function handleCancel(id: number) {
     if (!confirm("Cancel this invoice? Stock will be reversed.")) return;
-
     try {
       await invoiceApi.cancel(id);
       setToast({ msg: "Invoice cancelled", type: "success" });
@@ -91,19 +104,21 @@ export default function SaleList() {
     }
   }
 
+  // Search/sort run client-side within the current server page. For deep
+  // searching across all pages, expand the server endpoint to accept ?q=.
   const filtered = useMemo(() => {
     return invoices
-      .filter(
-        (i) => i.financialYear === selectedFY && matchesAlphabetMode(i, search),
-      )
+      .filter((i) => matchesAlphabetMode(i, search))
       .sort((a, b) => {
         const diff =
           new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
         return sortDir === "desc" ? -diff : diff;
       });
-  }, [invoices, selectedFY, search, sortDir]);
+  }, [invoices, search, sortDir]);
 
   const totalSales = filtered.reduce((s, i) => s + i.grandTotal, 0);
+  const from = total === 0 ? 0 : (page - 1) * perPage + 1;
+  const to = Math.min(page * perPage, total);
 
   async function handlePrint(inv: Invoice, action: "print" | "pdf" = "print") {
     try {
@@ -180,9 +195,7 @@ export default function SaleList() {
     }
   }
 
-  const fyTabs = [...new Set([getCurrentFY(), ...availableFYs])]
-    .sort()
-    .reverse();
+  const fyTabs = recentFYs();
 
   return (
     <div>
@@ -196,7 +209,7 @@ export default function SaleList() {
 
       <PageHeader
         title="All Invoices"
-        subtitle={`${filtered.length} invoices · Total: ₹${fmt(totalSales)}`}
+        subtitle={`${total} invoices in FY ${selectedFY} · Page total ₹${fmt(totalSales)}`}
         actions={
           <>
             <input
@@ -340,6 +353,17 @@ export default function SaleList() {
                 </tbody>
               </table>
             </div>
+          )}
+          {total > 0 && (
+            <Pagination
+              total={total}
+              page={page}
+              perPage={perPage}
+              from={from}
+              to={to}
+              onPage={setPage}
+              onPerPage={(n) => setPerPage(n)}
+            />
           )}
         </Card>
       )}

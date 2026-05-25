@@ -1,24 +1,52 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import { cache } from "../utils/cache";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
 export const saleRegister = async (req: Request, res: Response) => {
   try {
-    const { from, to, customerId } = req.query;
+    const { from, to, customerId, page, limit } = req.query;
+    const requestedLimit =
+      limit !== undefined ? parseInt(String(limit), 10) : 50;
+    const limitNum = Number.isFinite(requestedLimit) ? requestedLimit : 50;
+    const pageNum = Math.max(1, parseInt(String(page || "1"), 10) || 1);
+
+    const where = {
+      status: { not: "CANCELLED" as const },
+      ...(from && to
+        ? {
+            invoiceDate: {
+              gte: new Date(String(from)),
+              lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
+            },
+          }
+        : {}),
+      ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
+    };
+
+    if (limitNum > 0) {
+      const [rows, total] = await Promise.all([
+        prisma.invoice.findMany({
+          where,
+          include: { customer: true, agent: true },
+          orderBy: { invoiceDate: "desc" },
+          skip: (pageNum - 1) * limitNum,
+          take: limitNum,
+        }),
+        prisma.invoice.count({ where }),
+      ]);
+      return res.json({
+        rows,
+        total,
+        page: pageNum,
+        limit: limitNum,
+        hasMore: pageNum * limitNum < total,
+      });
+    }
+
     const invoices = await prisma.invoice.findMany({
-      where: {
-        status: { not: "CANCELLED" }, // ✅ fix
-        ...(from && to
-          ? {
-              invoiceDate: {
-                gte: new Date(String(from)),
-                lte: new Date(new Date(String(to)).setHours(23, 59, 59, 999)),
-              },
-            }
-          : {}),
-        ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
-      },
+      where,
       include: { customer: true, agent: true },
       orderBy: { invoiceDate: "desc" },
     });
@@ -110,8 +138,6 @@ export const stockReport = async (_req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to fetch stock report" });
   }
 };
-
-// ── Party-wise Ledger ─────────────────────────────────────────────────────────
 export const getLedger = async (req: Request, res: Response) => {
   try {
     const { customerId, from, to } = req.query;
@@ -158,7 +184,6 @@ export const getLedger = async (req: Request, res: Response) => {
   }
 };
 
-// ── GST R1 Report ─────────────────────────────────────────────────────────────
 export const getGstR1 = async (req: Request, res: Response) => {
   try {
     const { from, to, financialYear } = req.query;
@@ -172,15 +197,13 @@ export const getGstR1 = async (req: Request, res: Response) => {
 
     const invoices = await prisma.invoice.findMany({
       where,
-      include: { customer: true },
+      include: { customer: { select: { id: true, name: true } } },
       orderBy: { invoiceDate: "asc" },
     });
 
-    // B2B: registered customers
     const b2b = invoices.filter(
       (i) => i.customerGstin && i.customerGstin.length === 15,
     );
-    // B2C: unregistered
     const b2c = invoices.filter(
       (i) => !i.customerGstin || i.customerGstin.length !== 15,
     );
@@ -200,8 +223,6 @@ export const getGstR1 = async (req: Request, res: Response) => {
   }
 };
 
-// ── GST R3B Report ────────────────────────────────────────────────────────────
-// 3.1 Outward supplies (from invoices) + 4. ITC (from purchases) + net payable.
 export const getGstR3 = async (req: Request, res: Response) => {
   try {
     const { from, to, financialYear } = req.query;
@@ -303,8 +324,6 @@ export const getGstR3 = async (req: Request, res: Response) => {
   }
 };
 
-// ── Trial Balance ────────────────────────────────────────────────────────────
-// Sums debit and credit per account from JournalLine. Asserts Σdebit === Σcredit.
 export const getTrialBalance = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
@@ -368,7 +387,6 @@ export const getTrialBalance = async (req: Request, res: Response) => {
   }
 };
 
-// ── Profit & Loss ────────────────────────────────────────────────────────────
 export const getProfitLoss = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
@@ -426,7 +444,6 @@ export const getProfitLoss = async (req: Request, res: Response) => {
   }
 };
 
-// ── Journal listing (audit trail) ────────────────────────────────────────────
 export const getJournal = async (req: Request, res: Response) => {
   try {
     const { from, to, refType, limit } = req.query;
@@ -451,9 +468,6 @@ export const getJournal = async (req: Request, res: Response) => {
   }
 };
 
-// ── HSN summary (GSTR-1 §12) ─────────────────────────────────────────────────
-// Groups invoice items by HSN code + GST rate, splits tax across CGST/SGST/IGST
-// based on each invoice's taxType.
 export const getHsnSummary = async (req: Request, res: Response) => {
   try {
     const { from, to } = req.query;
@@ -523,7 +537,6 @@ export const getHsnSummary = async (req: Request, res: Response) => {
       map.set(key, row);
     }
 
-    // Look up HSN descriptions in one query
     const codes = Array.from(new Set(items.map((i) => i.hsnCode)));
     const hsnDescriptions =
       codes.length > 0
@@ -573,12 +586,8 @@ export const getHsnSummary = async (req: Request, res: Response) => {
   }
 };
 
-// ── Dashboard summary ────────────────────────────────────────────────────────
-// Five cards: outstanding receivables, low-stock batches, expiring batches,
-// net GST payable, and top customers by revenue.
 function parseExpiry(s: string | null): Date | null {
   if (!s) return null;
-  // Accepts YYYY-MM-DD, DD/MM/YYYY, MM/YY, MM/YYYY
   const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (ymd) return new Date(+ymd[1], +ymd[2] - 1, +ymd[3]);
   const dmy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
@@ -589,7 +598,7 @@ function parseExpiry(s: string | null): Date | null {
   const my = s.match(/^(\d{1,2})\/(\d{2,4})$/);
   if (my) {
     const y = +my[2] < 100 ? 2000 + +my[2] : +my[2];
-    return new Date(y, +my[1], 0); // last day of month
+    return new Date(y, +my[1], 0);
   }
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
@@ -600,24 +609,72 @@ const EXPIRY_WINDOW_DAYS = 90;
 
 export const getDashboardSummary = async (_req: Request, res: Response) => {
   try {
+    const cached = await cache.get<any>("dashboard:summary:v1");
+    if (cached) return res.json(cached);
+
     const now = new Date();
     const expiryCutoff = new Date(now);
     expiryCutoff.setDate(expiryCutoff.getDate() + EXPIRY_WINDOW_DAYS);
+    const GST_OUTPUT = ["2100", "2110", "2120"];
+    const GST_INPUT = ["1300", "1310", "1320"];
 
-    // 1. Outstanding — sum of SAVED invoice grand totals (no payments table yet)
-    const outstandingAgg = await prisma.invoice.aggregate({
-      _sum: { grandTotal: true },
-      where: { status: "SAVED" },
-    });
+    const [
+      outstandingAgg,
+      lowStockBatches,
+      allBatches,
+      gstResult,
+      topCustomersResult,
+    ] = await Promise.all([
+      prisma.invoice.aggregate({
+        _sum: { grandTotal: true },
+        where: { status: "SAVED" },
+      }),
+      prisma.batch.findMany({
+        where: { currentQty: { lt: LOW_STOCK_THRESHOLD } },
+        include: { item: { select: { id: true, name: true, unit: true } } },
+        orderBy: { currentQty: "asc" },
+        take: 50,
+      }),
+      prisma.batch.findMany({
+        where: { currentQty: { gt: 0 }, expiryDate: { not: null } },
+        include: { item: { select: { id: true, name: true } } },
+      }),
+      (async () => {
+        const accounts = await prisma.account.findMany({
+          where: { code: { in: [...GST_OUTPUT, ...GST_INPUT] } },
+          select: { id: true, code: true },
+        });
+        const accountIds = accounts.map((a) => a.id);
+        const lines =
+          accountIds.length > 0
+            ? await prisma.journalLine.findMany({
+                where: { accountId: { in: accountIds } },
+                select: { accountId: true, debit: true, credit: true },
+              })
+            : [];
+        return { accounts, lines };
+      })(),
+      (async () => {
+        const raw = await prisma.invoice.groupBy({
+          by: ["customerId"],
+          where: { status: "SAVED" },
+          _sum: { grandTotal: true },
+          orderBy: { _sum: { grandTotal: "desc" } },
+          take: 5,
+        });
+        const ids = raw.map((r) => r.customerId);
+        const names = ids.length
+          ? await prisma.customer.findMany({
+              where: { id: { in: ids } },
+              select: { id: true, name: true },
+            })
+          : [];
+        return { raw, names };
+      })(),
+    ]);
+
     const outstanding = r2(outstandingAgg._sum.grandTotal || 0);
 
-    // 2. Low stock — batches with currentQty below threshold, joined to item
-    const lowStockBatches = await prisma.batch.findMany({
-      where: { currentQty: { lt: LOW_STOCK_THRESHOLD } },
-      include: { item: { select: { id: true, name: true, unit: true } } },
-      orderBy: { currentQty: "asc" },
-      take: 50,
-    });
     const lowStock = lowStockBatches.map((b) => ({
       itemId: b.item.id,
       itemName: b.item.name,
@@ -626,11 +683,6 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
       unit: b.item.unit,
     }));
 
-    // 3. Expiring — batches with currentQty > 0 and expiry within window
-    const allBatches = await prisma.batch.findMany({
-      where: { currentQty: { gt: 0 }, expiryDate: { not: null } },
-      include: { item: { select: { id: true, name: true } } },
-    });
     const expiring = allBatches
       .map((b) => ({ b, exp: parseExpiry(b.expiryDate) }))
       .filter(
@@ -647,54 +699,27 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
         currentQty: b.currentQty,
       }));
 
-    // 4. GST payable — Σ Output (credits − debits) − Σ Input (debits − credits)
-    const gstAccounts = await prisma.account.findMany({
-      where: { code: { in: ["2100", "2110", "2120", "1300", "1310", "1320"] } },
-      select: { id: true, code: true },
-    });
-    const gstAccountIds = gstAccounts.map((a) => a.id);
-    const gstLines =
-      gstAccountIds.length > 0
-        ? await prisma.journalLine.findMany({
-            where: { accountId: { in: gstAccountIds } },
-            select: { accountId: true, debit: true, credit: true },
-          })
-        : [];
-    const codeOf = new Map(gstAccounts.map((a) => [a.id, a.code]));
-    let output = 0,
-      input = 0;
-    for (const l of gstLines) {
+    const codeOf = new Map(gstResult.accounts.map((a) => [a.id, a.code]));
+    let output = 0;
+    let input = 0;
+    for (const l of gstResult.lines) {
       const code = codeOf.get(l.accountId);
       if (!code) continue;
-      if (["2100", "2110", "2120"].includes(code)) {
-        output += l.credit - l.debit;
-      } else {
-        input += l.debit - l.credit;
-      }
+      if (GST_OUTPUT.includes(code)) output += l.credit - l.debit;
+      else input += l.debit - l.credit;
     }
     const gstPayable = r2(output - input);
 
-    // 5. Top customers — by sum of grandTotal across SAVED invoices
-    const topCustomersRaw = await prisma.invoice.groupBy({
-      by: ["customerId"],
-      where: { status: "SAVED" },
-      _sum: { grandTotal: true },
-      orderBy: { _sum: { grandTotal: "desc" } },
-      take: 5,
-    });
-    const custIds = topCustomersRaw.map((r) => r.customerId);
-    const custs = await prisma.customer.findMany({
-      where: { id: { in: custIds } },
-      select: { id: true, name: true },
-    });
-    const custName = new Map(custs.map((c) => [c.id, c.name]));
-    const topCustomers = topCustomersRaw.map((r) => ({
+    const custName = new Map(
+      topCustomersResult.names.map((c) => [c.id, c.name]),
+    );
+    const topCustomers = topCustomersResult.raw.map((r) => ({
       customerId: r.customerId,
       name: custName.get(r.customerId) || "(unknown)",
       total: r2(r._sum.grandTotal || 0),
     }));
 
-    res.json({
+    const payload = {
       outstanding,
       lowStock,
       lowStockCount: lowStock.length,
@@ -704,7 +729,9 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
       gstOutput: r2(output),
       gstInput: r2(input),
       topCustomers,
-    });
+    };
+    void cache.set("dashboard:summary:v1", payload, 30);
+    res.json(payload);
   } catch (err: any) {
     console.error("dashboard summary error:", err);
     res.status(500).json({ error: "Failed to compute dashboard summary" });

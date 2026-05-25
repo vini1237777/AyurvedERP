@@ -6,19 +6,33 @@ type Leg = { code: string; debit?: number; credit?: number };
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
+let accountCache: Map<string, number> | null = null;
+let accountCachePromise: Promise<Map<string, number>> | null = null;
+
+async function loadAccountCache(tx: Tx) {
+  const all = await tx.account.findMany({ select: { id: true, code: true } });
+  return new Map(all.map((a) => [a.code, a.id]));
+}
+
+export function invalidateAccountCache() {
+  accountCache = null;
+  accountCachePromise = null;
+}
+
 async function getAccountIdMap(tx: Tx, codes: string[]) {
-  const accounts = await tx.account.findMany({
-    where: { code: { in: codes } },
-    select: { id: true, code: true },
-  });
-  const map = new Map(accounts.map((a) => [a.code, a.id]));
+  if (!accountCache) {
+   
+    if (!accountCachePromise) accountCachePromise = loadAccountCache(tx);
+    accountCache = await accountCachePromise;
+    accountCachePromise = null;
+  }
   for (const c of codes) {
-    if (!map.has(c))
+    if (!accountCache.has(c))
       throw new Error(
         `Account ${c} missing — run bootstrap.ts to seed the chart of accounts`,
       );
   }
-  return map;
+  return accountCache;
 }
 
 async function getNextEntryNo(tx: Tx): Promise<string> {
@@ -31,9 +45,6 @@ async function getNextEntryNo(tx: Tx): Promise<string> {
   return `JE-${String(max + 1).padStart(6, "0")}`;
 }
 
-/**
- * Post a balanced journal entry. Throws if Σdebit ≠ Σcredit.
- */
 export async function postEntry(
   tx: Tx,
   args: {
@@ -82,10 +93,6 @@ export async function postEntry(
   });
 }
 
-/**
- * Reverse a prior posting (used on cancel). Creates a new entry that swaps
- * debit/credit on every line of the original, links both with isReversed.
- */
 export async function reverseEntriesFor(
   tx: Tx,
   refType: string,
@@ -121,8 +128,6 @@ export async function reverseEntriesFor(
     });
   }
 }
-
-// ─── Domain posting helpers ──────────────────────────────────────────────────
 
 export type InvoicePostInput = {
   invoiceId: number;

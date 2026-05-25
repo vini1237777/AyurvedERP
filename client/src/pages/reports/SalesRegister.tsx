@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { customerApi, reportApi } from "../../utils/api";
 import { fmt } from "../../utils/invoice.utils";
 import { Card, LoadingScreen, PageHeader, Input, Select, Badge } from "../../components/ui";
-import { Pagination, usePagination } from "../../components/ui/Pagination";
+import { Pagination } from "../../components/ui/Pagination";
 import type { Customer, Invoice } from "../../types";
 
 type SortKey = 'invoiceNo' | 'invoiceDate' | 'customer' | 'totalTaxable' | 'totalTax' | 'grandTotal'
@@ -38,6 +38,9 @@ function exportPDF(rows: Invoice[], total: number) {
 
 export default function SaleRegister() {
   const [rows, setRows]           = useState<Invoice[]>([])
+  const [totalCount, setTotalCount] = useState(0)
+  const [pageNum, setPageNum]     = useState(1)
+  const [perPage, setPerPage]     = useState(50)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading]     = useState(true)
   const [from, setFrom]           = useState("")
@@ -46,24 +49,36 @@ export default function SaleRegister() {
   const [sortKey, setSortKey]     = useState<SortKey>('invoiceDate')
   const [sortDir, setSortDir]     = useState<SortDir>('desc')
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [sales, custs] = await Promise.all([
-        reportApi.getSaleRegister({ from:from||undefined, to:to||undefined, customerId:customerId?Number(customerId):undefined }),
-        customerApi.getAll(),
-      ])
-      setRows(sales); setCustomers(custs)
+      const page = await reportApi.getSaleRegister({
+        from: from || undefined,
+        to: to || undefined,
+        customerId: customerId ? Number(customerId) : undefined,
+        page: pageNum,
+        limit: perPage,
+      })
+      setRows(page.rows || [])
+      setTotalCount(page.total || 0)
     } finally { setLoading(false) }
-  }
+  }, [from, to, customerId, pageNum, perPage])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    customerApi.getAll().then(setCustomers).catch(() => {})
+  }, [])
+
+
+  useEffect(() => { setPageNum(1) }, [from, to, customerId, perPage])
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortKey(key); setSortDir('asc') }
   }
 
+  // Sort the current page only. For globally-sorted results, push sort to the server.
   const sorted = [...rows].sort((a, b) => {
     let av: any, bv: any
     if (sortKey === 'invoiceNo')    { av = a.invoiceNo; bv = b.invoiceNo }
@@ -77,8 +92,20 @@ export default function SaleRegister() {
     return 0
   })
 
-  const pg    = usePagination(sorted, 50)
-  const total = rows.reduce((s,r)=>s+r.grandTotal, 0)
+  const total = rows.reduce((s, r) => s + r.grandTotal, 0)
+  const fromIdx = totalCount === 0 ? 0 : (pageNum - 1) * perPage + 1
+  const toIdx = Math.min(pageNum * perPage, totalCount)
+
+  // For exports: fetch the full unbounded set, never just the current page.
+  async function withFullSet(fn: (all: Invoice[], grand: number) => void) {
+    const all = await reportApi.getSaleRegisterAll({
+      from: from || undefined,
+      to: to || undefined,
+      customerId: customerId ? Number(customerId) : undefined,
+    })
+    const grand = all.reduce((s, r) => s + r.grandTotal, 0)
+    fn(all, grand)
+  }
 
   return (
     <div>
@@ -98,13 +125,13 @@ export default function SaleRegister() {
         {loading ? <LoadingScreen/> : (<>
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
             <h2 className="font-semibold text-slate-800">
-              Sales <span className="text-slate-400 font-normal text-sm ml-2">{rows.length} invoices</span>
+              Sales <span className="text-slate-400 font-normal text-sm ml-2">{totalCount} invoices</span>
             </h2>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-semibold text-slate-700">Total: ₹{fmt(total)}</span>
-              {rows.length > 0 && <>
-                <button onClick={()=>exportCSV(rows)} className="px-3 py-1.5 text-xs font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100">⬇ CSV</button>
-                <button onClick={()=>exportPDF(rows,total)} className="px-3 py-1.5 text-xs font-semibold border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100">🖨 PDF</button>
+              <span className="text-sm font-semibold text-slate-700">Page total: ₹{fmt(total)}</span>
+              {totalCount > 0 && <>
+                <button onClick={() => withFullSet((all) => exportCSV(all))} className="px-3 py-1.5 text-xs font-semibold border border-emerald-200 text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100">CSV (all)</button>
+                <button onClick={() => withFullSet((all, grand) => exportPDF(all, grand))} className="px-3 py-1.5 text-xs font-semibold border border-blue-200 text-blue-700 bg-blue-50 rounded-lg hover:bg-blue-100">PDF (all)</button>
               </>}
             </div>
           </div>
@@ -123,7 +150,7 @@ export default function SaleRegister() {
                 </tr>
               </thead>
               <tbody>
-                {pg.paginated.map(inv=>(
+                {sorted.map(inv=>(
                   <tr key={inv.id} className="border-b border-slate-50 hover:bg-slate-50">
                     <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700">#{inv.invoiceNo}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{new Date(inv.invoiceDate).toLocaleDateString("en-IN")}</td>
@@ -139,7 +166,17 @@ export default function SaleRegister() {
               </tbody>
             </table>
           </div>
-          {rows.length > 0 && <Pagination total={pg.total} page={pg.page} perPage={pg.perPage} from={pg.from} to={pg.to} onPage={pg.setPage} onPerPage={pg.onPerPage}/>}
+          {totalCount > 0 && (
+            <Pagination
+              total={totalCount}
+              page={pageNum}
+              perPage={perPage}
+              from={fromIdx}
+              to={toIdx}
+              onPage={setPageNum}
+              onPerPage={setPerPage}
+            />
+          )}
         </>)}
       </Card>
     </div>

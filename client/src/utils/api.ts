@@ -31,17 +31,66 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+
+let refreshInflight: Promise<string | null> | null = null;
+
+async function tryRefreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem("refreshToken");
+  if (!refreshToken) return null;
+  try {
+    const res = await axios.post<{ accessToken: string; user: AuthUser }>(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken },
+    );
+    const next = res.data.accessToken;
+    if (next) {
+      localStorage.setItem("authToken", next);
+      if (res.data.user)
+        localStorage.setItem("authUser", JSON.stringify(res.data.user));
+      return next;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function clearAuthAndRedirect() {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("refreshToken");
+  localStorage.removeItem("authUser");
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login";
+  }
+}
+
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err?.response?.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("authUser");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+  async (err) => {
+    const status = err?.response?.status;
+    const original = err?.config;
+
+    if (status === 401 && original && !original._retry) {
+      const url: string = original.url || "";
+      if (url.includes("/auth/refresh") || url.includes("/auth/login")) {
+        clearAuthAndRedirect();
+        return Promise.reject(err);
       }
+
+      original._retry = true;
+      if (!refreshInflight) refreshInflight = tryRefreshAccessToken();
+      const newToken = await refreshInflight;
+      refreshInflight = null;
+
+      if (newToken) {
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      }
+      clearAuthAndRedirect();
     }
-    if (err?.response?.status === 403) {
+
+    if (status === 403) {
       window.dispatchEvent(
         new CustomEvent("api:forbidden", {
           detail:
@@ -55,7 +104,6 @@ api.interceptors.response.use(
   },
 );
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
 export type AuthUser = {
   id: number;
   email: string;
@@ -63,29 +111,40 @@ export type AuthUser = {
   role: string;
 };
 
-// Drop-in fetch replacement that adds the Bearer token and handles 401 the
-// same way the axios interceptor does. Use this in pages that call fetch()
-// directly instead of going through the axios `api` instance.
 export async function authFetch(
   input: RequestInfo | URL,
   init: RequestInit = {},
 ): Promise<Response> {
-  const token = localStorage.getItem("authToken");
-  const headers = new Headers(init.headers || {});
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-  if (!headers.has("Content-Type") && init.body) {
-    headers.set("Content-Type", "application/json");
-  }
-  const res = await fetch(input, { ...init, headers });
-  if (res.status === 401) {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
-    if (window.location.pathname !== "/login") {
-      window.location.href = "/login";
+  const buildHeaders = () => {
+    const token = localStorage.getItem("authToken");
+    const h = new Headers(init.headers || {});
+    if (token && !h.has("Authorization")) {
+      h.set("Authorization", `Bearer ${token}`);
+    }
+    if (!h.has("Content-Type") && init.body) {
+      h.set("Content-Type", "application/json");
+    }
+    return h;
+  };
+
+  let res = await fetch(input, { ...init, headers: buildHeaders() });
+
+  const urlStr = String(input);
+  if (
+    res.status === 401 &&
+    !urlStr.includes("/auth/refresh") &&
+    !urlStr.includes("/auth/login")
+  ) {
+    if (!refreshInflight) refreshInflight = tryRefreshAccessToken();
+    const newToken = await refreshInflight;
+    refreshInflight = null;
+    if (newToken) {
+      res = await fetch(input, { ...init, headers: buildHeaders() });
+    } else {
+      clearAuthAndRedirect();
     }
   }
+
   if (res.status === 403) {
     let msg = "You don't have permission to perform that action.";
     try {
@@ -97,15 +156,29 @@ export async function authFetch(
   return res;
 }
 
+export type LoginResponse = {
+  accessToken: string;
+  refreshToken: string;
+  token?: string;
+  user: AuthUser;
+};
+
 export const authApi = {
   login: (email: string, password: string) =>
     api
-      .post<{ token: string; user: AuthUser }>("/auth/login", { email, password })
+      .post<LoginResponse>("/auth/login", { email, password })
       .then((r) => r.data),
+  refresh: () => {
+    const refreshToken = localStorage.getItem("refreshToken");
+    return api
+      .post<{ accessToken: string; user: AuthUser }>("/auth/refresh", {
+        refreshToken,
+      })
+      .then((r) => r.data);
+  },
   me: () => api.get<AuthUser>("/auth/me").then((r) => r.data),
 };
 
-// ─── Customers ────────────────────────────────────────────────────────────────
 export const customerApi = {
   getAll: () => api.get<Customer[]>("/customers").then((r) => r.data),
   getById: (id: number) =>
@@ -119,7 +192,6 @@ export const customerApi = {
   delete: (id: number) => api.delete(`/customers/${id}`).then((r) => r.data),
 };
 
-// ─── Items ────────────────────────────────────────────────────────────────────
 export const itemApi = {
   getAll: () => api.get<Item[]>("/items").then((r) => r.data),
   getById: (id: number) => api.get<Item>(`/items/${id}`).then((r) => r.data),
@@ -134,12 +206,13 @@ export const itemApi = {
     api.get<Batch[]>(`/items/${id}/batches`).then((r) => r.data),
 };
 
-// ─── Batches ──────────────────────────────────────────────────────────────────
 export const batchApi = {
-  getAll: (itemId?: number) =>
-    api
-      .get<Batch[]>(`/batches${itemId ? `?itemId=${itemId}` : ""}`)
-      .then((r) => r.data),
+  getAll: (itemId?: number) => {
+    const qs = new URLSearchParams();
+    if (itemId) qs.set("itemId", String(itemId));
+    qs.set("limit", "0");
+    return api.get<Batch[]>(`/batches?${qs.toString()}`).then((r) => r.data);
+  },
   create: (data: BatchFormData) =>
     api.post<Batch>("/batches", data).then((r) => r.data),
   update: (id: number, data: Partial<BatchFormData>) =>
@@ -147,7 +220,6 @@ export const batchApi = {
   delete: (id: number) => api.delete(`/batches/${id}`).then((r) => r.data),
 };
 
-// ─── Agents ───────────────────────────────────────────────────────────────────
 export const agentApi = {
   getAll: () => api.get<Agent[]>("/agents").then((r) => r.data),
   create: (data: { name: string; mobile?: string }) =>
@@ -157,7 +229,6 @@ export const agentApi = {
   delete: (id: number) => api.delete(`/agents/${id}`).then((r) => r.data),
 };
 
-// ─── HSN ──────────────────────────────────────────────────────────────────────
 export const hsnApi = {
   getAll: () => api.get<HsnCode[]>("/hsn").then((r) => r.data),
   create: (data: { code: string; description?: string; gstRate: number }) =>
@@ -165,10 +236,28 @@ export const hsnApi = {
   getTaxSlabs: () => api.get<TaxSlab[]>("/hsn/taxslabs").then((r) => r.data),
 };
 
-// ─── Invoices ─────────────────────────────────────────────────────────────────
+export type InvoicePage = {
+  rows: Invoice[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+};
+
 export const invoiceApi = {
-  getAll: (params?: { from?: string; to?: string; customerId?: number }) =>
-    api.get<Invoice[]>("/invoices", { params }).then((r) => r.data),
+  getAll: (params?: {
+    from?: string;
+    to?: string;
+    customerId?: number;
+    financialYear?: string;
+    page?: number;
+    limit?: number;
+  }) =>
+    api
+      .get<InvoicePage>("/invoices", {
+        params: { page: 1, limit: 50, ...params },
+      })
+      .then((r) => r.data),
 
   getById: (id: number) =>
     api.get<Invoice>(`/invoices/${id}`).then((r) => r.data),
@@ -187,14 +276,37 @@ export const invoiceApi = {
   ) => api.post(`/invoices/${id}/return`, data).then((r) => r.data),
 };
 
+export type SaleRegisterPage = {
+  rows: SaleRegisterRow[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+};
+
 export const reportApi = {
   getSaleRegister: (params?: {
     from?: string;
     to?: string;
     customerId?: number;
+    page?: number;
+    limit?: number;
   }) =>
     api
-      .get<SaleRegisterRow[]>("/reports/sale-register", { params })
+      .get<SaleRegisterPage>("/reports/sale-register", {
+        params: { page: 1, limit: 50, ...params },
+      })
+      .then((r) => r.data),
+
+  getSaleRegisterAll: (params?: {
+    from?: string;
+    to?: string;
+    customerId?: number;
+  }) =>
+    api
+      .get<SaleRegisterRow[]>("/reports/sale-register", {
+        params: { ...params, limit: 0 },
+      })
       .then((r) => r.data),
 
   getGstReport: (params?: { from?: string; to?: string }) =>

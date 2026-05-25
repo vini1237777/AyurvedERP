@@ -47,8 +47,10 @@ export const getNextNo = async (_req: Request, res: Response) => {
 export const getAll = async (req: Request, res: Response) => {
   try {
     const { from, to, customerId, page, limit, financialYear } = req.query;
-    const pageNum = parseInt(String(page || "1"), 10);
-    const limitNum = parseInt(String(limit || "0"), 10);
+  
+    const requestedLimit = limit !== undefined ? parseInt(String(limit), 10) : 50;
+    const limitNum = Number.isFinite(requestedLimit) ? requestedLimit : 50;
+    const pageNum = Math.max(1, parseInt(String(page || "1"), 10) || 1);
 
     const where = {
       ...(from && to
@@ -64,30 +66,40 @@ export const getAll = async (req: Request, res: Response) => {
       status: { not: "CANCELLED" },
     };
 
-    const invoices = await prisma.invoice.findMany({
-      where,
-      include: {
-        customer: true,
-        agent: true,
-        items: { include: { batch: true } },
-      },
-      orderBy: { invoiceDate: "desc" },
-      ...(limitNum > 0
-        ? { skip: (pageNum - 1) * limitNum, take: limitNum }
-        : {}),
-    });
+    const includeForList = { customer: true, agent: true };
+    const includeForAll = {
+      customer: true,
+      agent: true,
+      items: { include: { batch: true } },
+    };
 
     if (limitNum > 0) {
-      const total = await prisma.invoice.count({ where });
-      res.json({
-        data: invoices,
+      const [rows, total] = await Promise.all([
+        prisma.invoice.findMany({
+          where,
+          include: includeForList,
+          orderBy: { invoiceDate: "desc" },
+          skip: (pageNum - 1) * limitNum,
+          take: limitNum,
+        }),
+        prisma.invoice.count({ where }),
+      ]);
+      return res.json({
+        data: rows,
+        rows,
         total,
         page: pageNum,
+        limit: limitNum,
         hasMore: pageNum * limitNum < total,
       });
-    } else {
-      res.json(invoices);
     }
+
+    const invoices = await prisma.invoice.findMany({
+      where,
+      include: includeForAll,
+      orderBy: { invoiceDate: "desc" },
+    });
+    res.json(invoices);
   } catch (err) {
     console.error("getAll invoices error:", err);
     res.status(500).json({ error: "Failed to fetch invoices" });
@@ -126,7 +138,6 @@ export const create = async (req: Request, res: Response) => {
     const taxType = customer.stateCode === "27" ? "CGST_SGST" : "IGST";
     const invoiceNo = await getNextInvoiceNo();
 
-    // Determine financial year from invoice date
     const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
     const y = invDate.getFullYear();
     const m = invDate.getMonth() + 1;
@@ -173,7 +184,6 @@ export const create = async (req: Request, res: Response) => {
           return res
             .status(400)
             .json({ error: `Batch not found for ${row.itemName}` });
-        // Allow negative stock
       }
     }
 

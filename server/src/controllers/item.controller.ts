@@ -1,18 +1,24 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import { cache } from "../utils/cache";
+
+const ITEMS_CACHE_KEY = "items:list:v1";
+const ITEMS_CACHE_TTL = 600; 
 
 export const getAll = async (_req: Request, res: Response) => {
   try {
-    const items = await prisma.item.findMany({
-      where: { isActive: true },
-      include: {
-        hsn: true,
-        taxSlab: true,
-        batches: true,
-        categoryPrices: { orderBy: { category: "asc" } },
-      },
-      orderBy: { name: "asc" },
-    });
+    const items = await cache.wrap(ITEMS_CACHE_KEY, ITEMS_CACHE_TTL, () =>
+      prisma.item.findMany({
+        where: { isActive: true },
+        include: {
+          hsn: true,
+          taxSlab: true,
+          batches: true,
+          categoryPrices: { orderBy: { category: "asc" } },
+        },
+        orderBy: { name: "asc" },
+      }),
+    );
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch items" });
@@ -51,7 +57,6 @@ export const create = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Name and HSN are required" });
     }
 
-    // taxSlabId — use from request OR auto-derive from HSN gstRate
     let finalTaxSlabId = taxSlabId ? parseInt(taxSlabId) : null;
 
     if (!finalTaxSlabId) {
@@ -87,6 +92,7 @@ export const create = async (req: Request, res: Response) => {
       include: { hsn: true, taxSlab: true },
     });
 
+    await cache.del(ITEMS_CACHE_KEY);
     res.status(201).json(item);
   } catch (err) {
     console.error("Item create error:", err);
@@ -111,7 +117,6 @@ export const update = async (req: Request, res: Response) => {
 
     let finalTaxSlabId = taxSlabId ? parseInt(taxSlabId) : undefined;
 
-    // If hsnId changed but taxSlabId not sent — auto-derive
     if (hsnId && !taxSlabId) {
       const hsn = await prisma.hsnCode.findUnique({
         where: { id: parseInt(hsnId) },
@@ -140,6 +145,7 @@ export const update = async (req: Request, res: Response) => {
       },
       include: { hsn: true, taxSlab: true },
     });
+    await cache.del(ITEMS_CACHE_KEY);
     res.json(item);
   } catch (err) {
     console.error("Item update error:", err);
@@ -153,6 +159,7 @@ export const remove = async (req: Request, res: Response) => {
       where: { id: parseInt(req.params.id) },
       data: { isActive: false },
     });
+    await cache.del(ITEMS_CACHE_KEY);
     res.json({ message: "Item deleted" });
   } catch (err) {
     res.status(500).json({ error: "Failed to delete item" });

@@ -47,8 +47,8 @@ export default function Dashboard() {
   useEffect(() => {
     async function loadDashboard() {
       try {
-        const invoiceData = await invoiceApi.getAll();
-        setInvoices(invoiceData || []);
+        const page = await invoiceApi.getAll({ limit: 5 });
+        setInvoices(page.rows || []);
       } catch (err) {
         console.error("Failed to load invoices", err);
       }
@@ -341,14 +341,8 @@ export default function Dashboard() {
         </Card>
 
         <Card>
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="px-5 py-4 border-b border-slate-100">
             <h2 className="font-semibold text-slate-800">Recent Returns</h2>
-            <Link
-              to="/sales/returns"
-              className="text-sm text-blue-600 hover:underline"
-            >
-              View all
-            </Link>
           </div>
 
           {loading ? (

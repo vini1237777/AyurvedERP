@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
 import { authFetch } from "../../utils/api";
@@ -11,6 +11,7 @@ import {
   LoadingScreen,
   Toast,
 } from "../../components/ui";
+import { Pagination } from "../../components/ui/Pagination";
 
 const API = (
   import.meta.env.VITE_API_URL || "http://localhost:3000/api"
@@ -25,40 +26,50 @@ function getCurrentFY() {
     : `${y - 1}-${String(y).slice(2)}`;
 }
 
+function recentFYs(): string[] {
+  const now = new Date();
+  const y = now.getFullYear();
+  const fy = (start: number) => `${start}-${String(start + 1).slice(2)}`;
+  const cur = now.getMonth() + 1 >= 4 ? y : y - 1;
+  return [fy(cur), fy(cur - 1), fy(cur - 2), fy(cur - 3)];
+}
+
 export default function PurchaseList() {
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(50);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
-  const [availableFYs, setAvailableFYs] = useState<string[]>([]);
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
   } | null>(null);
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  async function load() {
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const res = await authFetch(`${API}/purchases`);
+      const url = `${API}/purchases?financialYear=${encodeURIComponent(selectedFY)}&page=${page}&limit=${perPage}`;
+      const res = await authFetch(url);
       const data = await res.json();
-      setPurchases(data);
-      const fys = [
-        ...new Set(data.map((i: any) => i.financialYear || getCurrentFY())),
-      ]
-        .sort()
-        .reverse();
-      setAvailableFYs(fys as string[]);
-      if (fys.length > 0 && !fys.includes(getCurrentFY()))
-        setSelectedFY(fys[0] as string);
+      setPurchases(data.rows || []);
+      setTotal(data.total || 0);
     } catch {
       setToast({ msg: "Failed to load purchases", type: "error" });
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedFY, page, perPage]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [selectedFY, perPage]);
 
   async function handleCancel(id: number) {
     if (!confirm("Cancel this purchase?")) return;
@@ -120,14 +131,17 @@ export default function PurchaseList() {
     }
   }
 
+  // Server has already filtered by FY; client-side search runs within the
+  // current page only.
   const filtered = purchases.filter(
     (p) =>
-      p.financialYear === selectedFY &&
-      (String(p.purchaseNo).toLowerCase().includes(search.toLowerCase()) ||
-        p.supplier.name.toLowerCase().includes(search.toLowerCase())),
+      String(p.purchaseNo).toLowerCase().includes(search.toLowerCase()) ||
+      p.supplier?.name?.toLowerCase().includes(search.toLowerCase()),
   );
   const totalAmt = filtered.reduce((s, p) => s + p.grandTotal, 0);
-  const fys = [...new Set([getCurrentFY(), ...availableFYs])].sort().reverse();
+  const fys = recentFYs();
+  const fromIdx = total === 0 ? 0 : (page - 1) * perPage + 1;
+  const toIdx = Math.min(page * perPage, total);
 
   return (
     <div>
@@ -140,7 +154,7 @@ export default function PurchaseList() {
       )}
       <PageHeader
         title="All Purchases"
-        subtitle={`${filtered.length} purchases · ₹${fmt(totalAmt)}`}
+        subtitle={`${total} purchases in FY ${selectedFY} · Page total ₹${fmt(totalAmt)}`}
         actions={
           <>
             <input
@@ -273,6 +287,17 @@ export default function PurchaseList() {
                 </tbody>
               </table>
             </div>
+          )}
+          {total > 0 && (
+            <Pagination
+              total={total}
+              page={page}
+              perPage={perPage}
+              from={fromIdx}
+              to={toIdx}
+              onPage={setPage}
+              onPerPage={setPerPage}
+            />
           )}
         </Card>
       )}
