@@ -300,6 +300,62 @@ function Hero() {
   );
 }
 
+function TiltCard({
+  children,
+  intensity = 6,
+  className = "",
+}: {
+  children: React.ReactNode;
+  intensity?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0, glow: { x: 50, y: 50 } });
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) / rect.width;
+    const cy = (e.clientY - rect.top) / rect.height;
+    setTilt({
+      x: (0.5 - cy) * intensity,
+      y: (cx - 0.5) * intensity,
+      glow: { x: cx * 100, y: cy * 100 },
+    });
+  };
+
+  const onLeave = () => setTilt({ x: 0, y: 0, glow: { x: 50, y: 50 } });
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      className={`relative h-full ${className}`}
+      style={{
+        perspective: "1200px",
+      }}
+    >
+      <div
+        className="relative h-full transition-transform duration-300 ease-out will-change-transform"
+        style={{
+          transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+          transformStyle: "preserve-3d",
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-0 hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+          style={{
+            background: `radial-gradient(circle 200px at ${tilt.glow.x}% ${tilt.glow.y}%, rgba(16,185,129,0.10), transparent 70%)`,
+          }}
+        />
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function Modules() {
   const SECONDARY = [
     {
@@ -363,6 +419,7 @@ function Modules() {
         <div className="grid lg:grid-cols-3 gap-px">
           {/* Featured: Sales & Billing — spans 2 columns on lg */}
           <Reveal className="lg:col-span-2">
+            <TiltCard intensity={4}>
             <div className="group h-full bg-white p-10 sm:p-12 relative overflow-hidden">
               <div className="flex items-start justify-between mb-10">
                 <div>
@@ -404,10 +461,12 @@ function Modules() {
                 ))}
               </div>
             </div>
+            </TiltCard>
           </Reveal>
 
           {/* Side featured: Ledger */}
           <Reveal delay={80}>
+            <TiltCard intensity={5}>
             <div className="group h-full bg-white p-10 sm:p-12 relative">
               <div className="w-10 h-10 mb-8 text-emerald-700">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
@@ -433,6 +492,7 @@ Cr  GST Output - SGST      900`}
                 </pre>
               </div>
             </div>
+            </TiltCard>
           </Reveal>
 
         </div>
@@ -441,6 +501,7 @@ Cr  GST Output - SGST      900`}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-px border-t border-slate-200/80">
           {SECONDARY.map((m, i) => (
             <Reveal key={m.name} delay={140 + i * 60}>
+              <TiltCard intensity={6}>
               <div className="group h-full bg-white p-7 sm:p-8 transition-colors hover:bg-slate-50">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-6 h-6 text-emerald-700">{m.icon}</div>
@@ -452,6 +513,7 @@ Cr  GST Output - SGST      900`}
                   {m.sub}
                 </div>
               </div>
+              </TiltCard>
             </Reveal>
           ))}
         </div>
@@ -459,122 +521,205 @@ Cr  GST Output - SGST      900`}
       </div>
     </section>
   );
-}
-
-function useCountUp(target: number, durationMs = 1400) {
-  const { ref, visible } = useReveal<HTMLDivElement>();
-  const [value, setValue] = useState(0);
-  useEffect(() => {
-    if (!visible) return;
-    let raf = 0;
-    const start = performance.now();
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / durationMs);
-      const eased = 1 - Math.pow(1 - p, 3);
-      setValue(target * eased);
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [visible, target, durationMs]);
-  return { ref, value };
 }
 
 function Performance() {
+  const { ref: sectionRef, progress } = useScrollProgress<HTMLDivElement>();
+
+  // Pin range: 0..1 across the section's full scroll. Carve into 3 acts.
+  const p = Math.max(0, Math.min(1, progress));
+
+  // Stage index: 0 (throughput), 1 (latency), 2 (errors), 3 (users)
+  const stage = p < 0.25 ? 0 : p < 0.5 ? 1 : p < 0.75 ? 2 : 3;
+
+  const STATS = [
+    { value: 1146, suffix: "/s", label: "sustained throughput", sub: "k6 · 2,000 VUs · 4 cores" },
+    { value: 47, suffix: " ms", label: "p95 read latency", sub: "dashboard hot path" },
+    { value: 0, suffix: " %", label: "errors across 213k requests", sub: "zero 5xx, zero drops" },
+    { value: 15300, suffix: "", label: "active users per box", sub: "extrapolated at 0.075 req/s/user" },
+  ];
+
+  const active = STATS[stage];
+
+  // Scroll-driven transforms on the hero number
+  const heroScale = 0.85 + p * 0.25;
+  const heroRotate = (0.5 - p) * 6;
+  const heroBlur = stage === 0 ? 0 : 0;
+
+  // Pulsing dot at stage transitions
+  const stageProgress = (p % 0.25) / 0.25;
+
   return (
-    <section className="relative overflow-hidden bg-slate-950 text-white">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(16,185,129,0.15),transparent_60%)]" />
-      <div className="relative max-w-6xl mx-auto px-6 py-28 sm:py-36">
-        <div className="grid lg:grid-cols-12 gap-12 items-end">
-          {/* Hero stat — left, dominant */}
-          <Reveal className="lg:col-span-7">
-            <div>
-              <HeroStatCounter target={1146} suffix="/s" />
-              <div className="mt-4 text-sm text-emerald-400 font-mono tracking-tight">
-                req · sustained · k6 @ 2,000 VUs
-              </div>
-            </div>
-          </Reveal>
+    <section
+      ref={sectionRef}
+      className="relative bg-slate-950 text-white"
+      style={{ minHeight: "260vh" }}
+    >
+      <div className="sticky top-0 h-screen overflow-hidden flex items-center">
+        {/* Layered ambient glows that drift with scroll */}
+        <div
+          className="absolute inset-0 pointer-events-none transition-opacity"
+          style={{
+            background: `radial-gradient(ellipse 70% 50% at ${20 + p * 60}% ${15 + p * 30}%, rgba(16,185,129,0.35) 0%, transparent 55%)`,
+            opacity: 0.6 + p * 0.4,
+          }}
+        />
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(ellipse 50% 30% at ${80 - p * 60}% ${70 + p * 20}%, rgba(20,184,166,0.25) 0%, transparent 50%)`,
+          }}
+        />
 
-          {/* Headline + paragraph — right, supporting */}
-          <Reveal className="lg:col-span-5" delay={120}>
-            <div>
-              <h2 className="text-3xl sm:text-4xl font-semibold tracking-[-0.025em] leading-[1.1] mb-5">
-                The cluster doesn't blink.
-              </h2>
-              <p className="text-slate-400 text-base leading-relaxed">
-                One 4-core machine, four Express workers, a shared Redis cache
-                and a Postgres primary. Run the k6 suite yourself — the numbers
-                reproduce.
-              </p>
-            </div>
-          </Reveal>
-        </div>
+        {/* Grid texture, drifts subtly */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            backgroundImage:
+              "linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            backgroundPosition: `0 ${-p * 200}px`,
+          }}
+        />
 
-        {/* Supporting stats — thin row, mono-styled */}
-        <div className="mt-20 pt-10 border-t border-slate-800 grid grid-cols-3 gap-6 sm:gap-12">
-          {[
-            { target: 47, suffix: " ms", label: "p95 read latency" },
-            { target: 0, suffix: " %", label: "errors in 213k requests" },
-            { target: 15300, suffix: "", label: "active users per box" },
-          ].map((s, i) => (
-            <Reveal key={s.label} delay={200 + i * 80}>
-              <div>
-                <div className="text-2xl sm:text-4xl font-semibold text-white tracking-[-0.025em] tabular-nums">
-                  <InlineCount target={s.target} />
-                  <span className="text-emerald-400">{s.suffix}</span>
-                </div>
-                <div className="mt-2 text-xs text-slate-500 font-mono">
-                  {s.label}
-                </div>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-
-        <Reveal delay={500}>
-          <div className="mt-16 flex flex-wrap items-center gap-4 text-xs text-slate-500 font-mono">
-            <span className="text-slate-600">benchmark stack ↦</span>
-            {["k6", "Redis", "Postgres", "Node cluster", "compression"].map((t) => (
-              <span
-                key={t}
-                className="px-2.5 py-1 rounded-full border border-slate-800 text-slate-300"
-              >
-                {t}
+        <div className="relative w-full max-w-6xl mx-auto px-6">
+          <div className="flex flex-col items-start gap-8">
+            {/* Live eyebrow with stage pips */}
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
               </span>
-            ))}
-            <a
-              href="https://github.com/vini1237777/AyurvedERP/tree/main/server/load-tests"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto text-emerald-400 hover:text-emerald-300"
+              <span className="text-[11px] tracking-[0.3em] uppercase font-semibold text-emerald-400 font-mono">
+                Numbers, live
+              </span>
+              <div className="flex gap-1.5 ml-3">
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    className="block h-px transition-all duration-500"
+                    style={{
+                      width: i === stage ? 24 : 10,
+                      backgroundColor:
+                        i < stage
+                          ? "#10b981"
+                          : i === stage
+                            ? "#34d399"
+                            : "#1e293b",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Hero number — rotates + scales with scroll, label crossfades */}
+            <div
+              className="relative"
+              style={{
+                perspective: "1200px",
+              }}
             >
-              load-tests/ →
-            </a>
+              <div
+                style={{
+                  transform: `rotateX(${heroRotate}deg) scale(${heroScale})`,
+                  transformOrigin: "left center",
+                  transition: "transform 100ms linear",
+                  filter: `blur(${heroBlur}px)`,
+                }}
+              >
+                <PinnedStatDisplay
+                  key={stage}
+                  value={active.value}
+                  suffix={active.suffix}
+                />
+              </div>
+            </div>
+
+            {/* Cross-fading label band */}
+            <div className="relative h-14 overflow-hidden w-full max-w-3xl">
+              {STATS.map((s, i) => (
+                <div
+                  key={s.label}
+                  className="absolute inset-0 transition-all duration-500 ease-out"
+                  style={{
+                    opacity: i === stage ? 1 : 0,
+                    transform: `translateY(${i === stage ? 0 : i < stage ? -20 : 20}px)`,
+                  }}
+                >
+                  <div className="text-xl sm:text-2xl text-white font-semibold tracking-tight leading-tight">
+                    {s.label}
+                  </div>
+                  <div className="mt-1 text-sm text-emerald-300/80 font-mono">
+                    {s.sub}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom progress bar — fills as you scroll the pinned section */}
+            <div className="w-full max-w-xl mt-4">
+              <div className="h-px bg-slate-800 relative overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-emerald-400"
+                  style={{ width: `${p * 100}%` }}
+                />
+              </div>
+              <div className="mt-2 flex justify-between text-[10px] tracking-[0.2em] uppercase text-slate-600 font-mono">
+                <span>throughput</span>
+                <span>latency</span>
+                <span>errors</span>
+                <span>users / box</span>
+              </div>
+            </div>
+
+            {/* Within-stage pulse indicator */}
+            <div className="text-[10px] tracking-[0.25em] uppercase text-slate-600 font-mono">
+              scroll to advance ·{" "}
+              <span className="text-emerald-400">
+                {Math.round(stageProgress * 100)}%
+              </span>
+            </div>
           </div>
-        </Reveal>
+        </div>
       </div>
     </section>
   );
 }
 
-function HeroStatCounter({ target, suffix }: { target: number; suffix: string }) {
-  const { ref, value } = useCountUp(target, 1800);
+function PinnedStatDisplay({
+  value,
+  suffix,
+}: {
+  value: number;
+  suffix: string;
+}) {
+  // count-up from 0 to value when this stage mounts (key swap remounts)
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const dur = 1000;
+    const tick = (t: number) => {
+      const pp = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - pp, 3);
+      setV(value * eased);
+      if (pp < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+
   return (
     <div
-      ref={ref}
-      className="text-[88px] sm:text-[140px] leading-[0.9] font-semibold tracking-[-0.05em] tabular-nums"
+      className="text-[96px] sm:text-[200px] leading-[0.85] font-semibold tracking-[-0.06em] tabular-nums"
+      style={{
+        fontFeatureSettings: '"tnum","ss01"',
+        textShadow: "0 0 100px rgba(16,185,129,0.25)",
+      }}
     >
-      {Math.round(value).toLocaleString()}
+      {value === 0 && v < 0.5 ? "0" : Math.round(v).toLocaleString()}
       <span className="text-emerald-400">{suffix}</span>
     </div>
-  );
-}
-
-function InlineCount({ target }: { target: number }) {
-  const { ref, value } = useCountUp(target);
-  return (
-    <span ref={ref}>{Math.round(value).toLocaleString()}</span>
   );
 }
 
@@ -672,6 +817,7 @@ function ArchitectureDiagram() {
           fill={fill}
           stroke={stroke}
           strokeWidth="1.2"
+          className="arch-pill"
         />
         <text
           x={x}
@@ -699,119 +845,161 @@ function ArchitectureDiagram() {
   };
 
   return (
-    <svg viewBox="0 0 460 360" className="w-full h-auto">
-      <defs>
-        <marker
-          id="dot"
-          viewBox="0 0 10 10"
-          refX="5"
-          refY="5"
-          markerWidth="5"
-          markerHeight="5"
-        >
-          <circle cx="5" cy="5" r="3" fill="#047857" />
-        </marker>
-        <linearGradient id="cluster-bg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#fafafa" />
-          <stop offset="100%" stopColor="#f1f5f9" />
-        </linearGradient>
-      </defs>
+    <div className="relative">
+      <style>{`
+        @keyframes archFlow {
+          to { stroke-dashoffset: -14; }
+        }
+        @keyframes archPulse {
+          0%, 100% { opacity: 0.55; r: 3; }
+          50% { opacity: 1; r: 4.5; }
+        }
+        @keyframes archBreathe {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.008); }
+        }
+        .arch-flow {
+          stroke-dasharray: 6 6;
+          animation: archFlow 1.2s linear infinite;
+        }
+        .arch-flow-slow {
+          stroke-dasharray: 4 6;
+          animation: archFlow 1.6s linear infinite;
+        }
+        .arch-pulse {
+          transform-origin: center;
+          animation: archPulse 2s ease-in-out infinite;
+        }
+        .arch-pulse-2 {
+          animation: archPulse 2s ease-in-out infinite;
+          animation-delay: 0.4s;
+        }
+        .arch-pulse-3 {
+          animation: archPulse 2s ease-in-out infinite;
+          animation-delay: 0.8s;
+        }
+        .arch-pulse-4 {
+          animation: archPulse 2s ease-in-out infinite;
+          animation-delay: 1.2s;
+        }
+        .arch-cluster {
+          transform-origin: center;
+          animation: archBreathe 4s ease-in-out infinite;
+        }
+      `}</style>
+      <svg viewBox="0 0 460 360" className="w-full h-auto">
+        <defs>
+          <linearGradient id="cluster-bg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#fafafa" />
+            <stop offset="100%" stopColor="#f1f5f9" />
+          </linearGradient>
+          <radialGradient id="node-glow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </radialGradient>
+        </defs>
 
-      {/* Top: Load Balancer */}
-      {pill(230, 36, 180, "Load Balancer", "edge · accept-balanced")}
+        {/* Top: Load Balancer */}
+        {pill(230, 36, 180, "Load Balancer", "edge · accept-balanced")}
 
-      {/* Flow line to cluster */}
-      <line
-        x1="230"
-        y1="58"
-        x2="230"
-        y2="98"
-        stroke="#cbd5e1"
-        strokeWidth="1.2"
-        strokeDasharray="3 4"
-      />
+        {/* Animated flow line to cluster */}
+        <line
+          x1="230"
+          y1="58"
+          x2="230"
+          y2="98"
+          stroke="#10b981"
+          strokeWidth="1.5"
+          className="arch-flow"
+        />
 
-      {/* Cluster container */}
-      <rect
-        x="40"
-        y="108"
-        width="380"
-        height="118"
-        rx="14"
-        fill="url(#cluster-bg)"
-        stroke="#e2e8f0"
-        strokeWidth="1"
-      />
-      <text
-        x="58"
-        y="130"
-        fontSize="9"
-        fontWeight="700"
-        fill="#047857"
-        letterSpacing="1.4"
-        fontFamily="ui-monospace, SFMono-Regular, monospace"
-      >
-        NODE CLUSTER · ×4 WORKERS
-      </text>
-
-      {/* 4 worker chips */}
-      {[
-        { x: 100, n: "worker 1" },
-        { x: 190, n: "worker 2" },
-        { x: 280, n: "worker 3" },
-        { x: 370, n: "worker 4" },
-      ].map((w) => (
-        <g key={w.n}>
+        {/* Cluster container — breathes */}
+        <g className="arch-cluster" style={{ transformBox: "fill-box" }}>
           <rect
-            x={w.x - 38}
-            y={150}
-            width="76"
-            height="56"
-            rx="8"
-            fill="#ffffff"
-            stroke="#cbd5e1"
+            x="40"
+            y="108"
+            width="380"
+            height="118"
+            rx="14"
+            fill="url(#cluster-bg)"
+            stroke="#e2e8f0"
             strokeWidth="1"
           />
-          <circle cx={w.x} cy={166} r="3" fill="#10b981" />
-          <text
-            x={w.x}
-            y={186}
-            textAnchor="middle"
-            fontSize="10"
-            fontWeight="600"
-            fill="#0f172a"
-            fontFamily="ui-sans-serif, system-ui"
-          >
-            Express
-          </text>
-          <text
-            x={w.x}
-            y={199}
-            textAnchor="middle"
-            fontSize="8.5"
-            fill="#64748b"
-            fontFamily="ui-monospace, SFMono-Regular, monospace"
-          >
-            {w.n}
-          </text>
         </g>
-      ))}
+        <text
+          x="58"
+          y="130"
+          fontSize="9"
+          fontWeight="700"
+          fill="#047857"
+          letterSpacing="1.4"
+          fontFamily="ui-monospace, SFMono-Regular, monospace"
+        >
+          NODE CLUSTER · ×4 WORKERS
+        </text>
 
-      {/* Flow lines down to cache + db */}
-      <g
-        stroke="#cbd5e1"
-        strokeWidth="1.2"
-        fill="none"
-        strokeDasharray="3 4"
-      >
-        <path d="M 150 226 L 150 270 L 130 270" />
-        <path d="M 310 226 L 310 270 L 330 270" />
-      </g>
+        {/* 4 worker chips with staggered pulse */}
+        {[
+          { x: 100, n: "worker 1", cls: "arch-pulse" },
+          { x: 190, n: "worker 2", cls: "arch-pulse-2" },
+          { x: 280, n: "worker 3", cls: "arch-pulse-3" },
+          { x: 370, n: "worker 4", cls: "arch-pulse-4" },
+        ].map((w) => (
+          <g key={w.n}>
+            <rect
+              x={w.x - 38}
+              y={150}
+              width="76"
+              height="56"
+              rx="8"
+              fill="#ffffff"
+              stroke="#cbd5e1"
+              strokeWidth="1"
+            />
+            {/* glow halo behind the dot */}
+            <circle cx={w.x} cy={166} r="10" fill="url(#node-glow)" />
+            <circle
+              cx={w.x}
+              cy={166}
+              r="3"
+              fill="#10b981"
+              className={w.cls}
+            />
+            <text
+              x={w.x}
+              y={186}
+              textAnchor="middle"
+              fontSize="10"
+              fontWeight="600"
+              fill="#0f172a"
+              fontFamily="ui-sans-serif, system-ui"
+            >
+              Express
+            </text>
+            <text
+              x={w.x}
+              y={199}
+              textAnchor="middle"
+              fontSize="8.5"
+              fill="#64748b"
+              fontFamily="ui-monospace, SFMono-Regular, monospace"
+            >
+              {w.n}
+            </text>
+          </g>
+        ))}
 
-      {/* Cache + DB */}
-      {pill(130, 295, 170, "Redis", "TTL · graceful fallback", "leaf")}
-      {pill(330, 295, 170, "PostgreSQL", "Prisma · 21 tables", "leaf")}
-    </svg>
+        {/* Animated flow lines down to cache + db */}
+        <g stroke="#10b981" strokeWidth="1.5" fill="none">
+          <path d="M 150 226 L 150 270 L 130 270" className="arch-flow-slow" />
+          <path d="M 310 226 L 310 270 L 330 270" className="arch-flow-slow" />
+        </g>
+
+        {/* Cache + DB */}
+        {pill(130, 295, 170, "Redis", "TTL · graceful fallback", "leaf")}
+        {pill(330, 295, 170, "PostgreSQL", "Prisma · 21 tables", "leaf")}
+      </svg>
+    </div>
   );
 }
 
