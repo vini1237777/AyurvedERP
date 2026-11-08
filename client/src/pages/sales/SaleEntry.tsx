@@ -786,15 +786,15 @@ export default function SaleEntry() {
           className="flex-1 min-h-[260px] flex flex-col overflow-hidden"
         >
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full" style={{ minWidth: 1246 }}>
+            <table className="w-full" style={{ minWidth: 1190 }}>
               <thead className="sticky top-0 z-10">
                 <tr>
                   {(
                     [
                       ["#", 36, "text-center"],
-                      ["Item", 240, "text-left"],
+                      ["Item", 220, "text-left"],
                       ["HSN", 76, "text-center"],
-                      ["Batch", 236, "text-left"],
+                      ["Batch", 204, "text-left"],
                       ["Expiry", 76, "text-center"],
                       ["MRP", 72, "text-right"],
                       ["Rate", 80, "text-right"],
@@ -991,14 +991,14 @@ export default function SaleEntry() {
                           {row.gst || ""}
                         </div>
                       </td>
-                      <td className="px-3 py-2 num text-xs font-medium text-slate-600">
+                      <td className="px-2 py-2 num text-xs font-medium text-slate-600">
                         {calc.netValue > 0 ? (
                           `₹${fmt(r2(calc.basicAmt - calc.discAmt))}`
                         ) : (
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 num">
+                      <td className="px-2 py-2 num">
                         {calc.netValue > 0 ? (
                           <span className="text-sm font-bold text-slate-800">
                             ₹{fmt(calc.netValue)}
