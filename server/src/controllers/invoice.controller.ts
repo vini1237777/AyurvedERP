@@ -1,10 +1,13 @@
 import { Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
 import {
   postInvoice,
   postSalesReturn,
   reverseEntriesFor,
 } from "../services/posting.service";
+
+class InsufficientStockError extends Error {}
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -26,6 +29,38 @@ async function getNextInvoiceNo(): Promise<string> {
     ...faInvoices.map((i) => parseInt(i.invoiceNo.replace("FA-", ""), 10) || 0),
   );
   return `FA-${String(maxNum + 1).padStart(2, "0")}`;
+}
+
+// Takes the stock only if enough is left. Batches go in id order so that two
+// invoices sharing batches always lock them in the same order and can't deadlock.
+async function deductStock(tx: Prisma.TransactionClient, rows: any[]) {
+  const wanted = new Map<number, { qty: number; itemName: string }>();
+  for (const row of rows) {
+    if (!row.batchId) continue;
+    const batchId = parseInt(row.batchId);
+    const qty = (parseFloat(row.qty) || 0) + (parseFloat(row.freeQty) || 0);
+    const entry = wanted.get(batchId);
+    if (entry) entry.qty += qty;
+    else wanted.set(batchId, { qty, itemName: row.itemName });
+  }
+
+  const batchIds = [...wanted.keys()].sort((a, b) => a - b);
+  for (const batchId of batchIds) {
+    const { qty, itemName } = wanted.get(batchId)!;
+    const { count } = await tx.batch.updateMany({
+      where: { id: batchId, currentQty: { gte: qty } },
+      data: { currentQty: { decrement: qty } },
+    });
+    if (count === 0) {
+      const batch = await tx.batch.findUnique({
+        where: { id: batchId },
+        select: { batchNo: true, currentQty: true },
+      });
+      throw new InsufficientStockError(
+        `Only ${batch?.currentQty ?? 0} left of ${itemName} in batch ${batch?.batchNo ?? batchId}. Requested ${qty}.`,
+      );
+    }
+  }
 }
 
 async function getNextReturnNo(): Promise<number> {
@@ -197,6 +232,8 @@ export const create = async (req: Request, res: Response) => {
     }
 
     const invoice = await prisma.$transaction(async (tx) => {
+      await deductStock(tx, calcedRows);
+
       const inv = await tx.invoice.create({
         data: {
           invoiceNo,
@@ -242,17 +279,6 @@ export const create = async (req: Request, res: Response) => {
         include: { customer: true, items: true },
       });
 
-      for (const row of calcedRows) {
-        if (row.batchId) {
-          const deduct =
-            (parseFloat(row.qty) || 0) + (parseFloat(row.freeQty) || 0);
-          await tx.batch.update({
-            where: { id: parseInt(row.batchId) },
-            data: { currentQty: { decrement: deduct } },
-          });
-        }
-      }
-
       await postInvoice(tx, {
         invoiceId: inv.id,
         invoiceNo: inv.invoiceNo,
@@ -270,6 +296,8 @@ export const create = async (req: Request, res: Response) => {
 
     res.status(201).json(invoice);
   } catch (err: any) {
+    if (err instanceof InsufficientStockError)
+      return res.status(409).json({ error: err.message });
     console.error(err);
     res.status(500).json({ error: err.message || "Failed to create invoice" });
   }
