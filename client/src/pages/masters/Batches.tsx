@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { batchApi, itemApi } from "../../utils/api";
+import { parseExpiry } from "../../utils/invoice.utils";
 import {
   Button,
   Modal,
@@ -28,12 +30,23 @@ const EMPTY: BatchFormData = {
 type SortKey = "name" | "batchNo" | "expiry" | "stock" | "price";
 type StockFilter = "all" | "full" | "updated" | "low" | "critical" | "out";
 
+type ListFilter = StockFilter | "below10" | "expiring" | "expired";
+
+const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+
 export default function BatchMaster() {
   const [batches, setBatches] = useState<(Batch & { item: Item })[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [searchParams] = useSearchParams();
+  // The dashboard links straight to a filtered list.
+  const [stockFilter, setStockFilter] = useState<ListFilter>(() => {
+    const wanted = searchParams.get("stock");
+    return wanted === "expired" || wanted === "expiring" || wanted === "below10"
+      ? wanted
+      : "all";
+  });
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<1 | -1>(1);
   const [modal, setModal] = useState(false);
@@ -64,6 +77,19 @@ export default function BatchMaster() {
     }
   }
 
+  // Same rules as the dashboard summary, so its counts match these lists.
+  function matchesFilter(b: Batch, filter: ListFilter): boolean {
+    if (filter === "all") return true;
+    if (filter === "below10") return b.currentQty < 10;
+    if (filter === "expired" || filter === "expiring") {
+      const expiry = parseExpiry(b.expiryDate);
+      if (!expiry || b.currentQty <= 0) return false;
+      const left = expiry.getTime() - Date.now();
+      return filter === "expired" ? left < 0 : left >= 0 && left <= NINETY_DAYS_MS;
+    }
+    return stockStatus(b) === filter;
+  }
+
   function stockStatus(b: Batch): StockFilter {
     if (b.currentQty <= 0) return "out";
     if (b.currentQty < b.openingQty * 0.25) return "critical";
@@ -77,7 +103,7 @@ export default function BatchMaster() {
     (b) =>
       ((b as any).item?.name?.toLowerCase().includes(search.toLowerCase()) ||
         b.batchNo.toLowerCase().includes(search.toLowerCase())) &&
-      (stockFilter === "all" || stockStatus(b) === stockFilter),
+      matchesFilter(b, stockFilter),
   );
 
   // Sort
@@ -221,7 +247,7 @@ export default function BatchMaster() {
     return "hover:bg-slate-50";
   }
 
-  const FILTERS: { key: StockFilter; color: string; label: string }[] = [
+  const FILTERS: { key: ListFilter; color: string; label: string }[] = [
     {
       key: "all",
       color: "bg-slate-100 text-slate-600 border border-slate-200",
@@ -251,6 +277,21 @@ export default function BatchMaster() {
       key: "out",
       color: "bg-red-100 text-red-700 border border-red-200",
       label: `Out of Stock (${batches.filter((b) => stockStatus(b) === "out").length})`,
+    },
+    {
+      key: "below10",
+      color: "bg-white text-slate-700 border border-slate-300",
+      label: `Below 10 left (${batches.filter((b) => matchesFilter(b, "below10")).length})`,
+    },
+    {
+      key: "expiring",
+      color: "bg-white text-slate-700 border border-slate-300",
+      label: `Expiring in 90 days (${batches.filter((b) => matchesFilter(b, "expiring")).length})`,
+    },
+    {
+      key: "expired",
+      color: "bg-white text-red-700 border border-red-300",
+      label: `Expired (${batches.filter((b) => matchesFilter(b, "expired")).length})`,
     },
   ];
 
