@@ -1,5 +1,7 @@
 import { useId, useState, useRef, useEffect } from "react";
 
+export { Combobox } from "./Combobox";
+
 // ─── Input ────────────────────────────────────────────────────────────────────
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
