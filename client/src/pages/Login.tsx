@@ -44,8 +44,8 @@ export default function Login() {
   };
   const from = location.state?.from?.pathname || "/dashboard";
 
-  const [email, setEmail] = useState<string>(DEMO_ROLES[0].email);
-  const [password, setPassword] = useState<string>(DEMO_ROLES[0].password);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The email being signed in, so the right button shows the wait.

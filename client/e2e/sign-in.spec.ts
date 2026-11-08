@@ -12,8 +12,17 @@ test("the old landing address goes to sign-in", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
+test("the sign-in form opens empty so browsers never see a demo password", async ({
+  page,
+}) => {
+  await page.goto("/login");
+  await expect(page.getByLabel("Email")).toHaveValue("");
+  await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
+});
+
 test("a wrong password stays on the page and explains", async ({ page }) => {
   await page.goto("/login");
+  await page.getByLabel("Email").fill("admin@aushadhi.local");
   await page.getByLabel("Password", { exact: true }).fill("wrong-password");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("don't match");

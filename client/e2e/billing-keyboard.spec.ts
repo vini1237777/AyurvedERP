@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 async function signIn(page: Page) {
   await page.goto("/login");
-  await page.locator('form button[type="submit"]').first().click();
+  await page.getByRole("button", { name: /^Admin/ }).click();
   await page.waitForFunction(() => localStorage.getItem("authToken"));
 }
 
