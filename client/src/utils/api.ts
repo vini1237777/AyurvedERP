@@ -72,7 +72,9 @@ api.interceptors.response.use(
 
     if (status === 401 && original && !original._retry) {
       const url: string = original.url || "";
-      if (url.includes("/auth/refresh") || url.includes("/auth/login")) {
+      // A rejected login is not an expired session: let the caller show it.
+      if (url.includes("/auth/login")) return Promise.reject(err);
+      if (url.includes("/auth/refresh")) {
         clearAuthAndRedirect();
         return Promise.reject(err);
       }
