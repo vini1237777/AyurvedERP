@@ -149,7 +149,7 @@ export default function LedgerReport() {
                         {fmtDate(row.date)}
                       </td>
                       <td className="px-4 py-3 font-mono text-blue-700 text-sm whitespace-nowrap">
-                        #{row.invoiceNo}
+                        {row.invoiceNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {row.type}

@@ -59,7 +59,7 @@ export function Pagination({
           </button>
         ))}
         <span className="ml-2 text-slate-400">
-          Showing <b className="text-slate-600">{from}–{to}</b> of <b className="text-slate-600">{total}</b>
+          Showing <b className="text-slate-600">{from} to {to}</b> of <b className="text-slate-600">{total}</b>
         </span>
       </div>
 

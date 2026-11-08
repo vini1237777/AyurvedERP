@@ -84,7 +84,7 @@ export default function GstR1Report() {
     <div>
       <PageHeader
         title="GST R1 Report"
-        subtitle="Outward supplies · B2B & B2C"
+        subtitle="Outward supplies, B2B and B2C"
       />
       <div className="flex items-center gap-3 mb-4">
         <div>
@@ -181,7 +181,7 @@ export default function GstR1Report() {
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
                       <td className="px-4 py-3 font-mono text-blue-700 text-sm whitespace-nowrap">
-                        #{inv.invoiceNo}
+                        {inv.invoiceNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {fmtDate(inv.invoiceDate)}

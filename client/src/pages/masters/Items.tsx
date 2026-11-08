@@ -476,7 +476,7 @@ export default function ItemMaster() {
                 { value: "", label: "-- Select HSN Code --" },
                 ...hsnList.map((h) => ({
                   value: String(h.id),
-                  label: `${h.code} · ${h.description || "Ayurvedic"} (${h.gstRate}%)`,
+                  label: `${h.code}, ${h.description || "Ayurvedic"} (${h.gstRate}%)`,
                 })),
               ]}
               error={errors.hsnId}
@@ -618,7 +618,7 @@ export default function ItemMaster() {
       <Modal
         open={!!catModal}
         onClose={() => setCatModal(null)}
-        title={`Category Prices · ${catModal?.name || ""}`}
+        title={`Category prices, ${catModal?.name || ""}`}
         width="max-w-lg"
       >
         <p className="text-xs text-slate-500 mb-4">

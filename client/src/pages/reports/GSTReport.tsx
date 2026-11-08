@@ -37,7 +37,7 @@ function exportCSV(data: GstReportResponse) {
 function exportPDF(data: GstReportResponse) {
   const win=window.open("","_blank")!
   const s=data.summary
-  const trs=data.rows.map(r=>`<tr><td>#${r.invoiceNo}</td><td>${fmtDate(r.invoiceDate)}</td><td>${r.customerName}</td><td>${r.customerGstin||"-"}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.taxableAmount)}</td><td>₹${fmt(r.cgstAmt)}</td><td>₹${fmt(r.sgstAmt)}</td><td>₹${fmt(r.igstAmt)}</td><td>₹${fmt(r.grandTotal)}</td></tr>`).join("")
+  const trs=data.rows.map(r=>`<tr><td>${r.invoiceNo}</td><td>${fmtDate(r.invoiceDate)}</td><td>${r.customerName}</td><td>${r.customerGstin||"-"}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.taxableAmount)}</td><td>₹${fmt(r.cgstAmt)}</td><td>₹${fmt(r.sgstAmt)}</td><td>₹${fmt(r.igstAmt)}</td><td>₹${fmt(r.grandTotal)}</td></tr>`).join("")
   win.document.write(`<html><head><title>GST Report</title><style>body{font-family:Arial;font-size:11px;padding:20px}table{width:100%;border-collapse:collapse}th{background:#f1f5f9;border:1px solid #cbd5e1;padding:6px 8px;font-size:10px;text-align:left}td{border:1px solid #e2e8f0;padding:5px 8px}tr:nth-child(even){background:#f8fafc}.sum{display:flex;gap:12px;margin-bottom:12px}.sc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px}.sl{font-size:9px;color:#64748b}.sv{font-size:12px;font-weight:bold}</style></head><body><h2>GST Report</h2><div class="sum"><div class="sc"><div class="sl">Taxable</div><div class="sv">₹${fmt(s.taxableAmount)}</div></div><div class="sc"><div class="sl">CGST</div><div class="sv">₹${fmt(s.cgstAmt)}</div></div><div class="sc"><div class="sl">SGST</div><div class="sv">₹${fmt(s.sgstAmt)}</div></div><div class="sc"><div class="sl">Total Tax</div><div class="sv">₹${fmt(s.totalTax)}</div></div><div class="sc"><div class="sl">Grand Total</div><div class="sv">₹${fmt(s.grandTotal)}</div></div></div><table><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>GSTIN</th><th>Tax Type</th><th>Taxable</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th></tr></thead><tbody>${trs}</tbody></table></body></html>`)
   win.document.close(); win.print()
 }
@@ -126,7 +126,7 @@ export default function GSTReport() {
               <tbody>
                 {pg.paginated.map(row=>(
                   <tr key={row.id} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">#{row.invoiceNo}</td>
+                    <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">{row.invoiceNo}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{fmtDate(row.invoiceDate)}</td>
                     <td className="px-5 py-3 text-sm text-slate-800">{row.customerName}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{row.customerGstin||"-"}</td>

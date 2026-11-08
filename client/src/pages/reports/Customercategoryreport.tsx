@@ -65,7 +65,7 @@ export default function CustomerCategoryReport() {
     <div>
       <PageHeader
         title="Customer Category Report"
-        subtitle="Customers grouped by price category A–Z"
+        subtitle="Customers grouped by price category, A to Z"
       />
       <div className="grid grid-cols-9 gap-2 mb-4">
         {CATEGORIES.slice(0, 8).map((cat) => (
