@@ -1,12 +1,15 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
+import { cache } from "../utils/cache";
 import {
   postInvoice,
   postSalesReturn,
   reverseEntriesFor,
 } from "../services/posting.service";
 
+const ITEMS_CACHE_KEY = "items:list:v1";
+const DASHBOARD_CACHE_KEY = "dashboard:summary:v1";
 const MAX_INVOICE_NO_ATTEMPTS = 5;
 
 class InsufficientStockError extends Error {}
@@ -322,6 +325,13 @@ export const create = async (req: Request, res: Response) => {
 
       return inv;
     }, { timeout: 20000, maxWait: 10000 }));
+
+    // After commit, so the next read rebuilds from the new stock. A read already
+    // in flight can still cache the old stock, until the key's TTL runs out.
+    await Promise.all([
+      cache.del(ITEMS_CACHE_KEY),
+      cache.del(DASHBOARD_CACHE_KEY),
+    ]);
 
     res.status(201).json(invoice);
   } catch (err: any) {
