@@ -14,7 +14,7 @@ type NavItem =
 // roles undefined = visible to everyone authenticated
 const ALL: Role[] = ["ADMIN", "SELLER", "ACCOUNTANT", "RETAILER"];
 const NAV: { group: string; roles?: Role[]; items: NavItem[] }[] = [
-  { group: "Main", items: [{ path: "/dashboard", label: "Dashboard" }] },
+  { group: "Main", items: [{ path: "/dashboard", label: "Day book" }] },
   {
     group: "Sales",
     roles: ["ADMIN", "SELLER", "ACCOUNTANT", "RETAILER"],
@@ -231,42 +231,45 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [location.pathname]);
 
   return (
-    <div className="flex h-screen bg-slate-50">
+    <div className="flex h-screen bg-paper">
       {drawerOpen && (
         <div
           aria-hidden="true"
           onClick={() => setDrawerOpen(false)}
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          className="fixed inset-0 z-30 bg-ink/40 md:hidden"
         />
       )}
       <aside
         id="app-sidebar"
-        className={`${collapsedNow ? "w-16" : "w-56"} fixed md:static inset-y-0 left-0 z-40 ${drawerOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:translate-x-0 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-200`}
+        className={`${collapsedNow ? "w-16" : "w-56"} fixed md:static inset-y-0 left-0 z-40 ${drawerOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:translate-x-0 flex-shrink-0 bg-cloth text-white flex flex-col transition-all duration-200`}
       >
-        <div className="h-14 flex items-center px-4 border-b border-slate-100">
-          {!collapsedNow ? (
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                A
-              </div>
-              <span className="font-bold text-slate-800 text-sm leading-tight">
-                Aushadhi
-                <br />
-                <span className="text-blue-600 font-semibold">ERP</span>
-              </span>
-            </div>
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm mx-auto">
-              A
-            </div>
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-1.5 border-l-2 border-dashed border-thread"
+        />
+        <div className="pl-5 pr-3 pt-3 pb-2">
+          <Link
+            to="/dashboard"
+            aria-label="Aushadhi ERP, day book"
+            lang="hi"
+            className="block font-deva font-extrabold text-[32px] leading-tight text-white"
+          >
+            {collapsedNow ? "औ" : "औषधि"}
+          </Link>
+          {!collapsedNow && (
+            <p className="text-xs text-white truncate" title={businessName}>
+              {businessName
+                .toLowerCase()
+                .replace(/\b\w/g, (c) => c.toUpperCase())}
+            </p>
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-3 px-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="flex-1 overflow-y-auto py-2 pl-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {visibleNav.map((group) => (
-            <div key={group.group} className="mb-4">
+            <div key={group.group} className="mb-3">
               {!collapsedNow && (
-                <div className="text-xs font-semibold text-slate-400 px-2 mb-1">
+                <div className="text-xs font-semibold text-thread px-2.5 mb-0.5">
                   {group.group}
                 </div>
               )}
@@ -290,12 +293,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             ? item.label
                             : undefined
                       }
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
                         itemLocked
-                          ? "text-slate-300 hover:bg-slate-50 cursor-not-allowed"
+                          ? "text-white/60 cursor-not-allowed"
                           : active
-                            ? "bg-blue-50 text-blue-700"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                            ? "bg-paper text-ink font-semibold"
+                            : "text-white hover:bg-white/10"
                       }`}
                     >
                       <NavIcon name={item.path} />
@@ -324,12 +327,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             ? `Requires ${(c.required || item.required || group.required)?.join(" or ") || "another"} role`
                             : c.label
                         }
-                        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${
+                        className={`flex items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
                           cLocked
-                            ? "text-slate-300 cursor-not-allowed"
+                            ? "text-white/60 cursor-not-allowed"
                             : active
-                              ? "bg-blue-50 text-blue-700"
-                              : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                              ? "bg-paper text-ink font-semibold"
+                              : "text-white hover:bg-white/10"
                         }`}
                       >
                         <NavIcon name="gst" />
@@ -344,22 +347,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       onClick={() =>
                         setOpenGroups((p) => ({ ...p, [item.key]: !open }))
                       }
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
                         groupLocked || item.locked
-                          ? "text-slate-400"
+                          ? "text-white/60"
                           : childActive
-                            ? "bg-blue-50 text-blue-700"
-                            : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
+                            ? "bg-paper text-ink font-semibold"
+                            : "text-white hover:bg-white/10"
                       }`}
                     >
                       <NavIcon name="gst" />
                       <span className="flex-1 text-left">{item.label}</span>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs">
                         {open ? "▾" : "▸"}
                       </span>
                     </button>
                     {open && (
-                      <div className="ml-3 pl-2 border-l border-slate-200 mb-1">
+                      <div className="ml-3 border-l border-thread mb-1">
                         {item.children.map((c) => {
                           const cLocked = groupLocked || item.locked || c.locked;
                           const active = isActive(location.pathname, c.path);
@@ -375,12 +378,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                                   ? `Requires ${(c.required || item.required || group.required)?.join(" or ") || "another"} role`
                                   : undefined
                               }
-                              className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm mb-0.5 transition-all ${
+                              className={`flex items-center gap-2.5 px-2.5 py-1 text-sm transition-colors ${
                                 cLocked
-                                  ? "text-slate-300 cursor-not-allowed"
+                                  ? "text-white/60 cursor-not-allowed"
                                   : active
-                                    ? "bg-blue-50 text-blue-700 font-medium"
-                                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
+                                    ? "bg-paper text-ink font-semibold"
+                                    : "text-white hover:bg-white/10"
                               }`}
                             >
                               {c.label}
@@ -396,11 +399,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="hidden md:block p-3 border-t border-slate-100">
+        <div className="hidden md:block pl-4 pr-2 py-2">
           <button
             onClick={() => setCollapsed(!collapsed)}
             aria-label={collapsedNow ? "Expand sidebar" : "Collapse sidebar"}
-            className="w-full flex items-center justify-center py-1.5 text-slate-500 hover:text-slate-700 text-xs gap-1"
+            className="w-full flex items-center justify-center py-1.5 text-white hover:bg-white/10 text-xs gap-1"
           >
             {collapsedNow ? "→" : "← Collapse"}
           </button>
@@ -408,7 +411,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between gap-3 px-4 md:px-6">
+        <header className="h-12 flex-shrink-0 border-b border-rule flex items-center justify-between gap-3 pr-4 md:pr-6 pl-3 md:pl-12">
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
@@ -427,6 +430,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               day: "numeric",
             })}
           </div>
+          <p
+            lang="hi"
+            className="hidden lg:flex ml-auto gap-8 font-deva font-semibold text-lg text-pen"
+          >
+            <span>शुभ</span>
+            <span>लाभ</span>
+          </p>
           <div className="ml-auto flex items-center gap-2">
             <a
               href="https://github.com/vini1237777/AyurvedERP"
@@ -475,18 +485,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               {menuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 mt-2 w-[260px] bg-white border border-slate-200/80 rounded-lg shadow-[0_12px_32px_-8px_rgba(15,23,42,0.12)] z-50 py-1"
+                  className="absolute right-0 mt-2 w-[260px] bg-white border-[1.5px] border-ink shadow-lg z-50 py-1"
                 >
                   {/* Identity row — avatar + name/email */}
                   <div className="px-2.5 py-2 flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-[13px] font-semibold flex-shrink-0">
+                    <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
                       {(user?.name || businessInitial).charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="text-[13px] font-medium text-slate-900 truncate leading-tight">
+                      <div className="text-sm font-medium text-slate-900 truncate leading-tight">
                         {user?.name || "Account"}
                       </div>
-                      <div className="text-[12px] text-slate-500 truncate leading-tight mt-0.5">
+                      <div className="text-xs text-slate-500 truncate leading-tight mt-0.5">
                         {user?.email}
                       </div>
                     </div>
@@ -495,7 +505,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   {/* Workspace meta — single subtle line */}
                   <div className="px-2.5 pb-2 pt-1 flex items-center justify-between gap-2">
                     <span
-                      className="text-[12px] text-slate-500 truncate"
+                      className="text-xs text-slate-500 truncate"
                       title={businessName}
                     >
                       {businessName
@@ -503,7 +513,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         .replace(/\b\w/g, (c) => c.toUpperCase())}
                     </span>
                     {(user as any)?.role && (
-                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      <span className="text-xs font-semibold text-slate-600">
                         {(user as any).role}
                       </span>
                     )}
@@ -516,7 +526,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     to="/settings/profile"
                     onClick={() => setMenuOpen(false)}
                     role="menuitem"
-                    className="flex items-center gap-2.5 px-2.5 py-1.5 mx-1 rounded-md text-[13px] text-slate-700 hover:bg-slate-100"
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 mx-1 rounded-md text-sm text-slate-700 hover:bg-slate-100"
                   >
                     <svg
                       width="14"
@@ -545,7 +555,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       setMenuOpen(false);
                       logout();
                     }}
-                    className="flex items-center gap-2.5 w-[calc(100%-0.5rem)] mx-1 px-2.5 py-1.5 rounded-md text-[13px] text-slate-700 hover:bg-slate-100"
+                    className="flex items-center gap-2.5 w-[calc(100%-0.5rem)] mx-1 px-2.5 py-1.5 rounded-md text-sm text-slate-700 hover:bg-slate-100"
                   >
                     <svg
                       width="14"
@@ -570,7 +580,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
+        <main className="ledger-page flex-1 overflow-y-auto py-4 pr-4 md:pr-6">{children}</main>
       </div>
       {forbiddenMsg && (
         <Toast
