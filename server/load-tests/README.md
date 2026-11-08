@@ -48,6 +48,15 @@ cache serves repeat requests sub-50ms.
 k6 run load-tests/03-cache-validation.js
 ```
 
+### 4. Last strip race (`04-last-strip-race.js`)
+
+Many cashiers bill the same batch at the same moment. Set the batch quantity
+first, then check the final stock in SQL, because k6 only counts responses.
+
+```bash
+k6 run -e BATCH_ID=1 -e ITEM_ID=1 -e CUSTOMER_ID=1 -e CASHIERS=20 load-tests/04-last-strip-race.js
+```
+
 ## Measured results (4-core MacBook, local Postgres + Redis + cluster)
 
 | Scenario             | VUs  | Throughput  | p95     | Error rate |
