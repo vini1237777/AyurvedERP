@@ -464,7 +464,11 @@ export default function SaleEntry() {
   const [allItems, setAllItems] = useState<Item[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [invoiceDate, setInvoiceDate] = useState(
-    () => new Date().toISOString().split("T")[0],
+    () => {
+      const d = new Date();
+      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+      return d.toISOString().split("T")[0];
+    },
   );
   const [terms, setTerms] = useState("Credit");
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -487,6 +491,8 @@ export default function SaleEntry() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // State updates are async, so a fast double click would pass a state check.
+  const savingRef = useRef(false);
 
   const taxType: TaxType = determineTaxType(
     SELLER_STATE,
@@ -603,6 +609,7 @@ export default function SaleEntry() {
   };
 
   async function handleSave(andPrint = false) {
+    if (savingRef.current) return;
     if (!customer) {
       setError("Please select a customer");
       return;
@@ -611,6 +618,7 @@ export default function SaleEntry() {
       setError("Add at least one item");
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     setError("");
     try {
@@ -635,23 +643,29 @@ export default function SaleEntry() {
           gst: r.gst,
         })),
       };
-      await invoiceApi.create(payload);
+      const created = await invoiceApi.create(payload);
       setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-      if (andPrint) handlePrint();
-      else navigate("/sales");
+      // Print the number the server assigned, which can differ from the preview
+      // number if someone else saved first.
+      if (andPrint) handlePrint(created?.invoiceNo);
+      // Leaving the form is what stops a second click billing the same sale.
+      navigate("/sales");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Failed to save invoice");
+      setError(
+        err.response?.data?.error ||
+          "The invoice was not saved. Check your connection and try again.",
+      );
+      savingRef.current = false;
     } finally {
       setSaving(false);
     }
   }
 
-  function handlePrint() {
+  function handlePrint(finalInvoiceNo?: string) {
     const data = {
       customer,
       rows: calcedRows,
-      invoiceNo,
+      invoiceNo: finalInvoiceNo || invoiceNo,
       invoiceDate,
       terms,
       taxType,
@@ -708,14 +722,15 @@ export default function SaleEntry() {
             </div>
           )}
           <button
-            onClick={handlePrint}
+            onClick={() => handlePrint()}
             className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
           >
             Preview & Print
           </button>
           <button
             onClick={() => handleSave(true)}
-            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
+            disabled={saving}
+            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium disabled:opacity-50"
           >
             Save & Print
           </button>
@@ -1113,7 +1128,7 @@ export default function SaleEntry() {
               </div>
             </div>
             <button
-              onClick={handlePrint}
+              onClick={() => handlePrint()}
               className="mt-4 w-full py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm active:scale-95"
             >
               Preview & Print →
