@@ -327,8 +327,8 @@ export default function SaleList() {
                         ₹{fmt(inv.grandTotal)}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge color={inv.status === "SAVED" ? "green" : "red"}>
-                          {inv.status}
+                        <Badge color={inv.status === "SAVED" ? "gray" : "red"}>
+                          {inv.status === "SAVED" ? "Saved" : "Cancelled"}
                         </Badge>
                       </td>
                       <td className="px-4 py-3">
@@ -352,7 +352,7 @@ export default function SaleList() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setPendingId(inv.id)}
-                              className="text-red-500"
+                              className="ml-3 text-red-700"
                             >
                               Cancel
                             </Button>

@@ -293,7 +293,7 @@ export default function PurchaseList() {
                               variant="ghost"
                               size="sm"
                               onClick={() => setPendingId(p.id)}
-                              className="text-red-500"
+                              className="ml-3 text-red-700"
                             >
                               Cancel
                             </Button>
