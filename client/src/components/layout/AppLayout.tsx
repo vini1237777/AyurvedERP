@@ -241,7 +241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
       <aside
         id="app-sidebar"
-        className={`${collapsedNow ? "w-16" : "w-56"} fixed md:static inset-y-0 left-0 z-40 ${drawerOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:translate-x-0 flex-shrink-0 bg-cloth text-white flex flex-col transition-all duration-200`}
+        className={`${collapsedNow ? "w-16" : "w-56"} fixed md:relative inset-y-0 left-0 z-40 ${drawerOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:translate-x-0 flex-shrink-0 bg-cloth text-white flex flex-col transition-all duration-200`}
       >
         <div
           aria-hidden="true"
