@@ -192,16 +192,16 @@ export default function GstR1Report() {
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {inv.customerGstin || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm num num">
+                      <td className="px-4 py-3 text-sm num">
                         ₹{fmt(inv.totalTaxable)}
                       </td>
-                      <td className="px-4 py-3 text-sm num num">₹{fmt(inv.cgstAmt)}</td>
-                      <td className="px-4 py-3 text-sm num num">₹{fmt(inv.sgstAmt)}</td>
-                      <td className="px-4 py-3 text-sm num num">₹{fmt(inv.igstAmt)}</td>
-                      <td className="px-4 py-3 text-sm num num">
+                      <td className="px-4 py-3 text-sm num">₹{fmt(inv.cgstAmt)}</td>
+                      <td className="px-4 py-3 text-sm num">₹{fmt(inv.sgstAmt)}</td>
+                      <td className="px-4 py-3 text-sm num">₹{fmt(inv.igstAmt)}</td>
+                      <td className="px-4 py-3 text-sm num">
                         ₹{fmt(inv.totalTax)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold num num">
+                      <td className="px-4 py-3 text-sm font-bold num">
                         ₹{fmt(inv.grandTotal)}
                       </td>
                     </tr>

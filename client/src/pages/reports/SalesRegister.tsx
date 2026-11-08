@@ -157,9 +157,9 @@ export default function SaleRegister() {
                     <td className="px-5 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</td>
                     <td className="px-5 py-3 text-sm text-slate-800">{inv.customer?.name}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{inv.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(inv.totalTaxable)}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(inv.totalTax)}</td>
-                    <td className="px-5 py-3 text-sm font-semibold text-slate-800 num num">₹{fmt(inv.grandTotal)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num">₹{fmt(inv.totalTaxable)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num">₹{fmt(inv.totalTax)}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-slate-800 num">₹{fmt(inv.grandTotal)}</td>
                     <td className="px-5 py-3"><Badge color={inv.status==="SAVED"?"green":"red"}>{inv.status}</Badge></td>
                   </tr>
                 ))}

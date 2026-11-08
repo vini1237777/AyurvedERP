@@ -178,7 +178,7 @@ export default function LedgerReport() {
                     <td colSpan={5} className="px-4 py-3 text-sm text-right">
                       Closing Balance:
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold text-blue-700 num num">
+                    <td className="px-4 py-3 text-sm font-bold text-blue-700 num">
                       ₹{fmt(data.closingBalance)} Dr.
                     </td>
                   </tr>

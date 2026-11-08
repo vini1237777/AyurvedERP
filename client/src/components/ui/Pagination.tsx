@@ -40,7 +40,7 @@ export function Pagination({
 
   const NavBtn = ({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) => (
     <button onClick={onClick} disabled={disabled}
-      className={`px-2.5 py-1.5 text-xs rounded-lg font-medium transition-colors
+      className={`px-2.5 min-h-[28px] text-xs rounded-lg font-medium transition-colors
         ${disabled ? 'text-slate-300 cursor-not-allowed' : 'hover:bg-slate-100 text-slate-600 cursor-pointer'}`}>
       {label}
     </button>
@@ -53,7 +53,7 @@ export function Pagination({
         <span>Show:</span>
         {[25, 50, 100].map(n => (
           <button key={n} onClick={() => onPerPage(n)}
-            className={`px-2.5 py-1 rounded-lg font-medium transition-colors
+            className={`px-2.5 min-h-[28px] rounded-lg font-medium transition-colors
               ${perPage === n ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'hover:bg-slate-100 text-slate-600'}`}>
             {n}
           </button>

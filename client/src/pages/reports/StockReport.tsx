@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { Pagination, usePagination } from "../../components/ui/Pagination";
 import { thAlign } from "../../components/ui/tableAlign";
 import { reportApi } from "../../utils/api";
 import { fmt, fmtExpiry, fmtQty } from "../../utils/invoice.utils";
@@ -67,15 +68,23 @@ export default function StockReport() {
     ).length,
   };
 
+  // 599 batches at once made this page slow to render and hard to scan.
+  const pg = usePagination(base, 50);
+  useEffect(() => {
+    pg.reset();
+    // Back to page 1 whenever the list changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter, search]);
+
   // Group by company
   const grouped =
     groupBy === "company"
-      ? base.reduce((acc: Record<string, typeof base>, row) => {
+      ? pg.paginated.reduce((acc: Record<string, typeof base>, row) => {
           const c = getCompany(row.itemName);
           (acc[c] = acc[c] || []).push(row);
           return acc;
         }, {})
-      : { "All Items": base };
+      : { "All Items": pg.paginated };
 
   function stockBadge(o: number, c: number) {
     const s = getStatus(o, c);
@@ -239,7 +248,7 @@ export default function StockReport() {
               </thead>
               <tbody>
                 {Object.entries(grouped).map(([company, rows]) => (
-                  <>
+                  <Fragment key={company}>
                     {groupBy === "company" && (
                       <tr key={`h-${company}`}>
                         <td
@@ -297,16 +306,16 @@ export default function StockReport() {
                           <td className="px-5 py-3 num">
                             {stockBadge(row.openingQty, row.currentQty)}
                           </td>
-                          <td className="px-5 py-3 text-sm text-slate-700 num num">
+                          <td className="px-5 py-3 text-sm text-slate-700 num">
                             ₹{fmt(row.mrp)}
                           </td>
-                          <td className="px-5 py-3 text-sm text-slate-700 num num">
+                          <td className="px-5 py-3 text-sm text-slate-700 num">
                             ₹{fmt(row.salePrice)}
                           </td>
                         </tr>
                       );
                     })}
-                  </>
+                  </Fragment>
                 ))}
                 {base.length === 0 && (
                   <tr>
@@ -321,6 +330,17 @@ export default function StockReport() {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && (
+          <Pagination
+            total={pg.total}
+            page={pg.page}
+            perPage={pg.perPage}
+            from={pg.from}
+            to={pg.to}
+            onPage={pg.setPage}
+            onPerPage={pg.onPerPage}
+          />
         )}
       </Card>
     </div>

@@ -236,13 +236,13 @@ export default function PurchaseList() {
                       <td className="px-4 py-3 text-sm font-medium text-slate-800">
                         {p.supplier.name}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700 num num">
+                      <td className="px-4 py-3 text-sm text-slate-700 num">
                         ₹{fmt(p.totalTaxable)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 num num">
+                      <td className="px-4 py-3 text-sm text-slate-600 num">
                         ₹{fmt(p.totalTax)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-800 num num">
+                      <td className="px-4 py-3 text-sm font-bold text-slate-800 num">
                         ₹{fmt(p.grandTotal)}
                       </td>
                       <td className="px-4 py-3">

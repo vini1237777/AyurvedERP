@@ -116,12 +116,12 @@ export default function GstR3Report() {
                         Outward taxable supplies (other than zero rated, nil and
                         exempted)
                       </td>
-                      <td className="px-5 py-4 text-sm font-bold text-slate-800 num num">
+                      <td className="px-5 py-4 text-sm font-bold text-slate-800 num">
                         ₹{fmt(s.taxable)}
                       </td>
-                      <td className="px-5 py-4 text-sm num num">₹{fmt(s.igst)}</td>
-                      <td className="px-5 py-4 text-sm num num">₹{fmt(s.cgst)}</td>
-                      <td className="px-5 py-4 text-sm num num">₹{fmt(s.sgst)}</td>
+                      <td className="px-5 py-4 text-sm num">₹{fmt(s.igst)}</td>
+                      <td className="px-5 py-4 text-sm num">₹{fmt(s.cgst)}</td>
+                      <td className="px-5 py-4 text-sm num">₹{fmt(s.sgst)}</td>
                       <td className="px-5 py-4 text-sm text-slate-400">
                         ₹0.00
                       </td>
@@ -130,16 +130,16 @@ export default function GstR3Report() {
                   <tfoot>
                     <tr className="bg-blue-50 font-bold">
                       <td className="px-5 py-3 text-sm">Total</td>
-                      <td className="px-5 py-3 text-sm text-blue-700 num num">
+                      <td className="px-5 py-3 text-sm text-blue-700 num">
                         ₹{fmt(s.taxable)}
                       </td>
-                      <td className="px-5 py-3 text-sm text-blue-700 num num">
+                      <td className="px-5 py-3 text-sm text-blue-700 num">
                         ₹{fmt(s.igst)}
                       </td>
-                      <td className="px-5 py-3 text-sm text-blue-700 num num">
+                      <td className="px-5 py-3 text-sm text-blue-700 num">
                         ₹{fmt(s.cgst)}
                       </td>
-                      <td className="px-5 py-3 text-sm text-blue-700 num num">
+                      <td className="px-5 py-3 text-sm text-blue-700 num">
                         ₹{fmt(s.sgst)}
                       </td>
                       <td className="px-5 py-3 text-sm text-slate-400">
@@ -185,16 +185,16 @@ export default function GstR3Report() {
                       <td className="px-5 py-4 text-sm font-medium">
                         ITC available · inward supplies
                       </td>
-                      <td className="px-5 py-4 text-sm font-bold text-slate-800 num num">
+                      <td className="px-5 py-4 text-sm font-bold text-slate-800 num">
                         ₹{fmt(data.itc.taxable)}
                       </td>
-                      <td className="px-5 py-4 text-sm num num">
+                      <td className="px-5 py-4 text-sm num">
                         ₹{fmt(data.itc.igst)}
                       </td>
-                      <td className="px-5 py-4 text-sm num num">
+                      <td className="px-5 py-4 text-sm num">
                         ₹{fmt(data.itc.cgst)}
                       </td>
-                      <td className="px-5 py-4 text-sm num num">
+                      <td className="px-5 py-4 text-sm num">
                         ₹{fmt(data.itc.sgst)}
                       </td>
                     </tr>

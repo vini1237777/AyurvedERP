@@ -131,11 +131,11 @@ export default function GSTReport() {
                     <td className="px-5 py-3 text-sm text-slate-800">{row.customerName}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{row.customerGstin||"-"}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{row.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(row.taxableAmount)}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(row.cgstAmt)}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(row.sgstAmt)}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(row.igstAmt)}</td>
-                    <td className="px-5 py-3 text-sm font-semibold text-slate-800 num num">₹{fmt(row.grandTotal)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num">₹{fmt(row.taxableAmount)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num">₹{fmt(row.cgstAmt)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num">₹{fmt(row.sgstAmt)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num">₹{fmt(row.igstAmt)}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-slate-800 num">₹{fmt(row.grandTotal)}</td>
                   </tr>
                 ))}
                 {data.rows.length===0 && <tr><td colSpan={10} className="px-5 py-10 text-center text-sm text-slate-500">No GST data found</td></tr>}

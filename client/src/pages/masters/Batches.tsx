@@ -398,13 +398,13 @@ export default function BatchMaster() {
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
                           {fmtExpiry(b.expiryDate)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 num num">
+                        <td className="px-4 py-3 text-sm text-slate-600 num">
                           ₹{fmt(b.purchasePrice || 0)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 num num">
+                        <td className="px-4 py-3 text-sm text-slate-600 num">
                           ₹{fmt(b.salePrice || 0)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600 num num">
+                        <td className="px-4 py-3 text-sm text-slate-600 num">
                           ₹{fmt(b.mrp || 0)}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 num">

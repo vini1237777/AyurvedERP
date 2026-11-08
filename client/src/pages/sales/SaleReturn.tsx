@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { Pagination, usePagination } from "../../components/ui/Pagination";
 import { thAlign } from "../../components/ui/tableAlign";
 import { useNavigate } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
@@ -36,14 +37,12 @@ function calcReturnRow(row: ReturnRow): ReturnRow {
   return { ...row, taxable, taxAmt, netValue };
 }
 
-const PAGE = 50;
 
 export default function SaleReturn() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState<"select" | "return">("select");
   const [allInvoices, setAll] = useState<Invoice[]>([]);
-  const [visible, setVisible] = useState(PAGE);
   const [search, setSearch] = useState("");
   const [selectedInv, setSelectedInv] = useState<Invoice | null>(null);
   const [returnRows, setReturnRows] = useState<ReturnRow[]>([]);
@@ -52,7 +51,6 @@ export default function SaleReturn() {
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
-  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     invoiceApi
@@ -62,31 +60,18 @@ export default function SaleReturn() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Infinite scroll - load more when sentinel visible
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) setVisible((v) => v + PAGE);
-      },
-      { threshold: 0.1 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [step, search]);
-
-  // Reset visible count on search change
-  useEffect(() => {
-    setVisible(PAGE);
-  }, [search]);
-
   const filtered = allInvoices.filter(
     (i) =>
       String(i.invoiceNo).toLowerCase().includes(search.toLowerCase()) ||
       i.customer?.name?.toLowerCase().includes(search.toLowerCase()),
   );
-  const shown = filtered.slice(0, visible);
+  const pg = usePagination(filtered, 25);
+  const shown = pg.paginated;
+  useEffect(() => {
+    pg.reset();
+    // Back to page 1 when the search changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   function selectInvoice(inv: Invoice) {
     const rows = (inv.items || []).map((item: any) => {
@@ -273,10 +258,11 @@ export default function SaleReturn() {
               <>
                 <div className="divide-y divide-slate-50">
                   {shown.map((inv: any) => (
-                    <div
+                    <button
+                      type="button"
                       key={inv.id}
                       onClick={() => selectInvoice(inv)}
-                      className="px-5 py-4 cursor-pointer hover:bg-blue-50/40 transition-colors flex items-center justify-between"
+                      className="w-full text-left px-5 py-3 cursor-pointer hover:bg-blue-50/40 transition-colors flex items-center justify-between"
                     >
                       <div>
                         <div className="flex items-center gap-3">
@@ -298,7 +284,7 @@ export default function SaleReturn() {
                           </span>
                           <span>{inv.items?.length || 0} items</span>
                           <span>
-                            {inv.taxType === "CGST_SGST" ? "CGST+SGST" : "IGST"}
+                            {inv.taxType === "CGST_SGST" ? "CGST and SGST" : "IGST"}
                           </span>
                         </div>
                       </div>
@@ -310,20 +296,18 @@ export default function SaleReturn() {
                           Select →
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
-                {/* Infinite scroll sentinel */}
-                <div
-                  ref={sentinelRef}
-                  className="py-2 text-center text-xs text-slate-400"
-                >
-                  {shown.length < filtered.length
-                    ? "Loading more..."
-                    : shown.length > PAGE
-                      ? `Showing all ${filtered.length}`
-                      : ""}
-                </div>
+                <Pagination
+                  total={pg.total}
+                  page={pg.page}
+                  perPage={pg.perPage}
+                  from={pg.from}
+                  to={pg.to}
+                  onPage={pg.setPage}
+                  onPerPage={pg.onPerPage}
+                />
               </>
             )}
           </div>
