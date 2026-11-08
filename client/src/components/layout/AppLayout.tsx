@@ -267,7 +267,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 overflow-y-auto py-2 pl-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {visibleNav.map((group) => (
-            <div key={group.group} className="mb-3">
+            <div key={group.group} className="mb-2">
               {!collapsedNow && (
                 <div className="text-xs font-semibold text-thread px-2.5 mb-0.5">
                   {group.group}
@@ -293,7 +293,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             ? item.label
                             : undefined
                       }
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-2.5 px-2.5 py-1 text-sm font-medium transition-colors ${
                         itemLocked
                           ? "text-white/60 cursor-not-allowed"
                           : active
@@ -327,7 +327,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             ? `Requires ${(c.required || item.required || group.required)?.join(" or ") || "another"} role`
                             : c.label
                         }
-                        className={`flex items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                        className={`flex items-center gap-2.5 px-2.5 py-1 text-sm font-medium transition-colors ${
                           cLocked
                             ? "text-white/60 cursor-not-allowed"
                             : active
@@ -347,7 +347,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       onClick={() =>
                         setOpenGroups((p) => ({ ...p, [item.key]: !open }))
                       }
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-1 text-sm font-medium transition-colors ${
                         groupLocked || item.locked
                           ? "text-white/60"
                           : childActive

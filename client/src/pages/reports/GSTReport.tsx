@@ -19,7 +19,7 @@ function SortTh({ label, sortKey, current, dir, onSort }: { label:string; sortKe
     <th onClick={()=>onSort(sortKey)} className={`${thAlign(label)} text-xs font-semibold text-slate-500 px-5 py-3 cursor-pointer select-none whitespace-nowrap hover:text-slate-700 group`}>
       <span className={`flex items-center gap-1 ${thAlign(label) === "text-right" ? "justify-end" : ""}`}>
         {label}
-        <span className={`text-[10px] ${active?'opacity-100':'opacity-0 group-hover:opacity-40'}`}>
+        <span className={`text-[10px] ${active?'opacity-100':'text-slate-400'}`}>
           {active?(dir==='asc'?'▲':'▼'):'▼'}
         </span>
       </span>

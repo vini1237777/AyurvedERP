@@ -148,7 +148,7 @@ export default function BatchMaster() {
         <span className={`flex items-center gap-1 ${thAlign(label) === "text-right" ? "justify-end" : ""}`}>
           {label}
           <span
-            className={`transition-opacity ${active ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`}
+            className={`transition-opacity ${active ? "opacity-100" : "text-slate-400"}`}
           >
             {active ? (sortDir === 1 ? "↑" : "↓") : "↕"}
           </span>
