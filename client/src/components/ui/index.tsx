@@ -35,9 +35,8 @@ export function Input({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         readOnly={locked}
-        className={`border rounded-md px-3 py-2 text-sm outline-none transition-all
-          ${locked ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200" : "bg-white border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"}
-          ${error ? "border-red-400" : ""}
+        className={`py-2 text-sm outline-none
+          ${locked ? "text-slate-400 cursor-not-allowed" : ""}
           ${className}`}
       />
       {error && (
@@ -81,7 +80,7 @@ export function Select({
         id={selectId}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className={`border border-slate-200 rounded-md px-3 py-2 text-sm bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 ${error ? "border-red-400" : ""} ${className}`}
+        className={`py-2 text-sm outline-none ${className}`}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -107,10 +106,10 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 const btnClasses: Record<BtnVariant, string> = {
   primary: "bg-blue-600 hover:bg-blue-700 text-white border-transparent",
-  secondary: "bg-white hover:bg-slate-50 text-slate-700 border-slate-200",
+  secondary: "bg-transparent hover:bg-slate-50 text-ink border-ink",
   danger: "bg-red-600 hover:bg-red-700 text-white border-transparent",
   ghost: "bg-transparent hover:bg-slate-100 text-slate-600 border-transparent",
-  success: "bg-emerald-600 hover:bg-emerald-700 text-white border-transparent",
+  success: "bg-ink hover:bg-blue-700 text-white border-transparent",
 };
 const btnSize: Record<string, string> = {
   sm: "px-3 py-1.5 text-xs",
@@ -134,7 +133,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       {...props}
       ref={ref}
       disabled={disabled || loading}
-      className={`inline-flex items-center gap-2 font-medium rounded-lg border transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+      className={`inline-flex items-center gap-2 font-semibold border-[1.5px] transition-colors disabled:opacity-50 disabled:cursor-not-allowed
         ${btnClasses[variant]} ${btnSize[size]} ${className}`}
     >
       {loading && (
@@ -148,11 +147,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
 // ─── Badge ────────────────────────────────────────────────────────────────────
 type BadgeColor = "blue" | "green" | "red" | "yellow" | "gray";
 const badgeColors: Record<BadgeColor, string> = {
-  blue: "bg-blue-100 text-blue-700",
-  green: "bg-emerald-100 text-emerald-700",
-  red: "bg-red-100 text-red-700",
-  yellow: "bg-yellow-100 text-yellow-700",
-  gray: "bg-slate-100 text-slate-600",
+  blue: "text-ink font-semibold",
+  green: "text-emerald-700 font-semibold",
+  red: "pen-ring",
+  yellow: "text-amber-700 font-semibold",
+  gray: "text-slate-600 font-medium",
 };
 export function Badge({
   children,
@@ -161,13 +160,7 @@ export function Badge({
   children: React.ReactNode;
   color?: BadgeColor;
 }) {
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badgeColors[color]}`}
-    >
-      {children}
-    </span>
-  );
+  return <span className={`text-xs ${badgeColors[color]}`}>{children}</span>;
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -192,7 +185,7 @@ export function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.4)" }}
+      style={{ background: "rgba(20,37,107,0.35)" }}
     >
       <div
         ref={panelRef}
@@ -200,16 +193,16 @@ export function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`bg-white rounded-xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col outline-none`}
+        className={`bg-white border-[1.5px] border-ink shadow-2xl w-full ${width} max-h-[90vh] flex flex-col outline-none`}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 id={titleId} className="font-semibold text-slate-800 text-base">
+        <div className="flex items-center justify-between px-5 py-3 border-b-[1.5px] border-ink">
+          <h3 id={titleId} className="font-bold text-ink text-lg">
             {title}
           </h3>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 text-xl leading-none"
+            className="w-8 h-8 hover:bg-slate-100 text-slate-500 hover:text-ink text-xl leading-none"
           >
             ×
           </button>
@@ -301,7 +294,7 @@ export function ConfirmDialog({
   return (
     <div
       className="fixed inset-0 z-[110] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.4)" }}
+      style={{ background: "rgba(20,37,107,0.35)" }}
     >
       <div
         ref={panelRef}
@@ -310,9 +303,9 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={messageId}
         tabIndex={-1}
-        className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5 outline-none"
+        className="bg-white border-[1.5px] border-ink shadow-2xl w-full max-w-md p-5 outline-none"
       >
-        <h3 id={titleId} className="font-semibold text-slate-800 text-base">
+        <h3 id={titleId} className="font-bold text-ink text-lg">
           {title}
         </h3>
         <div id={messageId} className="mt-2 text-sm text-slate-600">
@@ -400,10 +393,10 @@ export function SearchDropdown<T extends { id: number }>({
         }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className="w-full border border-slate-200 rounded-md px-3 py-2 text-sm bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100"
+        className="w-full py-2 text-sm outline-none"
       />
       {open && filtered.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-52 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border-[1.5px] border-ink shadow-lg max-h-52 overflow-y-auto">
           {filtered.map((item) => (
             <div
               key={item.id}
@@ -411,7 +404,7 @@ export function SearchDropdown<T extends { id: number }>({
                 onSelect(item);
                 setOpen(false);
               }}
-              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
+              className="px-3 py-2.5 cursor-pointer hover:bg-blue-50 border-b border-rule last:border-0"
             >
               <div className="text-sm font-medium text-slate-800">
                 {getLabel(item)}
@@ -437,9 +430,9 @@ interface PageHeaderProps {
 }
 export function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
       <div>
-        <h1 className="text-xl font-bold text-slate-800">{title}</h1>
+        <h1 className="text-[28px] leading-tight font-bold text-ink">{title}</h1>
         {subtitle && (
           <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
         )}
@@ -461,7 +454,7 @@ export function Card({
 }) {
   return (
     <div
-      className={`bg-white rounded-xl border border-slate-200 ${className}`}
+      className={`border-t-[1.5px] border-ink ${className}`}
       onClick={onClick}
     >
       {children}
@@ -480,10 +473,7 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-        <span className="text-2xl text-slate-400">📭</span>
-      </div>
+    <div className="flex flex-col items-center justify-center py-12 text-center">
       <h3 className="font-semibold text-slate-700 text-base">{title}</h3>
       {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
       {action && <div className="mt-4">{action}</div>}
@@ -525,8 +515,8 @@ export function Toast({
   }, [onClose]);
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium
-      ${type === "success" ? "bg-emerald-600 text-white" : "bg-red-600 text-white"}`}
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 shadow-lg text-sm font-medium
+      ${type === "success" ? "bg-ink text-white" : "bg-red-600 text-white"}`}
     >
       <span>{type === "success" ? "✓" : "✕"}</span>
       {message}
