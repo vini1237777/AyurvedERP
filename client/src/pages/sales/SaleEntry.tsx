@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import {
   customerApi,
@@ -8,7 +7,14 @@ import {
   invoiceApi,
   authFetch,
 } from "../../utils/api";
-import { fmt, fmtInt, COMPANY, SELLER_STATE } from "../../utils/invoice.utils";
+import {
+  fmt,
+    fmtInt,
+  fmtQty,
+  COMPANY,
+  SELLER_STATE,
+} from "../../utils/invoice.utils";
+import { Combobox } from "../../components/ui";
 import type { Customer, Item, Agent, SaleRow, TaxType } from "../../types";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -74,6 +80,10 @@ function rankBySearch<T>(
     .map((x) => x.item);
 }
 
+const fieldId = (rowId: number, field: string) => `row-${rowId}-${field}`;
+const focusField = (id: string) =>
+  requestAnimationFrame(() => document.getElementById(id)?.focus());
+
 const newRow = (id: number): ExtRow => ({
   id,
   itemName: "",
@@ -102,97 +112,32 @@ const newRow = (id: number): ExtRow => ({
 function ItemSearch({
   value,
   rowId,
+  rowNumber,
   allItems,
   onSelect,
   onUpdate,
+  onEnter,
   customerCategory,
 }: {
   value: string;
   rowId: number;
+  rowNumber: number;
   allItems: Item[];
-  onSelect: (rowId: number, item: Item) => void;
+  onSelect: (rowId: number, item: Item, via: "enter" | "tab" | "mouse") => void;
   onUpdate: (rowId: number, val: string) => void;
+  onEnter: () => void;
   customerCategory?: string;
 }) {
-  const [show, setShow] = useState(false);
-  const [search, setSearch] = useState(value);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setSearch(value);
-  }, [value]);
-
-  function updatePos() {
-    if (!inputRef.current) return;
-    const r = inputRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 320) });
-  }
-
-  useEffect(() => {
-    if (!show) return;
-    updatePos();
-
-    const scroller = inputRef.current?.closest(
-      ".overflow-auto",
-    ) as HTMLElement | null;
-    const onScroll = () => updatePos();
-
-    scroller?.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-
-    return () => {
-      scroller?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [show]);
-
   const sorted = useMemo(() => alphaSort(allItems, (i) => i.name), [allItems]);
 
   const filtered = useMemo(() => {
-    const q = normalizeText(search);
-
+    const q = normalizeText(value);
     if (!q) return sorted;
-
     if (q.length === 1) {
       return sorted.filter((i) => normalizeText(i.name).startsWith(q));
     }
-
-    return rankBySearch(sorted, (i) => i.name, search);
-  }, [sorted, search]);
-
-  useEffect(() => {
-    if (!show || !search.trim() || !listRef.current) return;
-
-    const q = normalizeText(search);
-    const items = Array.from(
-      listRef.current.querySelectorAll("[data-name]"),
-    ) as HTMLElement[];
-
-    let target: HTMLElement | undefined;
-
-    if (q.length === 1) {
-      target = items.find((el) =>
-        normalizeText(el.dataset.name || "").startsWith(q),
-      );
-    } else {
-      target =
-        items.find((el) =>
-          normalizeText(el.dataset.name || "").startsWith(q),
-        ) ||
-        items.find((el) =>
-          normalizeText(el.dataset.name || "")
-            .split(/\s+/)
-            .some((part) => part.startsWith(q)),
-        ) ||
-        items.find((el) => normalizeText(el.dataset.name || "").includes(q));
-    }
-
-    if (target) target.scrollIntoView({ block: "nearest" });
-  }, [search, show, filtered]);
+    return rankBySearch(sorted, (i) => i.name, value);
+  }, [sorted, value]);
 
   function getCategoryPrice(item: Item): number | null {
     if (!customerCategory) return null;
@@ -203,94 +148,42 @@ function ItemSearch({
   }
 
   return (
-    <>
-      <input
-        ref={inputRef}
-        value={search}
-        onChange={(e) => {
-          const val = e.target.value;
-          setSearch(val);
-          onUpdate(rowId, val);
-          updatePos();
-          setShow(true);
-        }}
-        onFocus={() => {
-          updatePos();
-          setShow(true);
-        }}
-        onBlur={() => setTimeout(() => setShow(false), 200)}
-        placeholder="Search item..."
-        className="border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-2 py-1.5 text-left hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all"
-      />
-      {show &&
-        pos.top > 0 &&
-        createPortal(
-          <div
-            ref={listRef}
-            style={{
-              position: "fixed",
-              top: pos.top,
-              left: pos.left,
-              width: pos.width,
-              maxHeight: 280,
-              zIndex: 99999,
-              backgroundColor: "#fff",
-              border: "1px solid #e2e8f0",
-              borderRadius: "12px",
-              boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
-              overflowY: "auto",
-            }}
-          >
-            {filtered.length === 0 ? (
-              <div
-                style={{
-                  padding: "16px",
-                  textAlign: "center",
-                  fontSize: "12px",
-                  color: "#94a3b8",
-                }}
-              >
-                {search ? "No items found" : "Type to search..."}
-              </div>
-            ) : (
-              filtered.map((item) => {
-                const catPrice = getCategoryPrice(item);
-                return (
-                  <div
-                    key={item.id}
-                    data-name={item.name}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setSearch(item.name);
-                      setShow(false);
-                      onSelect(rowId, item);
-                    }}
-                    className="px-3 py-2 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
-                  >
-                    <div className="text-sm font-semibold text-slate-800">
-                      {item.name}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-0.5 flex flex-wrap gap-3">
-                      <span>HSN: {(item.hsn as any)?.code || "-"}</span>
-                      <span>GST: {(item.taxSlab as any)?.rate ?? 0}%</span>
-                      <span>
-                        Stk:{" "}
-                        {item.batches.reduce((s, b) => s + b.currentQty, 0)}
-                      </span>
-                      {catPrice !== null && (
-                        <span className="text-blue-600 font-semibold">
-                          {customerCategory} Price: ₹{catPrice}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>,
-          document.body,
-        )}
-    </>
+    <Combobox
+      id={fieldId(rowId, "item")}
+      label={`Item, row ${rowNumber}`}
+      value={value}
+      onInputChange={(text) => onUpdate(rowId, text)}
+      onSelect={(item, via) => onSelect(rowId, item, via)}
+      onEnter={onEnter}
+      openOnFocus={false}
+      options={filtered}
+      getKey={(item) => item.id}
+      emptyText="No items found"
+      placeholder="Search item..."
+      className="border border-transparent rounded-md bg-transparent text-sm outline-none w-full px-2 py-1.5 text-left hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all"
+      renderOption={(item) => {
+        const catPrice = getCategoryPrice(item);
+        return (
+          <div className="px-3 py-2">
+            <div className="text-sm font-semibold text-slate-800">
+              {item.name}
+            </div>
+            <div className="text-xs text-slate-500 mt-0.5 flex flex-wrap gap-3">
+              <span>HSN {(item.hsn as any)?.code || "-"}</span>
+              <span>GST {(item.taxSlab as any)?.rate ?? 0}%</span>
+              <span>
+                Stock {fmtQty(item.batches.reduce((s, b) => s + b.currentQty, 0))}
+              </span>
+              {catPrice !== null && (
+                <span className="text-blue-700 font-semibold">
+                  Category {customerCategory} rate ₹{catPrice}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      }}
+    />
   );
 }
 
@@ -299,21 +192,18 @@ function CustomerSearch({
   customers,
   value,
   onSelect,
+  onPicked,
 }: {
   customers: Customer[];
   value: Customer | null;
   onSelect: (c: Customer | null) => void;
+  onPicked: () => void;
 }) {
   const [search, setSearch] = useState("");
-  const [show, setShow] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!show) {
-      setSearch(value?.name || "");
-    }
-  }, [value, show]);
+    if (value) setSearch(value.name);
+  }, [value]);
 
   const sorted = useMemo(
     () => alphaSort(customers, (c) => c.name),
@@ -322,25 +212,20 @@ function CustomerSearch({
 
   const filtered = useMemo(() => {
     const q = normalizeText(search);
-
-    if (!q) return sorted;
-
+    if (!q || value?.name === search) return sorted;
     if (q.length === 1) {
       return sorted.filter((c) => normalizeText(c.name).startsWith(q));
     }
-
     return [...sorted]
       .map((c) => {
         const name = normalizeText(c.name);
         const gstin = normalizeText(c.gstin || "");
         let rank = 99;
-
         if (name.startsWith(q)) rank = 0;
         else if (name.split(/\s+/).some((part) => part.startsWith(q))) rank = 1;
         else if (name.includes(q)) rank = 2;
         else if (gstin.startsWith(q)) rank = 3;
         else if (gstin.includes(q)) rank = 4;
-
         return { c, name, rank };
       })
       .filter((x) => x.rank < 99)
@@ -349,111 +234,46 @@ function CustomerSearch({
         return a.name.localeCompare(b.name);
       })
       .map((x) => x.c);
-  }, [sorted, search]);
-
-  useEffect(() => {
-    if (!show || !search.trim() || !listRef.current) return;
-
-    const q = normalizeText(search);
-    const items = Array.from(
-      listRef.current.querySelectorAll("[data-name]"),
-    ) as HTMLElement[];
-
-    let target: HTMLElement | undefined;
-
-    if (q.length === 1) {
-      target = items.find((el) =>
-        normalizeText(el.dataset.name || "").startsWith(q),
-      );
-    } else {
-      target =
-        items.find((el) =>
-          normalizeText(el.dataset.name || "").startsWith(q),
-        ) ||
-        items.find((el) =>
-          normalizeText(el.dataset.name || "")
-            .split(/\s+/)
-            .some((part) => part.startsWith(q)),
-        ) ||
-        items.find((el) => normalizeText(el.dataset.name || "").includes(q));
-    }
-
-    if (target) target.scrollIntoView({ block: "nearest" });
-  }, [search, show, filtered]);
-
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setShow(false);
-      }
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
+  }, [sorted, search, value]);
 
   return (
-    <div ref={ref} className="relative">
-      <input
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          onSelect(null);
-          setShow(true);
-        }}
-        onFocus={() => {
-          setSearch(value?.name || search);
-          setShow(true);
-        }}
-        placeholder="Search by name or GSTIN..."
-        className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-300 transition-all w-full px-3 py-2.5"
-      />
-      {show && (
-        <div
-          ref={listRef}
-          className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-64 overflow-y-auto"
-        >
-          {filtered.length === 0 ? (
-            <div className="px-4 py-4 text-xs text-slate-400 text-center">
-              No customers found
+    <Combobox
+      id="sale-customer"
+      value={search}
+      onInputChange={(text) => {
+        setSearch(text);
+        onSelect(null);
+      }}
+      onSelect={(c, via) => {
+        setSearch(c.name);
+        onSelect(c);
+        if (via !== "tab") onPicked();
+      }}
+      openOnFocus={false}
+      options={filtered}
+      getKey={(c) => c.id}
+      emptyText="No customers found"
+      placeholder="Search by name or GSTIN..."
+      minListWidth={420}
+      className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-400 transition-all w-full px-3 py-2"
+      renderOption={(c) => (
+        <div className="px-4 py-2.5 flex justify-between items-center gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-800 truncate">
+              {c.name}
             </div>
-          ) : (
-            filtered.map((c) => (
-              <div
-                key={c.id}
-                data-name={c.name}
-                onMouseDown={() => {
-                  onSelect(c);
-                  setSearch(c.name);
-                  setShow(false);
-                }}
-                className="px-4 py-3 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0 flex justify-between items-center"
-              >
-                <div>
-                  <div className="text-sm font-semibold text-slate-800">
-                    {c.name}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5">
-                    {c.city || "-"}
-                    {c.state ? `, ${c.state}` : ""} ·{" "}
-                    {c.gstin || "B2C, No GSTIN"}
-                  </div>
-                </div>
-                <span
-                  className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                    c.balance < 0
-                      ? "bg-red-50 text-red-600"
-                      : "bg-emerald-50 text-emerald-600"
-                  }`}
-                >
-                  ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
-                  {c.balance < 0 ? "Dr." : "Cr."}
-                </span>
-              </div>
-            ))
-          )}
+            <div className="text-xs text-slate-500 mt-0.5 truncate">
+              {[c.city, c.state].filter(Boolean).join(", ") || "No city"},{" "}
+              {c.gstin || "no GSTIN"}
+            </div>
+          </div>
+          <span className="text-xs font-semibold text-slate-600 whitespace-nowrap num">
+            ₹{Math.abs(c.balance).toLocaleString("en-IN")}{" "}
+            {c.balance < 0 ? "Dr" : "Cr"}
+          </span>
         </div>
       )}
-    </div>
+    />
   );
 }
 
@@ -541,7 +361,36 @@ export default function SaleEntry() {
       p.map((r) => (r.id === id ? calcRow({ ...r, [field]: val }) : r)),
     );
 
-  function selectItem(rowId: number, item: Item) {
+  // Typing in a picked row means a different item is wanted, so its batch, rate
+  // and tax must not carry over to whatever gets typed.
+  function typeItemName(rowId: number, text: string) {
+    setRows((p) =>
+      p.map((r) =>
+        r.id !== rowId
+          ? r
+          : calcRow({
+              ...r,
+              itemName: text,
+              itemId: null,
+              batchId: null,
+              batchNo: "",
+              hsn: "",
+              gst: 0,
+              taxPct: "5",
+              mrp: 0,
+              price: "",
+              _batches: [],
+            }),
+      ),
+    );
+  }
+
+  function selectItem(
+    rowId: number,
+    item: Item,
+    via: "enter" | "tab" | "mouse" = "mouse",
+  ) {
+    if (via !== "tab") focusField(fieldId(rowId, "qty"));
     const batches = item.batches || [];
     const firstBatch = batches[0] || null;
 
@@ -759,13 +608,17 @@ export default function SaleEntry() {
           </div>
           <div className="px-5 py-4 grid grid-cols-4 gap-4">
             <div className="col-span-2">
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
+              <label
+                htmlFor="sale-customer"
+                className="text-xs font-semibold text-slate-500 block mb-1.5"
+              >
                 Customer *
               </label>
               <CustomerSearch
                 customers={customers}
                 value={customer}
                 onSelect={(c) => setCustomer(c)}
+                onPicked={() => focusField(fieldId(rows[0].id, "item"))}
               />
               {customer && (
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -955,7 +808,9 @@ export default function SaleEntry() {
                           rowId={row.id}
                           allItems={allItems}
                           onSelect={selectItem}
-                          onUpdate={(rowId, val) => upd(rowId, "itemName", val)}
+                          onUpdate={typeItemName}
+                          rowNumber={idx + 1}
+                          onEnter={() => focusField("sale-notes")}
                           customerCategory={customer?.category || undefined}
                         />
                       </td>
@@ -1094,6 +949,7 @@ export default function SaleEntry() {
               Notes (Optional)
             </h2>
             <textarea
+              id="sale-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               aria-label="Notes"
