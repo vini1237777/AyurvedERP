@@ -9,8 +9,11 @@ import {
 } from "../../utils/api";
 import {
   fmt,
-    fmtInt,
+  fmtExpiry,
+  fmtInt,
   fmtQty,
+  isExpired,
+  parseExpiry,
   COMPANY,
   SELLER_STATE,
 } from "../../utils/invoice.utils";
@@ -78,6 +81,21 @@ function rankBySearch<T>(
       return a.label.localeCompare(b.label);
     })
     .map((x) => x.item);
+}
+
+const sellable = (b: any) => b.currentQty > 0 && !isExpired(b.expiryDate);
+
+// Stock that expires soonest should leave first. Batches that can't be sold go
+// last and are shown disabled.
+function sortBatches<T extends { currentQty: number; expiryDate?: string | null }>(
+  batches: T[],
+): T[] {
+  const time = (b: T) =>
+    parseExpiry(b.expiryDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+  return [...batches].sort(
+    (a, b) =>
+      Number(sellable(b)) - Number(sellable(a)) || time(a) - time(b),
+  );
 }
 
 const fieldId = (rowId: number, field: string) => `row-${rowId}-${field}`;
@@ -396,8 +414,8 @@ export default function SaleEntry() {
     via: "enter" | "tab" | "mouse" = "mouse",
   ) {
     if (via !== "tab") focusField(fieldId(rowId, "qty"));
-    const batches = item.batches || [];
-    const firstBatch = batches[0] || null;
+    const batches = sortBatches(item.batches || []);
+    const firstBatch = batches.find(sellable) || null;
 
     const catPrice = customer?.category
       ? (item as any).categoryPrices?.find(
@@ -463,14 +481,70 @@ export default function SaleEntry() {
     if (rows.length > 1) setRows((p) => p.filter((r) => r.id !== id));
   };
 
+  // One sentence per row, shown under the item. Stock adds up across rows that
+  // use the same batch, and free units leave the shelf too.
+  const batchUse = new Map<string, number>();
+  for (const r of calcedRows) {
+    if (r.batchId === null) continue;
+    const key = String(r.batchId);
+    const used =
+      (batchUse.get(key) || 0) +
+      (parseFloat(r.qty) || 0) +
+      (parseFloat(r.free) || 0);
+    batchUse.set(key, used);
+  }
+
+  function rowProblem(r: ExtRow): { field: string; text: string } | null {
+    if (!r.itemName.trim()) return null;
+    if (r.itemId === null)
+      return { field: "item", text: "Pick this item from the list." };
+    const batch: any = r._batches.find(
+      (b: any) => String(b.id) === String(r.batchId),
+    );
+    if (!batch) {
+      return {
+        field: "batch",
+        text: r._batches.some(sellable)
+          ? "Choose a batch."
+          : "No stock to sell for this item.",
+      };
+    }
+    if (isExpired(batch.expiryDate))
+      return { field: "batch", text: "This batch has expired." };
+    if (!(parseFloat(r.qty) > 0))
+      return { field: "qty", text: "Enter a quantity." };
+    const used = batchUse.get(String(r.batchId)) || 0;
+    if (used > batch.currentQty)
+      return {
+        field: "qty",
+        text: `Only ${fmtQty(batch.currentQty)} left in this batch, including free units.`,
+      };
+    return null;
+  }
+
+  function firstProblem(): { id: string; text: string } | null {
+    if (!customer) return { id: "sale-customer", text: "Choose a customer." };
+    for (const r of calcedRows) {
+      const problem = rowProblem(r);
+      if (problem)
+        return {
+          id: fieldId(r.id, problem.field),
+          text: `${r.itemName}: ${problem.text}`,
+        };
+    }
+    if (!filledRows.length)
+      return { id: fieldId(rows[0].id, "item"), text: "Add at least one item." };
+    return null;
+  }
+
   async function handleSave(andPrint = false) {
     if (savingRef.current) return;
-    if (!customer) {
-      setError("Please select a customer");
-      return;
-    }
-    if (!filledRows.length) {
-      setError("Add at least one item");
+    const problem = firstProblem();
+    if (problem || !customer) {
+      if (problem) {
+        setError(problem.text);
+        focusField(problem.id);
+      }
       return;
     }
     savingRef.current = true;
@@ -790,6 +864,7 @@ export default function SaleEntry() {
                   const currBatch = bList.find(
                     (b: any) => String(b.id) === String(row.batchId),
                   );
+                  const problem = rowProblem(calc);
 
                   return (
                     <tr
@@ -814,6 +889,11 @@ export default function SaleEntry() {
                           onEnter={() => focusField("sale-notes")}
                           customerCategory={customer?.category || undefined}
                         />
+                        {problem && (
+                          <div className="px-2 pt-0.5 text-xs text-red-600">
+                            {problem.text}
+                          </div>
+                        )}
                       </td>
                       <td className="px-2 py-1.5">
 <div className="text-xs text-slate-500 text-center">
@@ -837,15 +917,24 @@ export default function SaleEntry() {
                         >
                           <option value="">-- Batch --</option>
                           {bList.map((b: any) => (
-                            <option key={b.id} value={String(b.id)}>
-                              {b.batchNo} (Stk:{b.currentQty})
+                            <option
+                              key={b.id}
+                              value={String(b.id)}
+                              disabled={!sellable(b)}
+                            >
+                              {b.batchNo}, {fmtExpiry(b.expiryDate)},{" "}
+                              {isExpired(b.expiryDate)
+                                ? "expired"
+                                : b.currentQty > 0
+                                  ? `${fmtQty(b.currentQty)} left`
+                                  : "none left"}
                             </option>
                           ))}
                         </select>
                       </td>
                       <td className="px-2 py-1.5">
 <div className="text-xs text-slate-500 text-center whitespace-nowrap">
-                          {currBatch?.expiryDate || ""}
+                          {currBatch ? fmtExpiry(currBatch.expiryDate) : ""}
                         </div>
                       </td>
                       <td className="px-2 py-1.5">
