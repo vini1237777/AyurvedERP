@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { invoiceApi, salesReturnApi, authFetch } from "../utils/api";
-import { fmt, fmtInt } from "../utils/invoice.utils";
+import { fmt, fmtDate, fmtQty } from "../utils/invoice.utils";
 import { Card, Badge, LoadingScreen } from "../components/ui";
+import { useAuth } from "../auth/AuthContext";
 import type { Invoice } from "../types";
 
 const API = (
@@ -23,25 +24,31 @@ interface SalesReturn {
 
 type DashboardSummary = {
   outstanding: number;
+  invoiceCount: number;
+  todayNet: number;
+  monthNet: number;
+  todayReturns: number;
+  monthReturns: number;
   lowStockCount: number;
-  lowStock: { itemName: string; batchNo: string; currentQty: number }[];
   expiringCount: number;
-  expiring: {
-    itemName: string;
-    batchNo: string;
-    expiryDate: string;
-    currentQty: number;
-  }[];
+  expiredCount: number;
   gstPayable: number;
-  gstOutput: number;
-  gstInput: number;
   topCustomers: { customerId: number; name: string; total: number }[];
 };
 
+const plural = (n: number, one: string, many: string) =>
+  `${fmtQty(n)} ${n === 1 ? one : many}`;
+
 export default function Dashboard() {
+  const { user } = useAuth();
+  const role = (user as { role?: string } | null)?.role;
+  const canSell = role === "ADMIN" || role === "SELLER";
+  const canSeeBatches = role === "ADMIN" || role === "ACCOUNTANT";
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [returns, setReturns] = useState<SalesReturn[]>([]);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [summaryFailed, setSummaryFailed] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,9 +70,11 @@ export default function Dashboard() {
 
       try {
         const res = await authFetch(`${API}/reports/dashboard-summary`);
-        if (res.ok) setSummary(await res.json());
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        setSummary(await res.json());
       } catch (err) {
         console.error("Failed to load dashboard summary", err);
+        setSummaryFailed(true);
       }
 
       setLoading(false);
@@ -74,322 +83,309 @@ export default function Dashboard() {
     loadDashboard();
   }, []);
 
-  const isToday = (dateStr: string) =>
-    new Date(dateStr).toDateString() === new Date().toDateString();
+  const money = (n: number | undefined) =>
+    summary ? `₹${fmt(n ?? 0)}` : summaryFailed ? "Not available" : "...";
 
-  const isThisMonth = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-    return (
-      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    );
-  };
-
-  const todaySales = invoices
-    .filter((i) => isToday(i.invoiceDate) && i.status !== "CANCELLED")
-    .reduce((s, i) => s + i.grandTotal, 0);
-
-  const todayReturns = returns
-    .filter((r) => isToday(r.createdAt))
-    .reduce((s, r) => s + r.totalCredit, 0);
-
-  const todayNet = todaySales - todayReturns;
-
-  const monthSales = invoices
-    .filter((i) => isThisMonth(i.invoiceDate) && i.status !== "CANCELLED")
-    .reduce((s, i) => s + i.grandTotal, 0);
-
-  const monthReturns = returns
-    .filter((r) => isThisMonth(r.createdAt))
-    .reduce((s, r) => s + r.totalCredit, 0);
-
-  const monthNet = monthSales - monthReturns;
-
-  const recentInvoices = invoices.slice(0, 3);
-  const recentReturns = returns.slice(0, 5);
-
-  const stats = [
+  const figures = [
     {
-      label: "Today's Net Sales",
-      value: `₹${fmt(todayNet)}`,
+      label: "Today's sales",
+      value: money(summary?.todayNet),
+      note: summary?.todayReturns
+        ? `After ₹${fmt(summary.todayReturns)} returns`
+        : "No returns today",
     },
     {
-      label: "This Month Net",
-      value: `₹${fmt(monthNet)}`,
+      label: "This month",
+      value: money(summary?.monthNet),
+      note: summary?.monthReturns
+        ? `After ₹${fmt(summary.monthReturns)} returns`
+        : "No returns this month",
     },
     {
-      label: "Total Invoices",
-      value: String(invoices.length),
+      // Payments aren't recorded anywhere yet, so this can't claim to be money owed.
+      label: "Total billed",
+      value: money(summary?.outstanding),
+      note: summary
+        ? `${plural(summary.invoiceCount, "invoice", "invoices")}, all time`
+        : "",
     },
     {
-      label: "Today's Returns",
-      value: `₹${fmt(todayReturns)}`,
-    },
-    {
-      label: "This Month Returns",
-      value: `₹${fmt(monthReturns)}`,
+      label: summary && summary.gstPayable < 0 ? "GST credit" : "GST payable",
+      value: money(summary ? Math.abs(summary.gstPayable) : undefined),
+      note: "Tax on sales minus tax on purchases",
     },
   ];
 
+  const attention = summary
+    ? [
+        {
+          count: summary.expiredCount,
+          text: `${plural(summary.expiredCount, "batch has", "batches have")} expired with stock left`,
+          to: "/masters/batches?stock=expired",
+          urgent: true,
+        },
+        {
+          count: summary.expiringCount,
+          text: `${plural(summary.expiringCount, "batch expires", "batches expire")} within 90 days`,
+          to: "/masters/batches?stock=expiring",
+          urgent: false,
+        },
+        {
+          count: summary.lowStockCount,
+          text: `${plural(summary.lowStockCount, "batch has", "batches have")} fewer than 10 left`,
+          to: "/masters/batches?stock=below10",
+          urgent: false,
+        },
+      ].filter((row) => row.count > 0)
+    : [];
+
+  const shortcuts = [
+    { label: "Sale return", to: "/sales/return", show: canSell },
+    { label: "Customers", to: "/masters/customers", show: role !== "RETAILER" },
+    { label: "Items", to: "/masters/items", show: role !== "RETAILER" },
+    { label: "Batches", to: "/masters/batches", show: canSeeBatches },
+  ].filter((s) => s.show);
+
   return (
     <div>
-      <div className="mb-6">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
-        <p className="text-slate-500 text-sm mt-0.5">Welcome to ERP</p>
-      </div>
-
-      <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 flex items-center justify-between gap-4">
-        <div>
-          <div className="text-sm font-semibold text-blue-900">Demo data</div>
-          <p className="text-sm text-blue-700">
-            This preview uses seeded mock business records. No client data is
-            shown.
-          </p>
-        </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200 whitespace-nowrap">
-          Portfolio preview
-        </span>
-      </div>
-
-      <div className="grid grid-cols-5 gap-4 mb-4">
-        {stats.map((s) => (
-          <Card key={s.label} className="p-5">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">{s.label}</p>
-              <p className="text-2xl font-bold text-slate-800">{s.value}</p>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      {summary && (
-        <div className="grid grid-cols-5 gap-4 mb-6">
-          <Card className="p-5">
-            <p className="text-sm text-slate-500 mb-1">Outstanding Amount</p>
-            <p className="text-2xl font-bold text-slate-800">
-              ₹{fmt(summary.outstanding)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Σ unpaid SAVED invoices
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <p className="text-sm text-slate-500 mb-1">Low Stock</p>
-            <p className="text-2xl font-bold text-amber-700">
-              {fmtInt(summary.lowStockCount)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">batches below 10 qty</p>
-          </Card>
-
-          <Card className="p-5">
-            <p className="text-sm text-slate-500 mb-1">Expiring Batches</p>
-            <p className="text-2xl font-bold text-rose-700">
-              {fmtInt(summary.expiringCount)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">within next 90 days</p>
-          </Card>
-
-          <Card className="p-5">
-            <p className="text-sm text-slate-500 mb-1">GST Payable</p>
-            <p
-              className={`text-2xl font-bold ${
-                summary.gstPayable >= 0 ? "text-slate-800" : "text-emerald-700"
-              }`}
-            >
-              ₹{fmt(Math.abs(summary.gstPayable))}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">
-              Output ₹{fmt(summary.gstOutput)} − Input ₹{fmt(summary.gstInput)}
-            </p>
-          </Card>
-
-          <Card className="p-5">
-            <p className="text-sm text-slate-500 mb-2">Top Customers</p>
-            {summary.topCustomers.length === 0 ? (
-              <p className="text-xs text-slate-400">No invoiced customers</p>
-            ) : (
-              <ol className="space-y-1">
-                {summary.topCustomers.slice(0, 3).map((c, i) => (
-                  <li
-                    key={c.customerId}
-                    className="flex items-baseline justify-between gap-2 text-xs"
-                  >
-                    <span className="truncate text-slate-700">
-                      <span className="text-slate-400 font-mono mr-1">
-                        {i + 1}.
-                      </span>
-                      {c.name}
-                    </span>
-                    <span className="font-semibold text-slate-800 whitespace-nowrap">
-                      ₹{fmt(c.total)}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </Card>
-        </div>
-      )}
-
-      <div className="grid grid-cols-5 gap-3 mb-6">
-        {[
-          {
-            label: "New Sale",
-            path: "/sales/new",
-            icon: "➕",
-            color: "bg-blue-600",
-          },
-          {
-            label: "Sales Return",
-            path: "/sales/return",
-            icon: "↩",
-            color: "bg-rose-600",
-          },
-          {
-            label: "Customers",
-            path: "/masters/customers",
-            icon: "",
-            color: "bg-emerald-600",
-          },
-          {
-            label: "Items",
-            path: "/masters/items",
-            icon: "",
-            color: "bg-violet-600",
-          },
-          {
-            label: "Batches",
-            path: "/masters/batches",
-            icon: "",
-            color: "bg-amber-600",
-          },
-        ].map((a) => (
+        {canSell && (
           <Link
-            key={a.path}
-            to={a.path}
-            className={`${a.color} text-white rounded-xl p-4 flex items-center gap-3 hover:opacity-90 transition-opacity`}
+            to="/sales/new"
+            className="px-5 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold"
           >
-            <span className="text-2xl">{a.icon}</span>
-            <span className="font-semibold text-sm">{a.label}</span>
+            + New sale
           </Link>
-        ))}
+        )}
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <p className="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-800">
+        Demo data. These are made-up business records, not a real client's.
+      </p>
+
+      <Card className="mb-5 grid grid-cols-2 lg:grid-cols-4 divide-x divide-slate-100">
+        {figures.map((f) => (
+          <div key={f.label} className="px-5 py-4 min-w-0">
+            <p className="text-sm text-slate-600">{f.label}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-800 [font-variant-numeric:tabular-nums] break-words">
+              {f.value}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">{f.note}</p>
+          </div>
+        ))}
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
         <Card>
+          <h2 className="px-5 pt-4 pb-3 font-semibold text-slate-800 border-b border-slate-100">
+            Needs attention
+          </h2>
+          {loading ? (
+            <LoadingScreen />
+          ) : summaryFailed ? (
+            <p className="px-5 py-6 text-sm text-red-600">
+              Stock alerts couldn't be loaded. Refresh the page to try again.
+            </p>
+          ) : attention.length === 0 ? (
+            <p className="px-5 py-6 text-sm text-slate-600">
+              Nothing right now. Stock and expiry dates look fine.
+            </p>
+          ) : (
+            <ul>
+              {attention.map((row) => (
+                <li
+                  key={row.to}
+                  className="border-b border-slate-50 last:border-0"
+                >
+                  {canSeeBatches ? (
+                    <Link
+                      to={row.to}
+                      className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-slate-50"
+                    >
+                      <span
+                        className={`text-sm ${row.urgent ? "font-semibold text-red-700" : "text-slate-800"}`}
+                      >
+                        {row.text}
+                      </span>
+                      <span className="text-sm text-blue-700 whitespace-nowrap">
+                        View batches
+                      </span>
+                    </Link>
+                  ) : (
+                    <p
+                      className={`px-5 py-3 text-sm ${row.urgent ? "font-semibold text-red-700" : "text-slate-800"}`}
+                    >
+                      {row.text}
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+
+        <Card>
+          <h2 className="px-5 pt-4 pb-3 font-semibold text-slate-800 border-b border-slate-100">
+            Top customers
+          </h2>
+          {loading ? (
+            <LoadingScreen />
+          ) : !summary?.topCustomers.length ? (
+            <p className="px-5 py-6 text-sm text-slate-600">No invoices yet.</p>
+          ) : (
+            <ol>
+              {summary.topCustomers.slice(0, 3).map((c) => (
+                <li
+                  key={c.customerId}
+                  className="flex items-baseline justify-between gap-3 px-5 py-3 border-b border-slate-50 last:border-0 text-sm"
+                >
+                  <span className="truncate text-slate-800">{c.name}</span>
+                  <span className="num font-semibold text-slate-800">
+                    ₹{fmt(c.total)}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-800">Recent Invoices</h2>
-            <Link to="/sales" className="text-sm text-blue-600 hover:underline">
+            <h2 className="font-semibold text-slate-800">Recent invoices</h2>
+            <Link to="/sales" className="text-sm text-blue-700 hover:underline">
               View all
             </Link>
           </div>
 
           {loading ? (
             <LoadingScreen />
-          ) : recentInvoices.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-sm">
-              No invoices yet.{" "}
-              <Link to="/sales/new" className="text-blue-600 hover:underline">
-                Create first sale
-              </Link>
+          ) : invoices.length === 0 ? (
+            <div className="text-center py-12 text-slate-600 text-sm">
+              No invoices yet.
             </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-slate-50">
-                  {["Invoice No", "Date", "Customer", "Amount", "Status"].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-5 py-3"
-                      >
-                        {h}
-                      </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {recentInvoices.map((inv) => (
-                  <tr
-                    key={inv.id}
-                    className="border-b border-slate-50 hover:bg-slate-50"
-                  >
-                    <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700">
-                      #{inv.invoiceNo}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-slate-600">
-                      {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-slate-800">
-                      {inv.customer?.name}
-                    </td>
-                    <td className="px-5 py-3 text-sm font-semibold text-slate-800">
-                      ₹{fmt(inv.grandTotal)}
-                    </td>
-                    <td className="px-5 py-3">
-                      <Badge color={inv.status === "SAVED" ? "green" : "red"}>
-                        {inv.status}
-                      </Badge>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-slate-50 text-xs font-semibold text-slate-600">
+                    <th scope="col" className="text-left px-5 py-2.5">
+                      Invoice
+                    </th>
+                    <th scope="col" className="text-left px-3 py-2.5">
+                      Date
+                    </th>
+                    <th scope="col" className="text-left px-3 py-2.5">
+                      Customer
+                    </th>
+                    <th scope="col" className="text-right px-5 py-2.5">
+                      Amount
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-slate-50 hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-2.5 text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">
+                        {inv.invoiceNo}
+                      </td>
+                      <td className="px-3 py-2.5 text-sm text-slate-600 whitespace-nowrap">
+                        {fmtDate(inv.invoiceDate)}
+                      </td>
+                      <td className="px-3 py-2.5 text-sm text-slate-800">
+                        {inv.customer?.name}
+                        {inv.status !== "SAVED" && (
+                          <span className="ml-2">
+                            <Badge color="red">Cancelled</Badge>
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-2.5 text-sm font-semibold text-slate-800 num">
+                        ₹{fmt(inv.grandTotal)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
 
-        <Card>
+        <Card className="overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-800">Recent Returns</h2>
+            <h2 className="font-semibold text-slate-800">Recent returns</h2>
           </div>
 
           {loading ? (
             <LoadingScreen />
-          ) : recentReturns.length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-sm">
+          ) : returns.length === 0 ? (
+            <div className="text-center py-12 text-slate-600 text-sm">
               No returns yet.
             </div>
           ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b bg-slate-50">
-                  {["Return No", "Date", "Customer", "Credit"].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-slate-500 px-5 py-3"
-                    >
-                      {h}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b bg-slate-50 text-xs font-semibold text-slate-600">
+                    <th scope="col" className="text-left px-5 py-2.5">
+                      Return
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {recentReturns.map((ret) => (
-                  <tr
-                    key={ret.id}
-                    className="border-b border-slate-50 hover:bg-slate-50"
-                  >
-                    <td className="px-5 py-3 text-sm font-mono font-semibold text-red-600">
-                      #SR-{ret.returnNo}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-slate-600">
-                      {new Date(ret.createdAt).toLocaleDateString("en-IN")}
-                    </td>
-                    <td className="px-5 py-3 text-sm text-slate-800">
-                      {ret.customer?.name || "-"}
-                    </td>
-                    <td className="px-5 py-3 text-sm font-semibold text-red-600">
-                      ₹{fmt(ret.totalCredit)}
-                    </td>
+                    <th scope="col" className="text-left px-3 py-2.5">
+                      Date
+                    </th>
+                    <th scope="col" className="text-left px-3 py-2.5">
+                      Customer
+                    </th>
+                    <th scope="col" className="text-right px-5 py-2.5">
+                      Credit
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {returns.slice(0, 5).map((ret) => (
+                    <tr
+                      key={ret.id}
+                      className="border-b border-slate-50 hover:bg-slate-50"
+                    >
+                      <td className="px-5 py-2.5 text-sm font-mono font-semibold text-slate-700 whitespace-nowrap">
+                        SR-{ret.returnNo}
+                      </td>
+                      <td className="px-3 py-2.5 text-sm text-slate-600 whitespace-nowrap">
+                        {fmtDate(ret.createdAt)}
+                      </td>
+                      <td className="px-3 py-2.5 text-sm text-slate-800">
+                        {ret.customer?.name || "-"}
+                      </td>
+                      <td className="px-5 py-2.5 text-sm font-semibold text-slate-800 num">
+                        ₹{fmt(ret.totalCredit)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Card>
       </div>
+
+      {shortcuts.length > 0 && (
+        <nav
+          aria-label="Shortcuts"
+          className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-slate-600"
+        >
+          <span>Go to</span>
+          {shortcuts.map((s) => (
+            <Link key={s.to} to={s.to} className="text-blue-700 hover:underline">
+              {s.label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
