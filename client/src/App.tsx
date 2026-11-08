@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AppLayout from "./components/layout/AppLayout";
 import { AuthProvider, RequireAuth } from "./auth/AuthContext";
 import Login from "./pages/Login";
-import Landing from "./pages/Landing";
 import NoAccess from "./pages/NoAccess";
 
 // Eager
@@ -58,8 +57,8 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<Landing />} />
-          <Route path="/welcome" element={<Landing />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/welcome" element={<Navigate to="/" replace />} />
           <Route path="/login" element={<Login />} />
           <Route
             path="/dashboard"
@@ -233,7 +232,7 @@ export default function App() {
           }
         />
 
-        <Route path="*" element={<Navigate to="/welcome" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
