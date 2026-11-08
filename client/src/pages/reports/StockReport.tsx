@@ -89,15 +89,15 @@ export default function StockReport() {
   function stockBadge(o: number, c: number) {
     const s = getStatus(o, c);
     const styles: Record<string, string> = {
-      out: "bg-red-100 text-red-700",
-      critical: "bg-orange-100 text-orange-700",
-      low: "bg-yellow-100 text-yellow-700",
-      updated: "bg-blue-50 text-blue-700",
-      full: "bg-emerald-50 text-emerald-700",
+      out: "pen-ring",
+      critical: "text-red-700",
+      low: "text-amber-700",
+      updated: "text-ink",
+      full: "text-ink",
     };
     return (
       <span
-        className={`text-xs font-bold px-2 py-0.5 rounded-full ${styles[s]}`}
+        className={`text-sm font-semibold ${styles[s]}`}
       >
         {c < 0 ? c : fmt(c)}
       </span>
