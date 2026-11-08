@@ -10,7 +10,12 @@ import { createPortal } from "react-dom";
 interface ComboboxProps<T> {
   value: string;
   onInputChange: (text: string) => void;
-  onSelect: (option: T) => void;
+  // "tab" means the browser is about to move focus itself, so callers should
+  // only move focus for "enter" and "mouse".
+  onSelect: (option: T, via: "enter" | "tab" | "mouse") => void;
+  // Enter pressed while no list is showing.
+  onEnter?: () => void;
+  openOnFocus?: boolean;
   options: T[];
   getKey: (option: T) => string | number;
   renderOption: (option: T, active: boolean) => ReactNode;
@@ -28,6 +33,8 @@ export function Combobox<T>({
   value,
   onInputChange,
   onSelect,
+  onEnter,
+  openOnFocus = true,
   options,
   getKey,
   renderOption,
@@ -93,10 +100,10 @@ export function Combobox<T>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, showList]);
 
-  function pick(option: T) {
+  function pick(option: T, via: "enter" | "tab" | "mouse") {
     typedRef.current = false;
     setOpen(false);
-    onSelect(option);
+    onSelect(option, via);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -117,7 +124,10 @@ export function Combobox<T>({
         if (showList && active >= 0) {
           e.preventDefault();
           e.stopPropagation();
-          pick(options[active]);
+          pick(options[active], "enter");
+        } else if (!showList && onEnter) {
+          e.preventDefault();
+          onEnter();
         }
         return;
       case "Escape":
@@ -129,7 +139,7 @@ export function Combobox<T>({
         return;
       case "Tab":
         if (showList && typedRef.current && value.trim() && active >= 0) {
-          pick(options[active]);
+          pick(options[active], "tab");
         } else {
           setOpen(false);
         }
@@ -170,7 +180,7 @@ export function Combobox<T>({
         onFocus={(e) => {
           typedRef.current = false;
           setActiveIndex(0);
-          setOpen(true);
+          if (openOnFocus) setOpen(true);
           e.target.select();
         }}
         onClick={() => setOpen(true)}
@@ -207,7 +217,7 @@ export function Combobox<T>({
                   // Keep focus in the input so the click isn't lost to blur.
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    pick(option);
+                    pick(option, "mouse");
                   }}
                   onMouseMove={() => {
                     if (i !== activeIndex) setActiveIndex(i);
