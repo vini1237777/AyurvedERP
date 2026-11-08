@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useId, useState, useRef, useEffect } from "react";
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -11,22 +11,38 @@ export function Input({
   error,
   locked,
   className = "",
+  id,
   ...props
 }: InputProps) {
+  const autoId = useId();
+  const inputId = id ?? autoId;
+  const errorId = `${inputId}-error`;
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label className="text-xs font-medium text-slate-500">{label}</label>
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-slate-500"
+        >
+          {label}
+        </label>
       )}
       <input
         {...props}
+        id={inputId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         readOnly={locked}
         className={`border rounded-md px-3 py-2 text-sm outline-none transition-all
           ${locked ? "bg-slate-50 text-slate-400 cursor-not-allowed border-slate-200" : "bg-white border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-100"}
           ${error ? "border-red-400" : ""}
           ${className}`}
       />
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && (
+        <span id={errorId} className="text-xs text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
@@ -42,15 +58,27 @@ export function Select({
   options,
   error,
   className = "",
+  id,
   ...props
 }: SelectProps) {
+  const autoId = useId();
+  const selectId = id ?? autoId;
+  const errorId = `${selectId}-error`;
   return (
     <div className="flex flex-col gap-1">
       {label && (
-        <label className="text-xs font-medium text-slate-500">{label}</label>
+        <label
+          htmlFor={selectId}
+          className="text-xs font-medium text-slate-500"
+        >
+          {label}
+        </label>
       )}
       <select
         {...props}
+        id={selectId}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         className={`border border-slate-200 rounded-md px-3 py-2 text-sm bg-white outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 ${error ? "border-red-400" : ""} ${className}`}
       >
         {options.map((o) => (
@@ -59,7 +87,11 @@ export function Select({
           </option>
         ))}
       </select>
-      {error && <span className="text-xs text-red-500">{error}</span>}
+      {error && (
+        <span id={errorId} className="text-xs text-red-500">
+          {error}
+        </span>
+      )}
     </div>
   );
 }
@@ -196,6 +228,7 @@ export function SearchDropdown<T extends { id: number }>({
 }: SearchDropdownProps<T>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const inputId = useId();
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -213,11 +246,16 @@ export function SearchDropdown<T extends { id: number }>({
   return (
     <div ref={ref} className={`relative ${className}`}>
       {label && (
-        <label className="text-xs font-medium text-slate-500 block mb-1">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-slate-500 block mb-1"
+        >
           {label}
         </label>
       )}
       <input
+        id={inputId}
+        aria-label={label ? undefined : placeholder}
         value={value}
         onChange={(e) => {
           onChange(e.target.value);
