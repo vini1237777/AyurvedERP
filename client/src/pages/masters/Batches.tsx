@@ -411,7 +411,7 @@ export default function BatchMaster() {
                           {b.batchNo}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                          {b.mfgDate || "-"}
+                          {fmtExpiry(b.mfgDate)}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
                           {fmtExpiry(b.expiryDate)}

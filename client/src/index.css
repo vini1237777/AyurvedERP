@@ -146,6 +146,10 @@ table td + td {
   overflow: auto;
   max-height: calc(100vh - 15rem);
 }
+.frozen-table th,
+.frozen-table td {
+  white-space: nowrap;
+}
 .frozen-table thead th {
   position: sticky;
   top: 0;
