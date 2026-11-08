@@ -130,6 +130,15 @@ export const create = async (req: Request, res: Response) => {
     if (!customerId || !rows?.length)
       return res.status(400).json({ error: "Customer and items are required" });
 
+    for (const row of rows) {
+      const qty = parseFloat(row.qty) || 0;
+      const freeQty = parseFloat(row.freeQty) || 0;
+      if (qty < 0 || freeQty < 0 || qty + freeQty <= 0)
+        return res
+          .status(400)
+          .json({ error: `Enter a valid quantity for ${row.itemName}` });
+    }
+
     const customer = await prisma.customer.findUnique({
       where: { id: parseInt(customerId) },
     });
