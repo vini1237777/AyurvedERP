@@ -612,6 +612,43 @@ export default function SaleEntry() {
     window.open("/invoice-print.html", "_blank");
   }
 
+  // Enter walks forward through the grid. Tab keeps its normal behaviour.
+  function goToNextRow(rowId: number) {
+    const idx = rows.findIndex((r) => r.id === rowId);
+    const next = rows[idx + 1];
+    if (next) {
+      focusField(fieldId(next.id, "item"));
+      return;
+    }
+    const id = Date.now();
+    setRows((p) => [...p, newRow(id)]);
+    focusField(fieldId(id, "item"));
+  }
+
+  const enterGoes =
+    (go: () => void) => (e: React.KeyboardEvent<HTMLElement>) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      go();
+    };
+
+  // Always call the latest handleSave without re-binding the listener.
+  const saveRef = useRef(handleSave);
+  saveRef.current = handleSave;
+
+  useEffect(() => {
+    focusField("sale-customer");
+    function onKeyDown(e: KeyboardEvent) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      const key = e.key.toLowerCase();
+      if (key !== "s" && key !== "p") return;
+      e.preventDefault();
+      if (!e.repeat) saveRef.current(key === "p");
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const inp =
     "border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-300 transition-all";
   const ti =
@@ -912,6 +949,9 @@ export default function SaleEntry() {
                             if (b) selectBatch(row.id, b);
                           }}
                           id={fieldId(row.id, "batch")}
+                          onKeyDown={enterGoes(() =>
+                            focusField(fieldId(row.id, "qty")),
+                          )}
                           aria-label={`Batch, row ${idx + 1}`}
                           className="border border-slate-200 rounded-md text-xs bg-white outline-none focus:border-blue-400 w-full px-1.5 py-1 cursor-pointer"
                         >
@@ -945,6 +985,9 @@ export default function SaleEntry() {
                       <td className="px-2 py-1.5">
                         <input
                           id={fieldId(row.id, "price")}
+                          onKeyDown={enterGoes(() =>
+                            focusField(fieldId(row.id, "qty")),
+                          )}
                           aria-label={`Rate, row ${idx + 1}`}
                           inputMode="decimal"
                           value={row.price}
@@ -956,6 +999,9 @@ export default function SaleEntry() {
                       <td className="px-2 py-1.5">
                         <input
                           id={fieldId(row.id, "qty")}
+                          onKeyDown={enterGoes(() =>
+                            focusField(fieldId(row.id, "free")),
+                          )}
                           aria-label={`Qty, row ${idx + 1}`}
                           inputMode="decimal"
                           value={row.qty}
@@ -967,6 +1013,9 @@ export default function SaleEntry() {
                       <td className="px-2 py-1.5">
                         <input
                           id={fieldId(row.id, "free")}
+                          onKeyDown={enterGoes(() =>
+                            focusField(fieldId(row.id, "disc")),
+                          )}
                           aria-label={`Free, row ${idx + 1}`}
                           inputMode="decimal"
                           value={row.free}
@@ -978,6 +1027,9 @@ export default function SaleEntry() {
                       <td className="px-2 py-1.5">
                         <input
                           id={fieldId(row.id, "disc")}
+                          onKeyDown={enterGoes(() =>
+                            focusField(fieldId(row.id, "sDis")),
+                          )}
                           aria-label={`Discount percent, row ${idx + 1}`}
                           inputMode="decimal"
                           value={row.disc}
@@ -989,6 +1041,7 @@ export default function SaleEntry() {
                       <td className="px-2 py-1.5">
                         <input
                           id={fieldId(row.id, "sDis")}
+                          onKeyDown={enterGoes(() => goToNextRow(row.id))}
                           aria-label={`Special discount percent, row ${idx + 1}`}
                           inputMode="decimal"
                           value={row.sDis}
