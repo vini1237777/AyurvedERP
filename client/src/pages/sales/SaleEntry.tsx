@@ -487,6 +487,7 @@ export default function SaleEntry() {
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [agentId, setAgentId] = useState("");
+  const [notes, setNotes] = useState("");
   const [rows, setRows] = useState<ExtRow[]>([newRow(1)]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -627,6 +628,7 @@ export default function SaleEntry() {
         agentId: agentId || undefined,
         invoiceDate,
         terms,
+        notes,
         rows: filledRows.map((r) => ({
           itemId: r.itemId,
           batchId: r.batchId,
@@ -668,6 +670,7 @@ export default function SaleEntry() {
       invoiceNo: finalInvoiceNo || invoiceNo,
       invoiceDate,
       terms,
+      notes,
       taxType,
       totDisc,
       totTaxable,
@@ -1091,6 +1094,9 @@ export default function SaleEntry() {
               Notes (Optional)
             </h2>
             <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              aria-label="Notes"
               placeholder="Add notes or special instructions..."
               className={`${inp} w-full px-3 py-2.5 resize-none h-24`}
             />

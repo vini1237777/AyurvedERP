@@ -132,6 +132,7 @@ export interface SaleRow {
 export interface Invoice {
   id: number;
   invoiceNo: string;
+  notes?: string | null;
   financialYear: string;
   invoiceDate: string;
   dueDate?: string;

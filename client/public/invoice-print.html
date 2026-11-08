@@ -342,6 +342,12 @@
       }
 
       function renderInvoice(copyLabel) {
+        const escapeHtml = (text) =>
+          String(text).replace(
+            /[&<>"']/g,
+            (c) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+          );
         if (!D)
           return '<p style="padding:20px;text-align:center;color:#999">No data.</p>';
         const {
@@ -510,6 +516,15 @@
             <b>Bill Amount in Words :</b> ${toWords(grand)}
           </td>
         </tr>
+        ${
+          D.notes
+            ? `<tr style="border-bottom:${B}">
+          <td style="border:none;font-size:6.5px;padding:2px 5px;vertical-align:middle">
+            <b>Notes :</b> ${escapeHtml(D.notes)}
+          </td>
+        </tr>`
+            : ""
+        }
         <tr>
           <td style="border:none;padding:3px 5px">
             <table style="width:100%;border-collapse:collapse">

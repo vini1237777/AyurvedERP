@@ -125,7 +125,8 @@ export const getById = async (req: Request, res: Response) => {
 
 export const create = async (req: Request, res: Response) => {
   try {
-    const { customerId, agentId, invoiceDate, dueDate, terms, rows } = req.body;
+    const { customerId, agentId, invoiceDate, dueDate, terms, rows, notes } =
+      req.body;
 
     if (!customerId || !rows?.length)
       return res.status(400).json({ error: "Customer and items are required" });
@@ -195,6 +196,7 @@ export const create = async (req: Request, res: Response) => {
           invoiceDate: new Date(invoiceDate),
           dueDate: dueDate ? new Date(dueDate) : null,
           terms: terms || "Credit",
+          notes: typeof notes === "string" ? notes.trim() || null : null,
           customerId: parseInt(customerId),
           agentId: agentId ? parseInt(agentId) : null,
           customerGstin: customer.gstin,

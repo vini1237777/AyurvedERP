@@ -176,6 +176,7 @@ export default function SaleList() {
           .toLocaleDateString("en-GB")
           .replace(/\//g, "-"),
         terms: full.terms,
+        notes: full.notes || "",
         taxType: full.taxType,
         totDisc: full.totalDiscount || 0,
         totTaxable: full.totalTaxable || 0,

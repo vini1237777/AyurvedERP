@@ -136,6 +136,7 @@ model Invoice {
   grandTotal        Float         @default(0)
   roundOff          Float         @default(0)
   status            String        @default("SAVED")
+  notes             String?
   items             InvoiceItem[]
   salesReturns      SalesReturn[]
   createdAt         DateTime      @default(now())
