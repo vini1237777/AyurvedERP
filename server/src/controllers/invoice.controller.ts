@@ -342,7 +342,7 @@ export const create = async (req: Request, res: Response) => {
         .status(503)
         .json({ error: "Billing is busy right now. Please save again." });
     console.error(err);
-    res.status(500).json({ error: err.message || "Failed to create invoice" });
+    res.status(500).json({ error: "Failed to create invoice" });
   }
 };
 
