@@ -240,6 +240,7 @@ export default function SaleReturn() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className="px-5 py-4 border-b border-slate-100">
               <input
+                aria-label="Search by invoice number or customer name"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by invoice number or customer name..."
@@ -462,6 +463,7 @@ export default function SaleReturn() {
                       </td>
                       <td className="px-3 py-2.5" style={{ width: 90 }}>
                         <input
+                          aria-label="Quantity to return"
                           type="number"
                           value={row.returnQty}
                           onChange={(e) => updateQty(idx, e.target.value)}

@@ -205,6 +205,7 @@ export default function StockReport() {
           </button>
         </div>
         <input
+          aria-label="Search item"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search item..."

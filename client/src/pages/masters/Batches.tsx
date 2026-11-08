@@ -330,6 +330,7 @@ export default function BatchMaster() {
         actions={
           <>
             <input
+              aria-label="Search item or batch"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search item or batch..."

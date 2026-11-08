@@ -191,6 +191,7 @@ export default function CustomerMaster() {
         actions={
           <>
             <input
+              aria-label="Search name, GSTIN, mobile"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name, GSTIN, mobile..."

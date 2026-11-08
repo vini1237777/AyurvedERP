@@ -265,6 +265,7 @@ export default function ItemMaster() {
         actions={
           <>
             <input
+              aria-label="Search item or HSN"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search item or HSN..."
@@ -589,6 +590,7 @@ export default function ItemMaster() {
                   </span>
                 </label>
                 <input
+                  aria-label={`Category ${cat} rate`}
                   type="number"
                   value={catPrices[cat] || ""}
                   placeholder="-"
@@ -633,6 +635,7 @@ export default function ItemMaster() {
                 Rate (₹)
               </label>
               <input
+                aria-label={`Category ${cat} rate`}
                 type="number"
                 value={catPrices[cat] || ""}
                 placeholder="-"

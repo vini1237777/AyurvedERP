@@ -96,6 +96,7 @@ export default function CustomerCategoryReport() {
               <div className="flex items-center gap-3">
                 <span className="font-semibold">Customers</span>
                 <select
+                  aria-label="Filter by category"
                   value={selected}
                   onChange={(e) => setSelected(e.target.value)}
                   className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-blue-500"
@@ -152,6 +153,7 @@ export default function CustomerCategoryReport() {
                           <td className="px-4 py-2.5">
                             {editId === c.id ? (
                               <select
+                                aria-label={`Category for ${c.name}`}
                                 value={editCat}
                                 onChange={(e) => setEditCat(e.target.value)}
                                 className="border rounded px-2 py-1 text-sm"
@@ -186,13 +188,13 @@ export default function CustomerCategoryReport() {
                               <div className="flex gap-1">
                                 <button
                                   onClick={() => saveCategory(c.id)}
-                                  className="text-xs px-2 py-1 bg-blue-600 text-white rounded"
+                                  className="text-sm px-2 min-h-[30px] bg-blue-600 text-white rounded"
                                 >
                                   Save
                                 </button>
                                 <button
                                   onClick={() => setEditId(null)}
-                                  className="text-xs px-2 py-1 border rounded"
+                                  className="text-sm px-2 min-h-[30px] border rounded"
                                 >
                                   Cancel
                                 </button>
@@ -203,7 +205,8 @@ export default function CustomerCategoryReport() {
                                   setEditId(c.id);
                                   setEditCat(c.category || "");
                                 }}
-                                className="text-xs text-blue-600 hover:underline"
+                                aria-label={`Edit category for ${c.name}`}
+                                className="text-sm text-blue-700 hover:underline px-2 min-h-[30px]"
                               >
                                 Edit
                               </button>

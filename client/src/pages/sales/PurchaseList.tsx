@@ -176,6 +176,7 @@ export default function PurchaseList() {
         actions={
           <>
             <input
+              aria-label="Search purchase or supplier"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search purchase or supplier..."

@@ -70,7 +70,7 @@ export default function TrialBalance() {
             <label className="text-xs font-semibold text-slate-500 block mb-1">
               From
             </label>
-            <input
+            <input aria-label="From"
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
@@ -81,7 +81,7 @@ export default function TrialBalance() {
             <label className="text-xs font-semibold text-slate-500 block mb-1">
               To
             </label>
-            <input
+            <input aria-label="To"
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}

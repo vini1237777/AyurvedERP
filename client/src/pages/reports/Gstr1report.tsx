@@ -91,7 +91,7 @@ export default function GstR1Report() {
           <label className="text-xs font-semibold text-slate-500 mr-2">
             Financial Year:
           </label>
-          <select
+          <select aria-label="Financial Year"
             value={fy}
             onChange={(e) => setFy(e.target.value)}
             className="border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-blue-500"

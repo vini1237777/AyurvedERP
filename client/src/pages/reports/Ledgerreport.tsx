@@ -53,13 +53,14 @@ export default function LedgerReport() {
             <label className="text-xs font-semibold text-slate-500 block mb-1">
               Select Party
             </label>
-            <input
+            <input aria-label="Search party"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search party..."
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full outline-none focus:border-blue-500 mb-1"
             />
             <select
+              aria-label="Party"
               value={selectedId}
               onChange={(e) => setSelectedId(e.target.value)}
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-full outline-none focus:border-blue-500 h-40"
@@ -76,7 +77,7 @@ export default function LedgerReport() {
             <label className="text-xs font-semibold text-slate-500 block mb-1">
               From
             </label>
-            <input
+            <input aria-label="From"
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
@@ -87,7 +88,7 @@ export default function LedgerReport() {
             <label className="text-xs font-semibold text-slate-500 block mb-1">
               To
             </label>
-            <input
+            <input aria-label="To"
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
