@@ -1,10 +1,18 @@
 import { Request, Response } from "express";
+import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
+import { cache } from "../utils/cache";
 import {
   postInvoice,
   postSalesReturn,
   reverseEntriesFor,
 } from "../services/posting.service";
+
+const ITEMS_CACHE_KEY = "items:list:v1";
+const DASHBOARD_CACHE_KEY = "dashboard:summary:v1";
+const MAX_INVOICE_NO_ATTEMPTS = 5;
+
+class InsufficientStockError extends Error {}
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 
@@ -16,8 +24,10 @@ function getCurrentFY(): string {
   return `20${String(y - 1).slice(2)}-${String(y).slice(2)}`;
 }
 
-async function getNextInvoiceNo(): Promise<string> {
-  const faInvoices = await prisma.invoice.findMany({
+async function getNextInvoiceNo(
+  db: Prisma.TransactionClient = prisma,
+): Promise<string> {
+  const faInvoices = await db.invoice.findMany({
     where: { invoiceNo: { startsWith: "FA-" } },
     select: { invoiceNo: true },
   });
@@ -26,6 +36,61 @@ async function getNextInvoiceNo(): Promise<string> {
     ...faInvoices.map((i) => parseInt(i.invoiceNo.replace("FA-", ""), 10) || 0),
   );
   return `FA-${String(maxNum + 1).padStart(2, "0")}`;
+}
+
+function isInvoiceNoCollision(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2002" &&
+    String(err.meta?.target).includes("invoiceNo")
+  );
+}
+
+// Two sales of different batches can read the same highest number. The unique
+// index rejects the slower one, so run its whole transaction again. A sequence
+// would avoid this but would leave gaps in GST invoice numbers after a rollback.
+async function retryOnInvoiceNoCollision<T>(run: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      if (!isInvoiceNoCollision(err) || attempt >= MAX_INVOICE_NO_ATTEMPTS)
+        throw err;
+      await new Promise((r) => setTimeout(r, Math.random() * 50 * attempt));
+    }
+  }
+}
+
+// Takes the stock only if enough is left. Batches go in id order so that two
+// invoices sharing batches always lock them in the same order and can't deadlock.
+async function deductStock(tx: Prisma.TransactionClient, rows: any[]) {
+  const wanted = new Map<number, { qty: number; itemName: string }>();
+  for (const row of rows) {
+    if (!row.batchId) continue;
+    const batchId = parseInt(row.batchId);
+    const qty = (parseFloat(row.qty) || 0) + (parseFloat(row.freeQty) || 0);
+    const entry = wanted.get(batchId);
+    if (entry) entry.qty += qty;
+    else wanted.set(batchId, { qty, itemName: row.itemName });
+  }
+
+  const batchIds = [...wanted.keys()].sort((a, b) => a - b);
+  for (const batchId of batchIds) {
+    const { qty, itemName } = wanted.get(batchId)!;
+    const { count } = await tx.batch.updateMany({
+      where: { id: batchId, currentQty: { gte: qty } },
+      data: { currentQty: { decrement: qty } },
+    });
+    if (count === 0) {
+      const batch = await tx.batch.findUnique({
+        where: { id: batchId },
+        select: { batchNo: true, currentQty: true },
+      });
+      throw new InsufficientStockError(
+        `Only ${batch?.currentQty ?? 0} left of ${itemName} in batch ${batch?.batchNo ?? batchId}. Requested ${qty}.`,
+      );
+    }
+  }
 }
 
 async function getNextReturnNo(): Promise<number> {
@@ -148,13 +213,21 @@ export const create = async (req: Request, res: Response) => {
     if (!customerId || !rows?.length)
       return res.status(400).json({ error: "Customer and items are required" });
 
+    for (const row of rows) {
+      const qty = parseFloat(row.qty) || 0;
+      const freeQty = parseFloat(row.freeQty) || 0;
+      if (qty < 0 || freeQty < 0 || qty + freeQty <= 0)
+        return res
+          .status(400)
+          .json({ error: `Enter a valid quantity for ${row.itemName}` });
+    }
+
     const customer = await prisma.customer.findUnique({
       where: { id: parseInt(customerId) },
     });
     if (!customer) return res.status(404).json({ error: "Customer not found" });
 
     const taxType = customer.stateCode === "27" ? "CGST_SGST" : "IGST";
-    const invoiceNo = await getNextInvoiceNo();
 
     const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
     const y = invDate.getFullYear();
@@ -205,7 +278,12 @@ export const create = async (req: Request, res: Response) => {
       }
     }
 
-    const invoice = await prisma.$transaction(async (tx) => {
+    const invoice = await retryOnInvoiceNoCollision(() => prisma.$transaction(async (tx) => {
+      // Stock comes first: a buyer who loses the race leaves without using a
+      // number, and sales of one batch are in order by the time they read it.
+      await deductStock(tx, calcedRows);
+      const invoiceNo = await getNextInvoiceNo(tx);
+
       const inv = await tx.invoice.create({
         data: {
           invoiceNo,
@@ -252,17 +330,6 @@ export const create = async (req: Request, res: Response) => {
         include: { customer: true, items: true },
       });
 
-      for (const row of calcedRows) {
-        if (row.batchId) {
-          const deduct =
-            (parseFloat(row.qty) || 0) + (parseFloat(row.freeQty) || 0);
-          await tx.batch.update({
-            where: { id: parseInt(row.batchId) },
-            data: { currentQty: { decrement: deduct } },
-          });
-        }
-      }
-
       await postInvoice(tx, {
         invoiceId: inv.id,
         invoiceNo: inv.invoiceNo,
@@ -276,12 +343,25 @@ export const create = async (req: Request, res: Response) => {
       });
 
       return inv;
-    }, { timeout: 20000, maxWait: 10000 });
+    }, { timeout: 20000, maxWait: 10000 }));
+
+    // After commit, so the next read rebuilds from the new stock. A read already
+    // in flight can still cache the old stock, until the key's TTL runs out.
+    await Promise.all([
+      cache.del(ITEMS_CACHE_KEY),
+      cache.del(DASHBOARD_CACHE_KEY),
+    ]);
 
     res.status(201).json(invoice);
   } catch (err: any) {
+    if (err instanceof InsufficientStockError)
+      return res.status(409).json({ error: err.message });
+    if (isInvoiceNoCollision(err))
+      return res
+        .status(503)
+        .json({ error: "Billing is busy right now. Please save again." });
     console.error(err);
-    res.status(500).json({ error: err.message || "Failed to create invoice" });
+    res.status(500).json({ error: "Failed to create invoice" });
   }
 };
 
