@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { DEMO_ROLES } from "../auth/demoAccounts";
 
 function LoginHalo() {
   return (
@@ -187,43 +188,6 @@ export default function Login() {
   const nav = useNavigate();
   const loc = useLocation() as { state?: { from?: { pathname?: string } } };
   const from = loc.state?.from?.pathname || "/dashboard";
-
-  const DEMO_ROLES: {
-    role: "ADMIN" | "SELLER" | "ACCOUNTANT" | "RETAILER";
-    email: string;
-    password: string;
-    label: string;
-    hint: string;
-  }[] = [
-    {
-      role: "ADMIN",
-      email: "admin@aushadhi.local",
-      password: "admin123",
-      label: "Admin",
-      hint: "Full access",
-    },
-    {
-      role: "SELLER",
-      email: "seller@aushadhi.local",
-      password: "seller123",
-      label: "Seller",
-      hint: "Sales and customers",
-    },
-    {
-      role: "ACCOUNTANT",
-      email: "accountant@aushadhi.local",
-      password: "accountant123",
-      label: "Accountant",
-      hint: "Reports and ledger",
-    },
-    {
-      role: "RETAILER",
-      email: "retailer@aushadhi.local",
-      password: "retailer123",
-      label: "Retailer",
-      hint: "Read only catalog",
-    },
-  ];
 
   const [activeRole, setActiveRole] = useState<typeof DEMO_ROLES[number]["role"]>(
     "ADMIN",
