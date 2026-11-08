@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
+import { Combobox } from "../../components/ui";
 import type { Customer, Item } from "../../types";
 import { customerApi, itemApi, authFetch } from "../../utils/api";
 
@@ -78,133 +78,57 @@ function newRow(id: number): PRow {
 function ItemSearch({
   value,
   rowId,
+  rowNumber,
   allItems,
   onSelect,
   onUpdate,
 }: {
   value: string;
   rowId: number;
+  rowNumber: number;
   allItems: Item[];
-  onSelect: (id: number, item: Item) => void;
+  onSelect: (id: number, item: Item, via: "enter" | "tab" | "mouse") => void;
   onUpdate: (id: number, v: string) => void;
 }) {
-  const [show, setShow] = useState(false);
-  const [search, setSearch] = useState(value);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
-  const ref = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    setSearch(value);
-  }, [value]);
-  function updatePos() {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: r.left, width: Math.max(r.width, 300) });
-  }
   const sorted = useMemo(
     () => [...allItems].sort((a, b) => a.name.localeCompare(b.name)),
     [allItems],
   );
   const filtered = useMemo(
     () =>
-      search.trim()
+      value.trim()
         ? sorted.filter((i) =>
-            i.name.toLowerCase().includes(search.toLowerCase()),
+            i.name.toLowerCase().includes(value.toLowerCase()),
           )
         : sorted,
-    [sorted, search],
+    [sorted, value],
   );
-  useEffect(() => {
-    if (!show || !search || !listRef.current) return;
-    const c = search[0].toLowerCase();
-    const els = listRef.current.querySelectorAll("[data-name]");
-    for (const el of Array.from(els)) {
-      if ((el.getAttribute("data-name") || "").toLowerCase().startsWith(c)) {
-        (el as HTMLElement).scrollIntoView({ block: "nearest" });
-        break;
-      }
-    }
-  }, [search, show]);
 
   return (
-    <>
-      <input
-        ref={ref}
-        value={search}
-        onChange={(e) => {
-          setSearch(e.target.value);
-          onUpdate(rowId, e.target.value);
-          updatePos();
-          setShow(true);
-        }}
-        onFocus={() => {
-          updatePos();
-          setShow(true);
-        }}
-        onBlur={() => setTimeout(() => setShow(false), 200)}
-        placeholder="Search item..."
-        className="border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-2 py-1.5 hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white transition-all"
-      />
-      {show &&
-        pos.top > 0 &&
-        createPortal(
-          <div
-            ref={listRef}
-            style={{
-              position: "fixed",
-              top: pos.top,
-              left: pos.left,
-              width: pos.width,
-              maxHeight: 260,
-              zIndex: 99999,
-              background: "#fff",
-              border: "1px solid #e2e8f0",
-              borderRadius: 12,
-              boxShadow: "0 12px 40px rgba(0,0,0,0.15)",
-              overflowY: "auto",
-            }}
-          >
-            {filtered.length === 0 ? (
-              <div
-                style={{
-                  padding: 16,
-                  textAlign: "center",
-                  fontSize: 12,
-                  color: "#94a3b8",
-                }}
-              >
-                No items
-              </div>
-            ) : (
-              filtered.map((item) => (
-                <div
-                  key={item.id}
-                  data-name={item.name}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setSearch(item.name);
-                    setShow(false);
-                    onSelect(rowId, item);
-                  }}
-                  className="px-3 py-2 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
-                >
-                  <div className="text-sm font-semibold text-slate-800">
-                    {item.name}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-0.5 flex gap-3">
-                    <span>GST: {(item.taxSlab as any)?.rate ?? 0}%</span>
-                    <span>
-                      Stock:{" "}
-                      {item.batches.reduce((s, b) => s + b.currentQty, 0)}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>,
-          document.body,
-        )}
-    </>
+    <Combobox
+      label={`Item, row ${rowNumber}`}
+      value={value}
+      onInputChange={(text) => onUpdate(rowId, text)}
+      onSelect={(item, via) => onSelect(rowId, item, via)}
+      openOnFocus={false}
+      options={filtered}
+      getKey={(item) => item.id}
+      emptyText="No items found"
+      minListWidth={300}
+      placeholder="Search item..."
+      className="border border-transparent rounded-md bg-transparent text-sm outline-none w-full px-2 py-1.5 hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white transition-all"
+      renderOption={(item) => (
+        <div className="px-3 py-2">
+          <div className="text-sm font-semibold text-slate-800">{item.name}</div>
+          <div className="text-xs text-slate-500 mt-0.5 flex gap-3">
+            <span>GST {(item.taxSlab as any)?.rate ?? 0}%</span>
+            <span>
+              Stock {item.batches.reduce((sum, b) => sum + b.currentQty, 0)}
+            </span>
+          </div>
+        </div>
+      )}
+    />
   );
 }
 
@@ -218,12 +142,10 @@ export default function PurchaseEntry() {
   );
   const [supplier, setSupplier] = useState<Customer | null>(null);
   const [supplierSearch, setSupplierSearch] = useState("");
-  const [showSupplier, setShowSupplier] = useState(false);
   const [rows, setRows] = useState<PRow[]>([newRow(1)]);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const supRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     authFetch(`${API}/purchases/next-no`)
@@ -240,14 +162,6 @@ export default function PurchaseEntry() {
       .catch(console.error);
   }, []);
 
-  useEffect(() => {
-    const h = (e: MouseEvent) => {
-      if (supRef.current && !supRef.current.contains(e.target as Node))
-        setShowSupplier(false);
-    };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
-  }, []);
 
   const calcedRows = rows.map((r) => calcRow(r));
   const filledRows = calcedRows.filter(
@@ -262,6 +176,28 @@ export default function PurchaseEntry() {
     setRows((p) =>
       p.map((r) => (r.id === id ? calcRow({ ...r, [field]: val }) : r)),
     );
+
+  // Typing over a picked item must not keep the old item's batch and rate.
+  function typeItemName(rowId: number, text: string) {
+    setRows((p) =>
+      p.map((r) =>
+        r.id !== rowId
+          ? r
+          : calcRow({
+              ...r,
+              itemName: text,
+              itemId: null,
+              batchId: null,
+              batchNo: "",
+              hsn: "",
+              gst: 0,
+              mrp: "",
+              rate: "",
+              _batches: [],
+            }),
+      ),
+    );
+  }
 
   function selectItem(rowId: number, item: Item) {
     const batches = item.batches || [];
@@ -316,6 +252,11 @@ export default function PurchaseEntry() {
   );
 
   async function handleSave(printMode?: "voucher" | "grn") {
+    const unpicked = rows.find((r) => r.itemName.trim() && r.itemId === null);
+    if (unpicked) {
+      setError(`${unpicked.itemName}: pick this item from the list.`);
+      return;
+    }
     if (!supplier) {
       setError("Select a supplier");
       return;
@@ -480,49 +421,51 @@ export default function PurchaseEntry() {
             </h2>
           </div>
           <div className="px-5 py-4 grid grid-cols-4 gap-4">
-            <div className="col-span-2 relative" ref={supRef}>
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
+            <div className="col-span-2">
+              <label
+                htmlFor="purchase-supplier"
+                className="text-xs font-semibold text-slate-600 block mb-1.5"
+              >
                 Supplier *
               </label>
-              <input
+              <Combobox
+                id="purchase-supplier"
                 value={supplier ? supplier.name : supplierSearch}
-                onChange={(e) => {
-                  setSupplierSearch(e.target.value);
+                onInputChange={(text) => {
+                  setSupplierSearch(text);
                   setSupplier(null);
-                  setShowSupplier(true);
                 }}
-                onFocus={() => setShowSupplier(true)}
+                onSelect={(s) => {
+                  setSupplier(s);
+                  setSupplierSearch("");
+                }}
+                openOnFocus={false}
+                options={filteredSuppliers}
+                getKey={(s) => s.id}
+                emptyText="No suppliers found"
                 placeholder="Search supplier..."
                 className={`${inp} w-full px-3 py-2.5`}
-              />
-              {showSupplier && (
-                <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl max-h-56 overflow-y-auto">
-                  {filteredSuppliers.map((s) => (
-                    <div
-                      key={s.id}
-                      onMouseDown={() => {
-                        setSupplier(s);
-                        setSupplierSearch("");
-                        setShowSupplier(false);
-                      }}
-                      className="px-4 py-3 cursor-pointer hover:bg-blue-50 border-b border-slate-50 last:border-0"
-                    >
-                      <div className="text-sm font-semibold text-slate-800">
-                        {s.name}
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        {s.gstin || "No GSTIN"}
-                      </div>
+                renderOption={(s) => (
+                  <div className="px-4 py-2.5">
+                    <div className="text-sm font-semibold text-slate-800">
+                      {s.name}
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="text-xs text-slate-500">
+                      {s.gstin || "No GSTIN"}
+                    </div>
+                  </div>
+                )}
+              />
             </div>
             <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
+              <label
+                htmlFor="purchase-date"
+                className="text-xs font-semibold text-slate-600 block mb-1.5"
+              >
                 Purchase Date
               </label>
               <input
+                id="purchase-date"
                 type="date"
                 value={purchaseDate}
                 onChange={(e) => setPurchaseDate(e.target.value)}
@@ -588,13 +531,15 @@ export default function PurchaseEntry() {
                         <ItemSearch
                           value={row.itemName}
                           rowId={row.id}
+                          rowNumber={idx + 1}
                           allItems={allItems}
                           onSelect={selectItem}
-                          onUpdate={(id, v) => upd(id, "itemName", v)}
+                          onUpdate={typeItemName}
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          aria-label={`HSN, row ${idx + 1}`}
                           value={row.hsn}
                           readOnly
                           className={`${ti} text-slate-400 text-center border-transparent bg-slate-50/80`}
@@ -602,6 +547,7 @@ export default function PurchaseEntry() {
                       </td>
                       <td className="px-2 py-1.5">
                         <select
+                          aria-label={`Batch, row ${idx + 1}`}
                           value={
                             row.batchId !== null ? String(row.batchId) : ""
                           }
@@ -623,6 +569,7 @@ export default function PurchaseEntry() {
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          aria-label={`MRP, row ${idx + 1}`}
                           value={row.mrp}
                           onChange={(e) => upd(row.id, "mrp", e.target.value)}
                           className={ti}
@@ -631,6 +578,7 @@ export default function PurchaseEntry() {
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          aria-label={`Rate, row ${idx + 1}`}
                           value={row.rate}
                           onChange={(e) => upd(row.id, "rate", e.target.value)}
                           className={ti}
@@ -639,6 +587,7 @@ export default function PurchaseEntry() {
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          aria-label={`Qty, row ${idx + 1}`}
                           value={row.qty}
                           onChange={(e) => upd(row.id, "qty", e.target.value)}
                           className={ti}
@@ -647,6 +596,7 @@ export default function PurchaseEntry() {
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          aria-label={`Free, row ${idx + 1}`}
                           value={row.freeQty}
                           onChange={(e) =>
                             upd(row.id, "freeQty", e.target.value)
@@ -657,6 +607,7 @@ export default function PurchaseEntry() {
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          aria-label={`Discount percent, row ${idx + 1}`}
                           value={row.disc}
                           onChange={(e) => upd(row.id, "disc", e.target.value)}
                           className={ti}
@@ -712,6 +663,7 @@ export default function PurchaseEntry() {
             </div>
             <div className="px-5 py-4 flex-1">
               <textarea
+                aria-label="Notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional: internal remarks, supplier notes, PO reference, etc."
