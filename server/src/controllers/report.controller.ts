@@ -595,13 +595,29 @@ function parseExpiry(s: string | null): Date | null {
     const y = +dmy[3] < 100 ? 2000 + +dmy[3] : +dmy[3];
     return new Date(y, +dmy[2] - 1, +dmy[1]);
   }
-  const my = s.match(/^(\d{1,2})\/(\d{2,4})$/);
+  // Month-only expiry, such as 6-2027 or 06/27, runs to the end of that month.
+  const my = s.match(/^(\d{1,2})[-/](\d{2,4})$/);
   if (my) {
     const y = +my[2] < 100 ? 2000 + +my[2] : +my[2];
     return new Date(y, +my[1], 0);
   }
   const d = new Date(s);
   return isNaN(d.getTime()) ? null : d;
+}
+
+// Business days run on India time, wherever the server's clock is set.
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+export function istRanges(now: Date) {
+  const ist = new Date(now.getTime() + IST_OFFSET_MS);
+  const y = ist.getUTCFullYear();
+  const m = ist.getUTCMonth();
+  const at = (year: number, month: number, day: number) =>
+    new Date(Date.UTC(year, month, day) - IST_OFFSET_MS);
+  return {
+    today: { gte: at(y, m, ist.getUTCDate()), lt: at(y, m, ist.getUTCDate() + 1) },
+    month: { gte: at(y, m, 1), lt: at(y, m + 1, 1) },
+  };
 }
 
 const LOW_STOCK_THRESHOLD = 10;
@@ -618,8 +634,25 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
     const GST_OUTPUT = ["2100", "2110", "2120"];
     const GST_INPUT = ["1300", "1310", "1320"];
 
+    const { today, month } = istRanges(now);
+    const salesIn = (invoiceDate: { gte: Date; lt: Date }) =>
+      prisma.invoice.aggregate({
+        _sum: { grandTotal: true },
+        where: { status: "SAVED", invoiceDate },
+      });
+    const returnsIn = (createdAt: { gte: Date; lt: Date }) =>
+      prisma.salesReturn.aggregate({
+        _sum: { totalCredit: true },
+        where: { createdAt },
+      });
+
     const [
       outstandingAgg,
+      todaySales,
+      monthSales,
+      todayReturns,
+      monthReturns,
+      lowStockCount,
       lowStockBatches,
       allBatches,
       gstResult,
@@ -627,7 +660,15 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
     ] = await Promise.all([
       prisma.invoice.aggregate({
         _sum: { grandTotal: true },
+        _count: { _all: true },
         where: { status: "SAVED" },
+      }),
+      salesIn(today),
+      salesIn(month),
+      returnsIn(today),
+      returnsIn(month),
+      prisma.batch.count({
+        where: { currentQty: { lt: LOW_STOCK_THRESHOLD } },
       }),
       prisma.batch.findMany({
         where: { currentQty: { lt: LOW_STOCK_THRESHOLD } },
@@ -683,21 +724,23 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
       unit: b.item.unit,
     }));
 
-    const expiring = allBatches
+    const dated = allBatches
       .map((b) => ({ b, exp: parseExpiry(b.expiryDate) }))
       .filter(
-        (x): x is { b: typeof allBatches[number]; exp: Date } =>
-          x.exp !== null && x.exp <= expiryCutoff,
+        (x): x is { b: typeof allBatches[number]; exp: Date } => x.exp !== null,
       )
-      .sort((a, b) => a.exp.getTime() - b.exp.getTime())
-      .slice(0, 50)
-      .map(({ b, exp }) => ({
-        itemId: b.item.id,
-        itemName: b.item.name,
-        batchNo: b.batchNo,
-        expiryDate: exp.toISOString().slice(0, 10),
-        currentQty: b.currentQty,
-      }));
+      .sort((a, b) => a.exp.getTime() - b.exp.getTime());
+    const expiredCount = dated.filter((x) => x.exp < now).length;
+    const expiringSoon = dated.filter(
+      (x) => x.exp >= now && x.exp <= expiryCutoff,
+    );
+    const expiring = expiringSoon.slice(0, 50).map(({ b, exp }) => ({
+      itemId: b.item.id,
+      itemName: b.item.name,
+      batchNo: b.batchNo,
+      expiryDate: exp.toISOString().slice(0, 10),
+      currentQty: b.currentQty,
+    }));
 
     const codeOf = new Map(gstResult.accounts.map((a) => [a.id, a.code]));
     let output = 0;
@@ -721,10 +764,22 @@ export const getDashboardSummary = async (_req: Request, res: Response) => {
 
     const payload = {
       outstanding,
+      invoiceCount: outstandingAgg._count._all,
+      todayNet: r2(
+        (todaySales._sum.grandTotal || 0) -
+          (todayReturns._sum.totalCredit || 0),
+      ),
+      monthNet: r2(
+        (monthSales._sum.grandTotal || 0) -
+          (monthReturns._sum.totalCredit || 0),
+      ),
+      todayReturns: r2(todayReturns._sum.totalCredit || 0),
+      monthReturns: r2(monthReturns._sum.totalCredit || 0),
       lowStock,
-      lowStockCount: lowStock.length,
+      lowStockCount,
       expiring,
-      expiringCount: expiring.length,
+      expiringCount: expiringSoon.length,
+      expiredCount,
       gstPayable,
       gstOutput: r2(output),
       gstInput: r2(input),
