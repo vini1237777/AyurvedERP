@@ -545,7 +545,7 @@ export default function ItemMaster() {
               htmlFor="batch"
               className="text-sm text-slate-700 cursor-pointer"
             >
-              Maintain Batch-wise stock
+              Maintain Batch wise stock
             </label>
             <span className="text-xs text-slate-400">
               (recommended for medicines)

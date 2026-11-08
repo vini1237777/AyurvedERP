@@ -85,7 +85,7 @@ export default function ItemCategoryReport() {
     <div>
       <PageHeader
         title="Item Category Prices"
-        subtitle="Item-wise rates for each customer category A–Z"
+        subtitle="Item wise rates for each customer category, A to Z"
       />
 
       {/* Category selector */}

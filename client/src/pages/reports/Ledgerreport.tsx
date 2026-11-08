@@ -44,7 +44,7 @@ export default function LedgerReport() {
   return (
     <div>
       <PageHeader
-        title="Party-wise Ledger"
+        title="Party wise Ledger"
         subtitle="Account statement for a party"
       />
       <Card className="mb-4 p-4">

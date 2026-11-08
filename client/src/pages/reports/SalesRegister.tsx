@@ -110,7 +110,7 @@ export default function SaleRegister() {
 
   return (
     <div>
-      <PageHeader title="Sale Register" subtitle="Invoice-wise sales report" />
+      <PageHeader title="Sale Register" subtitle="Invoice wise sales report" />
       <Card className="p-4 mb-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Input type="date" label="From" value={from} onChange={e=>setFrom(e.target.value)} />

@@ -99,7 +99,7 @@ export default function HsnSummary() {
     <div>
       <PageHeader
         title="HSN Summary"
-        subtitle="GSTR-1 §12 · HSN-wise outward supplies"
+        subtitle="GST R1 section 12, HSN wise outward supplies"
       />
 
       <Card className="mb-4 p-4">

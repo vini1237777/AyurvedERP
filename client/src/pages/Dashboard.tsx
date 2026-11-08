@@ -374,7 +374,7 @@ export default function Dashboard() {
         )}
 
         <p className="text-xs text-slate-600">
-          Demo data. These are made-up business records, not a real client's.
+          Demo data. These are made up business records, not a real client's.
         </p>
       </section>
     </div>

@@ -138,7 +138,7 @@ export default function StockReport() {
     <div>
       <PageHeader
         title="Stock Report"
-        subtitle="Opening, Closing & Batch-wise stock"
+        subtitle="Opening, Closing & Batch wise stock"
       />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">

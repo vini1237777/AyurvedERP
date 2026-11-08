@@ -101,10 +101,10 @@ export default function TrialBalance() {
                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                   : "bg-red-50 text-red-700 border-red-200"
               }`}
-              title="Double-entry audit"
+              title="Double entry audit"
             >
               {data.balanced ? (
-                <>✓ Balanced · Double-entry audit</>
+                <>Balanced, double entry audit</>
               ) : (
                 <>✗ Out of balance by ₹{fmt(Math.abs(data.difference))}</>
               )}
