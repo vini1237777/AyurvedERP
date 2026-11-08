@@ -1,4 +1,4 @@
-import { useId, useState, useRef, useEffect } from "react";
+import { forwardRef, useId, useState, useRef, useEffect } from "react";
 
 export { Combobox } from "./Combobox";
 
@@ -117,18 +117,22 @@ const btnSize: Record<string, string> = {
   md: "px-4 py-2 text-sm",
   lg: "px-5 py-2.5 text-base",
 };
-export function Button({
-  variant = "primary",
-  size = "md",
-  loading,
-  children,
-  className = "",
-  disabled,
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "primary",
+    size = "md",
+    loading,
+    children,
+    className = "",
+    disabled,
+    ...props
+  },
+  ref,
+) {
   return (
     <button
       {...props}
+      ref={ref}
       disabled={disabled || loading}
       className={`inline-flex items-center gap-2 font-medium rounded-lg border transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
         ${btnClasses[variant]} ${btnSize[size]} ${className}`}
@@ -139,7 +143,7 @@ export function Button({
       {children}
     </button>
   );
-}
+});
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
 type BadgeColor = "blue" | "green" | "red" | "yellow" | "gray";
@@ -181,6 +185,9 @@ export function Modal({
   children,
   width = "max-w-lg",
 }: ModalProps) {
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  useDialogFocus(open, panelRef, onClose);
   if (!open) return null;
   return (
     <div
@@ -188,18 +195,146 @@ export function Modal({
       style={{ background: "rgba(0,0,0,0.4)" }}
     >
       <div
-        className={`bg-white rounded-xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col`}
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className={`bg-white rounded-xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col outline-none`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800 text-base">{title}</h3>
+          <h3 id={titleId} className="font-semibold text-slate-800 text-base">
+            {title}
+          </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-xl leading-none"
+            aria-label="Close"
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 text-xl leading-none"
           >
             ×
           </button>
         </div>
         <div className="overflow-y-auto flex-1 p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+// Moves focus into a dialog, keeps Tab inside it, closes on Escape, and returns
+// focus to whatever opened it.
+function useDialogFocus(
+  open: boolean,
+  panelRef: React.RefObject<HTMLDivElement>,
+  onClose: () => void,
+  initialFocus?: React.RefObject<HTMLElement>,
+) {
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    if (!open) return;
+    const opener = document.activeElement as HTMLElement | null;
+    (initialFocus?.current ?? panelRef.current)?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCloseRef.current();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusable = panelRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const current = document.activeElement;
+      if (e.shiftKey && (current === first || current === panelRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && current === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      opener?.focus?.();
+    };
+    // Runs once per open. The refs are stable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+}
+
+// ─── Confirm Dialog ───────────────────────────────────────────────────────────
+// For actions that change records. It says what will happen, and focus starts
+// on the safe choice so a stray Enter can't delete anything.
+export function ConfirmDialog({
+  open,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel = "Keep it",
+  danger = true,
+  busy = false,
+  onConfirm,
+  onCancel,
+}: {
+  open: boolean;
+  title: string;
+  message: React.ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  danger?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const titleId = useId();
+  const messageId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  useDialogFocus(open, panelRef, onCancel, cancelRef);
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.4)" }}
+    >
+      <div
+        ref={panelRef}
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={messageId}
+        tabIndex={-1}
+        className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5 outline-none"
+      >
+        <h3 id={titleId} className="font-semibold text-slate-800 text-base">
+          {title}
+        </h3>
+        <div id={messageId} className="mt-2 text-sm text-slate-600">
+          {message}
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button
+            ref={cancelRef}
+            variant="secondary"
+            onClick={onCancel}
+            disabled={busy}
+          >
+            {cancelLabel}
+          </Button>
+          <Button
+            variant={danger ? "danger" : "primary"}
+            onClick={onConfirm}
+            loading={busy}
+          >
+            {confirmLabel}
+          </Button>
+        </div>
       </div>
     </div>
   );
