@@ -306,7 +306,7 @@ export default function SaleList() {
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
                       <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm whitespace-nowrap">
-                        #{inv.invoiceNo}
+                        {inv.invoiceNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
                         {fmtDate(inv.invoiceDate)}

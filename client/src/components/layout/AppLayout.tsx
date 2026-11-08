@@ -265,9 +265,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-2 pl-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <nav className="flex-1 overflow-y-auto py-1 pl-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {visibleNav.map((group) => (
-            <div key={group.group} className="mb-2">
+            <div key={group.group} className="mb-1.5">
               {!collapsedNow && (
                 <div className="text-xs font-semibold text-thread px-2.5 mb-0.5">
                   {group.group}

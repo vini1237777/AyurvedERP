@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { DEMO_ROLES } from "../auth/demoAccounts";
 
 const fieldClass =
-  "boxed w-full h-11 border-2 border-ink bg-[#FBFDF7] px-3 text-base text-ink outline-none focus:border-pen";
+  "boxed w-full h-11 border-2 border-ink bg-[#FBFDF7] px-3 text-base text-ink";
 
 // The medicine cabinet: real stock in this demo, one label to a drawer.
 const DRAWERS = [

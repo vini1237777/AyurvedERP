@@ -785,8 +785,8 @@ export default function SaleEntry() {
           aria-label="Items"
           className="flex-1 min-h-[260px] flex flex-col overflow-hidden"
         >
-          <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full" style={{ minWidth: 1190 }}>
+          <div className="ledger-rules flex-1 min-h-0 overflow-auto">
+            <table className="w-full bg-paper" style={{ minWidth: 1190 }}>
               <thead className="sticky top-0 z-10">
                 <tr>
                   {(

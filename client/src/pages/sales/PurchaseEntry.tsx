@@ -414,7 +414,7 @@ export default function PurchaseEntry() {
       </div>
 
       <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="border-t-[1.5px] border-ink">
           <div className="px-5 py-3.5 border-b border-slate-100">
             <h2 className="font-semibold text-slate-700 text-sm">
               Purchase Details
@@ -475,7 +475,7 @@ export default function PurchaseEntry() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="border-t-[1.5px] border-ink">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-semibold text-slate-700 text-sm">Items</h2>
             <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
@@ -655,7 +655,7 @@ export default function PurchaseEntry() {
         </div>
 
         <div className="grid grid-cols-[minmax(0,1fr)_18rem] gap-4 items-stretch">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm min-w-0 flex flex-col">
+          <div className="border-t-[1.5px] border-ink min-w-0 flex flex-col">
             <div className="px-5 py-3.5 border-b border-slate-100">
               <h2 className="font-semibold text-slate-700 text-sm">
                 Notes / Remarks
@@ -672,7 +672,7 @@ export default function PurchaseEntry() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="border-t-[1.5px] border-ink p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-4">
               Summary
             </h2>

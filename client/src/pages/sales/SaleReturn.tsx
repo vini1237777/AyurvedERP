@@ -178,7 +178,7 @@ export default function SaleReturn() {
   if (done) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center max-w-md">
+        <div className="border-t-[1.5px] border-ink p-10 text-center max-w-md">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
             ✓
           </div>
@@ -237,7 +237,7 @@ export default function SaleReturn() {
           </div>
         </div>
         <div className="max-w-3xl mx-auto px-6 py-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+          <div className="border-t-[1.5px] border-ink">
             <div className="px-5 py-4 border-b border-slate-100">
               <input
                 aria-label="Search by invoice number or customer name"
@@ -268,7 +268,7 @@ export default function SaleReturn() {
                       <div>
                         <div className="flex items-center gap-3">
                           <span className="font-mono font-bold text-blue-700 text-sm">
-                            #{inv.invoiceNo}
+                            {inv.invoiceNo}
                           </span>
                           <span className="text-sm font-semibold text-slate-800">
                             {inv.customer?.name}
@@ -332,7 +332,7 @@ export default function SaleReturn() {
               Sales Return
             </div>
             <div className="text-xs text-slate-400">
-              Invoice #{selectedInv?.invoiceNo} · {selectedInv?.customer?.name}
+              Invoice {selectedInv?.invoiceNo}, {selectedInv?.customer?.name}
             </div>
           </div>
         </div>
@@ -386,7 +386,7 @@ export default function SaleReturn() {
           </span>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="border-t-[1.5px] border-ink">
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-semibold text-slate-700 text-sm">
               Select Items to Return
@@ -502,7 +502,7 @@ export default function SaleReturn() {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="col-span-2 border-t-[1.5px] border-ink p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-3">
               Return Reason
             </h2>
@@ -513,7 +513,7 @@ export default function SaleReturn() {
               className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 w-full px-3 py-2.5 resize-none h-20"
             />
           </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="border-t-[1.5px] border-ink p-5">
             <h2 className="font-semibold text-slate-700 text-sm mb-4">
               Credit Note Summary
             </h2>

@@ -141,11 +141,6 @@ export default function Dashboard() {
     { label: "Batches", to: "/masters/batches", show: canSeeBatches },
   ].filter((s) => s.show);
 
-  const today = new Date().toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
   const sectionTitle = "text-lg font-bold mb-1";
   const row = "border-b border-rule min-h-[34px] text-sm";
 
@@ -154,7 +149,7 @@ export default function Dashboard() {
       <section aria-label="Sales" className="min-w-0 xl:pr-7 pb-6 flex flex-col gap-5">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="text-[28px] leading-tight font-bold">
-            Day book, {today}
+            Day book
           </h1>
           {canSell && (
             <Link

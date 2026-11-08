@@ -172,7 +172,7 @@ export default function PurchaseList() {
       )}
       <PageHeader
         title="All Purchases"
-        subtitle={`${total} purchases in FY ${selectedFY} · Page total ₹${fmt(totalAmt)}`}
+        subtitle={`${total} purchases in FY ${selectedFY}, page total ₹${fmt(totalAmt)}`}
         actions={
           <>
             <input
@@ -246,7 +246,7 @@ export default function PurchaseList() {
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
                       <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm whitespace-nowrap">
-                        #{p.purchaseNo}
+                        {p.purchaseNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
                         {fmtDate(p.purchaseDate)}

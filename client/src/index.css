@@ -34,6 +34,11 @@ textarea:not(.boxed):focus {
   border-bottom-width: 2px;
   box-shadow: none;
   background-color: #FBFDF7;
+  outline: none;
+}
+.boxed:focus-visible {
+  outline: 2px solid #14256B;
+  outline-offset: 1px;
 }
 [aria-invalid="true"]:not(.boxed) {
   border-bottom-color: #C8102E;
@@ -75,6 +80,16 @@ table td + td {
   font-weight: 600;
   white-space: nowrap;
   transform: rotate(-2deg);
+}
+
+/* Blank ruled lines carry on below the last row. */
+.ledger-rules {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 33px,
+    #BCCCE0 33px 34px
+  );
+  background-attachment: local;
 }
 
 /* A total, closed the way accountants close one. */
