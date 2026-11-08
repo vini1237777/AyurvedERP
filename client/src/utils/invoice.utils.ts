@@ -86,3 +86,52 @@ export const COMPANY = {
   ifsc: 'IFSC-BANK0000000',
   account: 'ACC NO-00000000000000',
 } as const
+
+// ── Display formatters ────────────────────────────────────────────────────────
+// One place for how money, quantities and dates read on screen.
+
+export const fmtMoney = (n: number) => `₹${fmt(n)}`
+
+// Quantities are whole for most units, so only show decimals when they exist.
+export const fmtQty = (n: number) =>
+  new Intl.NumberFormat('en-IN', { maximumFractionDigits: 3 }).format(n || 0)
+
+// "8 Nov 2026": a written month can't be misread the way 8/11/2026 can.
+export function fmtDate(value: string | Date | null | undefined): string {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return '-'
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Batches store expiry in several shapes: 6-2027, 06/27, 30/06/2027, 2027-06-30.
+// A month-only expiry is good until the last day of that month.
+export function parseExpiry(value: string | null | undefined): Date | null {
+  if (!value) return null
+  const s = value.trim()
+  const fullYear = (y: string) => (y.length <= 2 ? 2000 + Number(y) : Number(y))
+
+  let m = s.match(/^(\d{1,2})[-/](\d{4}|\d{2})$/)
+  if (m) return new Date(fullYear(m[2]), Number(m[1]), 0, 23, 59, 59)
+
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59)
+
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4}|\d{2})$/)
+  if (m) return new Date(fullYear(m[3]), Number(m[2]) - 1, Number(m[1]), 23, 59, 59)
+
+  return null
+}
+
+// "Jun 2027". Falls back to the stored text so an odd value is still visible.
+export function fmtExpiry(value: string | null | undefined): string {
+  if (!value) return '-'
+  const d = parseExpiry(value)
+  if (!d) return value
+  return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+}
+
+export const isExpired = (value: string | null | undefined, now = new Date()) => {
+  const d = parseExpiry(value)
+  return d ? d.getTime() < now.getTime() : false
+}
