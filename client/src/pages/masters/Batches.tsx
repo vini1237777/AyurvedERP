@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { useSearchParams } from "react-router-dom";
 import { batchApi, itemApi } from "../../utils/api";
-import { parseExpiry } from "../../utils/invoice.utils";
+import { fmt, parseExpiry, fmtExpiry } from "../../utils/invoice.utils";
 import {
   Button,
   Modal,
@@ -115,7 +116,9 @@ export default function BatchMaster() {
       );
     if (sortKey === "batchNo") v = a.batchNo.localeCompare(b.batchNo);
     if (sortKey === "expiry")
-      v = (a.expiryDate || "").localeCompare(b.expiryDate || "");
+      v =
+        (parseExpiry(a.expiryDate)?.getTime() ?? Infinity) -
+        (parseExpiry(b.expiryDate)?.getTime() ?? Infinity);
     if (sortKey === "stock") v = a.currentQty - b.currentQty;
     if (sortKey === "price") v = (a.salePrice || 0) - (b.salePrice || 0);
     return v * sortDir;
@@ -139,9 +142,9 @@ export default function BatchMaster() {
     return (
       <th
         onClick={() => toggleSort(k)}
-        className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap cursor-pointer select-none hover:text-slate-700 group"
+        className={`${thAlign(label)} text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap cursor-pointer select-none hover:text-slate-700 group`}
       >
-        <span className="flex items-center gap-1">
+        <span className={`flex items-center gap-1 ${thAlign(label) === "text-right" ? "justify-end" : ""}`}>
           {label}
           <span
             className={`transition-opacity ${active ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`}
@@ -361,14 +364,14 @@ export default function BatchMaster() {
                         Mfg Date
                       </th>
                       <SortTh label="Expiry" k="expiry" />
-                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                      <th className="text-right text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
                         Purchase Price
                       </th>
                       <SortTh label="Sale Price" k="price" />
-                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                      <th className="text-right text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
                         MRP
                       </th>
-                      <th className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
+                      <th className="text-right text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap">
                         Opening Qty
                       </th>
                       <SortTh label="Current Stock" k="stock" />
@@ -386,28 +389,28 @@ export default function BatchMaster() {
                         <td className="px-4 py-3 text-sm font-medium text-slate-800">
                           {(b as any).item?.name || "-"}
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono font-semibold text-blue-700">
+                        <td className="px-4 py-3 text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">
                           {b.batchNo}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
                           {b.mfgDate || "-"}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          {b.expiryDate || "-"}
+                        <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
+                          {fmtExpiry(b.expiryDate)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          ₹{b.purchasePrice || 0}
+                        <td className="px-4 py-3 text-sm text-slate-600 num num">
+                          ₹{fmt(b.purchasePrice || 0)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          ₹{b.salePrice || 0}
+                        <td className="px-4 py-3 text-sm text-slate-600 num num">
+                          ₹{fmt(b.salePrice || 0)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          ₹{b.mrp || 0}
+                        <td className="px-4 py-3 text-sm text-slate-600 num num">
+                          ₹{fmt(b.mrp || 0)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
+                        <td className="px-4 py-3 text-sm text-slate-600 num">
                           {b.openingQty}
                         </td>
-                        <td className="px-4 py-3">{stockBadge(b)}</td>
+                        <td className="px-4 py-3 num">{stockBadge(b)}</td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">
                             <Button

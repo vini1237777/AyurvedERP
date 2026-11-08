@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { fmt } from "../../utils/invoice.utils";
+import { thAlign } from "../../components/ui/tableAlign";
+import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
 import { customerApi, authFetch } from "../../utils/api";
 import type { Customer } from "../../types";
@@ -130,7 +131,7 @@ export default function LedgerReport() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
+                        className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3`}
                       >
                         {h}
                       </th>
@@ -144,9 +145,9 @@ export default function LedgerReport() {
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        {new Date(row.date).toLocaleDateString("en-IN")}
+                        {fmtDate(row.date)}
                       </td>
-                      <td className="px-4 py-3 font-mono text-blue-700 text-sm">
+                      <td className="px-4 py-3 font-mono text-blue-700 text-sm whitespace-nowrap">
                         #{row.invoiceNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
@@ -177,7 +178,7 @@ export default function LedgerReport() {
                     <td colSpan={5} className="px-4 py-3 text-sm text-right">
                       Closing Balance:
                     </td>
-                    <td className="px-4 py-3 text-sm font-bold text-blue-700">
+                    <td className="px-4 py-3 text-sm font-bold text-blue-700 num num">
                       ₹{fmt(data.closingBalance)} Dr.
                     </td>
                   </tr>

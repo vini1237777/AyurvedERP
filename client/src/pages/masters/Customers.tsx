@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { customerApi } from "../../utils/api";
 import { validateGstin } from "../../utils/invoice.utils";
 import {
@@ -203,7 +204,7 @@ export default function CustomerMaster() {
                         (h) => (
                           <th
                             key={h}
-                            className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
+                            className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3`}
                           >
                             {h}
                           </th>

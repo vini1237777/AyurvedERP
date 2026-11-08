@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { itemApi, hsnApi } from "../../utils/api";
 import api from "../../utils/api";
 import {
@@ -285,7 +286,7 @@ export default function ItemMaster() {
                       ].map((h) => (
                         <th
                           key={h}
-                          className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
+                          className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap`}
                         >
                           {h}
                         </th>
@@ -329,10 +330,10 @@ export default function ItemMaster() {
                               {item.taxSlab.rate}%
                             </Badge>
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-700 font-medium">
+                          <td className="px-4 py-3 text-sm text-slate-700 font-medium num">
                             {fmtR(item.mrp)}
                           </td>
-                          <td className="px-4 py-3 text-sm text-slate-700 font-medium">
+                          <td className="px-4 py-3 text-sm text-slate-700 font-medium num">
                             {fmtR(item.rate)}
                           </td>
                           <td className="px-4 py-3">

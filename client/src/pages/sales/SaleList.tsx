@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { Link, useLocation } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
-import { fmt } from "../../utils/invoice.utils";
+import { fmt, fmtDate } from "../../utils/invoice.utils";
 import {
   Button,
   PageHeader,
@@ -294,7 +295,7 @@ export default function SaleList() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
+                        className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap`}
                       >
                         {h}
                       </th>
@@ -307,11 +308,11 @@ export default function SaleList() {
                       key={inv.id}
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm">
+                      <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm whitespace-nowrap">
                         #{inv.invoiceNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600 whitespace-nowrap">
-                        {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
+                        {fmtDate(inv.invoiceDate)}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-800 font-medium">
                         {inv.customer.name}
@@ -319,13 +320,13 @@ export default function SaleList() {
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {inv.customerGstin || "B2C"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
+                      <td className="px-4 py-3 text-sm text-slate-700 num num">
                         ₹{fmt(inv.totalTaxable)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-slate-600 num num">
                         ₹{fmt(inv.totalTax)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                      <td className="px-4 py-3 text-sm font-bold text-slate-800 num num">
                         ₹{fmt(inv.grandTotal)}
                       </td>
                       <td className="px-4 py-3">

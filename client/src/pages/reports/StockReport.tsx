@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { reportApi } from "../../utils/api";
-import { fmt } from "../../utils/invoice.utils";
+import { fmt, fmtExpiry, fmtQty } from "../../utils/invoice.utils";
 import { Card, LoadingScreen, PageHeader } from "../../components/ui";
 import type { StockReportResponse } from "../../types";
 
@@ -229,7 +230,7 @@ export default function StockReport() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="text-left text-xs font-semibold text-slate-500 px-5 py-3 whitespace-nowrap"
+                      className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-5 py-3 whitespace-nowrap`}
                     >
                       {h}
                     </th>
@@ -271,35 +272,35 @@ export default function StockReport() {
                           <td className="px-5 py-3 text-sm text-slate-500">
                             {row.hsnCode}
                           </td>
-                          <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700">
+                          <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">
                             {row.batchNo}
                           </td>
                           <td className="px-5 py-3 text-sm text-slate-600">
-                            {row.expiryDate || "-"}
+                            {fmtExpiry(row.expiryDate)}
                           </td>
-                          <td className="px-5 py-3 text-sm text-slate-600">
-                            {fmt(row.openingQty)}
+                          <td className="px-5 py-3 text-sm text-slate-600 num">
+                            {fmtQty(row.openingQty)}
                           </td>
-                          <td className="px-5 py-3 text-sm">
+                          <td className="px-5 py-3 text-sm num">
                             {sold > 0 ? (
                               <span className="text-red-600 font-semibold">
-                                -{fmt(sold)}
+                                -{fmtQty(sold)}
                               </span>
                             ) : row.currentQty < 0 ? (
                               <span className="text-red-700 font-bold">
-                                -{fmt(row.openingQty - row.currentQty)} ⚠
+                                -{fmtQty(row.openingQty - row.currentQty)}
                               </span>
                             ) : (
                               <span className="text-slate-300">-</span>
                             )}
                           </td>
-                          <td className="px-5 py-3">
+                          <td className="px-5 py-3 num">
                             {stockBadge(row.openingQty, row.currentQty)}
                           </td>
-                          <td className="px-5 py-3 text-sm text-slate-700">
+                          <td className="px-5 py-3 text-sm text-slate-700 num num">
                             ₹{fmt(row.mrp)}
                           </td>
-                          <td className="px-5 py-3 text-sm text-slate-700">
+                          <td className="px-5 py-3 text-sm text-slate-700 num num">
                             ₹{fmt(row.salePrice)}
                           </td>
                         </tr>

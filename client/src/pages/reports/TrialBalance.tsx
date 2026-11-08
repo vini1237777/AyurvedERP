@@ -154,7 +154,7 @@ export default function TrialBalance() {
                     key={r.code}
                     className="border-b border-slate-100 hover:bg-slate-50"
                   >
-                    <td className="px-4 py-2.5 font-mono text-slate-500 text-xs">
+                    <td className="px-4 py-2.5 font-mono text-slate-500 text-xs whitespace-nowrap">
                       {r.code}
                     </td>
                     <td className="px-4 py-2.5 text-slate-800 font-medium">
@@ -167,10 +167,10 @@ export default function TrialBalance() {
                         {r.type}
                       </span>
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-slate-800">
+                    <td className="px-4 py-2.5 text-right font-mono text-slate-800 whitespace-nowrap">
                       {r.debit > 0 ? `₹${fmt(r.debit)}` : ""}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-slate-800">
+                    <td className="px-4 py-2.5 text-right font-mono text-slate-800 whitespace-nowrap">
                       {r.credit > 0 ? `₹${fmt(r.credit)}` : ""}
                     </td>
                   </tr>
@@ -181,10 +181,10 @@ export default function TrialBalance() {
                   <td colSpan={3} className="px-4 py-3 text-slate-700">
                     Total
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-900">
+                  <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                     ₹{fmt(data.totalDebit)}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono text-slate-900">
+                  <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                     ₹{fmt(data.totalCredit)}
                   </td>
                 </tr>

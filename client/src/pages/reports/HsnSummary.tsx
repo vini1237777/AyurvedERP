@@ -205,32 +205,32 @@ export default function HsnSummary() {
                     key={`${r.hsnCode}-${r.gstPercent}`}
                     className="border-b border-slate-100 hover:bg-slate-50"
                   >
-                    <td className="px-4 py-2.5 font-mono text-slate-700 text-xs">
+                    <td className="px-4 py-2.5 font-mono text-slate-700 text-xs whitespace-nowrap">
                       {r.hsnCode}
                     </td>
                     <td className="px-4 py-2.5 text-slate-600 text-xs">
                       {r.description || "-"}
                     </td>
                     <td className="px-4 py-2.5 text-slate-700">{r.gstPercent}%</td>
-                    <td className="px-4 py-2.5 text-right font-mono text-slate-700">
+                    <td className="px-4 py-2.5 font-mono text-slate-700 num whitespace-nowrap">
                       {fmtInt(r.totalQty)}
                     </td>
                     <td className="px-4 py-2.5 text-right text-slate-500">
                       {r.invoiceCount}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono">
+                    <td className="px-4 py-2.5 font-mono num whitespace-nowrap num">
                       ₹{fmt(r.taxable)}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono">
+                    <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">
                       {r.cgst > 0 ? `₹${fmt(r.cgst)}` : ""}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono">
+                    <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">
                       {r.sgst > 0 ? `₹${fmt(r.sgst)}` : ""}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono">
+                    <td className="px-4 py-2.5 text-right font-mono whitespace-nowrap">
                       {r.igst > 0 ? `₹${fmt(r.igst)}` : ""}
                     </td>
-                    <td className="px-4 py-2.5 text-right font-mono font-semibold text-slate-800">
+                    <td className="px-4 py-2.5 font-mono font-semibold text-slate-800 num whitespace-nowrap num">
                       ₹{fmt(r.total)}
                     </td>
                   </tr>
@@ -242,19 +242,19 @@ export default function HsnSummary() {
                     <td colSpan={5} className="px-4 py-3 text-slate-700">
                       Total
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-900">
+                    <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                       ₹{fmt(data.summary.totalTaxable)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-900">
+                    <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                       ₹{fmt(data.summary.totalCgst)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-900">
+                    <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                       ₹{fmt(data.summary.totalSgst)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-900">
+                    <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                       ₹{fmt(data.summary.totalIgst)}
                     </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-900">
+                    <td className="px-4 py-3 font-mono text-slate-900 num whitespace-nowrap num">
                       ₹{fmt(data.summary.grandTotal)}
                     </td>
                   </tr>

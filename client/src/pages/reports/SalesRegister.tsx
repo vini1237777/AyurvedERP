@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { customerApi, reportApi } from "../../utils/api";
-import { fmt } from "../../utils/invoice.utils";
+import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, LoadingScreen, PageHeader, Input, Select, Badge } from "../../components/ui";
 import { Pagination } from "../../components/ui/Pagination";
 import type { Customer, Invoice } from "../../types";
@@ -11,8 +12,8 @@ type SortDir = 'asc' | 'desc'
 function SortTh({ label, sortKey, current, dir, onSort }: { label: string; sortKey: SortKey; current: SortKey; dir: SortDir; onSort: (k: SortKey) => void }) {
   const active = current === sortKey
   return (
-    <th onClick={() => onSort(sortKey)} className="text-left text-xs font-semibold text-slate-500 px-5 py-3 cursor-pointer select-none whitespace-nowrap hover:text-slate-700 group">
-      <span className="flex items-center gap-1">
+    <th onClick={() => onSort(sortKey)} className={`${thAlign(label)} text-xs font-semibold text-slate-500 px-5 py-3 cursor-pointer select-none whitespace-nowrap hover:text-slate-700 group`}>
+      <span className={`flex items-center gap-1 ${thAlign(label) === "text-right" ? "justify-end" : ""}`}>
         {label}
         <span className={`text-[10px] transition-opacity ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-40'}`}>
           {active ? (dir === 'asc' ? '▲' : '▼') : '▼'}
@@ -24,14 +25,14 @@ function SortTh({ label, sortKey, current, dir, onSort }: { label: string; sortK
 
 function exportCSV(rows: Invoice[]) {
   const headers = ["Invoice No","Date","Customer","Tax Type","Taxable","Tax","Amount","Status"]
-  const data = rows.map(r => [r.invoiceNo, new Date(r.invoiceDate).toLocaleDateString("en-IN"), r.customer?.name||"", r.taxType==="CGST_SGST"?"CGST+SGST":"IGST", r.totalTaxable, r.totalTax, r.grandTotal, r.status])
+  const data = rows.map(r => [r.invoiceNo, fmtDate(r.invoiceDate), r.customer?.name||"", r.taxType==="CGST_SGST"?"CGST+SGST":"IGST", r.totalTaxable, r.totalTax, r.grandTotal, r.status])
   const csv = [headers,...data].map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(",")).join("\n")
   const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"})); a.download="sale-register.csv"; a.click()
 }
 
 function exportPDF(rows: Invoice[], total: number) {
   const win=window.open("","_blank")!
-  const trs=rows.map(r=>`<tr><td>#${r.invoiceNo}</td><td>${new Date(r.invoiceDate).toLocaleDateString("en-IN")}</td><td>${r.customer?.name||""}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.totalTaxable)}</td><td>₹${fmt(r.totalTax)}</td><td>₹${fmt(r.grandTotal)}</td><td>${r.status}</td></tr>`).join("")
+  const trs=rows.map(r=>`<tr><td>#${r.invoiceNo}</td><td>${fmtDate(r.invoiceDate)}</td><td>${r.customer?.name||""}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.totalTaxable)}</td><td>₹${fmt(r.totalTax)}</td><td>₹${fmt(r.grandTotal)}</td><td>${r.status}</td></tr>`).join("")
   win.document.write(`<html><head><title>Sale Register</title><style>body{font-family:Arial;font-size:11px;padding:20px}table{width:100%;border-collapse:collapse}th{background:#f1f5f9;border:1px solid #cbd5e1;padding:6px 8px;font-size:10px;text-align:left}td{border:1px solid #e2e8f0;padding:5px 8px}tr:nth-child(even){background:#f8fafc}.total{font-weight:bold;margin-top:8px;text-align:right}</style></head><body><h2>Sale Register</h2><table><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Tax Type</th><th>Taxable</th><th>Tax</th><th>Amount</th><th>Status</th></tr></thead><tbody>${trs}</tbody></table><div class="total">Grand Total: ₹${fmt(total)}</div></body></html>`)
   win.document.close(); win.print()
 }
@@ -152,13 +153,13 @@ export default function SaleRegister() {
               <tbody>
                 {sorted.map(inv=>(
                   <tr key={inv.id} className="border-b border-slate-50 hover:bg-slate-50">
-                    <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700">#{inv.invoiceNo}</td>
-                    <td className="px-5 py-3 text-sm text-slate-600">{new Date(inv.invoiceDate).toLocaleDateString("en-IN")}</td>
+                    <td className="px-5 py-3 text-sm font-mono font-semibold text-blue-700 whitespace-nowrap">#{inv.invoiceNo}</td>
+                    <td className="px-5 py-3 text-sm text-slate-600">{fmtDate(inv.invoiceDate)}</td>
                     <td className="px-5 py-3 text-sm text-slate-800">{inv.customer?.name}</td>
                     <td className="px-5 py-3 text-sm text-slate-600">{inv.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700">₹{fmt(inv.totalTaxable)}</td>
-                    <td className="px-5 py-3 text-sm text-slate-700">₹{fmt(inv.totalTax)}</td>
-                    <td className="px-5 py-3 text-sm font-semibold text-slate-800">₹{fmt(inv.grandTotal)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(inv.totalTaxable)}</td>
+                    <td className="px-5 py-3 text-sm text-slate-700 num num">₹{fmt(inv.totalTax)}</td>
+                    <td className="px-5 py-3 text-sm font-semibold text-slate-800 num num">₹{fmt(inv.grandTotal)}</td>
                     <td className="px-5 py-3"><Badge color={inv.status==="SAVED"?"green":"red"}>{inv.status}</Badge></td>
                   </tr>
                 ))}

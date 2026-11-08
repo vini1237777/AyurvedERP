@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { useNavigate } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
-import { fmt } from "../../utils/invoice.utils";
+import { fmt, fmtDate } from "../../utils/invoice.utils";
 import type { Invoice, TaxType } from "../../types";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -293,9 +294,7 @@ export default function SaleReturn() {
                         </div>
                         <div className="flex gap-4 mt-1 text-xs text-slate-400">
                           <span>
-                            {new Date(inv.invoiceDate).toLocaleDateString(
-                              "en-IN",
-                            )}
+                            {fmtDate(inv.invoiceDate)}
                           </span>
                           <span>{inv.items?.length || 0} items</span>
                           <span>
@@ -384,7 +383,7 @@ export default function SaleReturn() {
             Date:{" "}
             <b>
               {selectedInv &&
-                new Date(selectedInv.invoiceDate).toLocaleDateString("en-IN")}
+                fmtDate(selectedInv.invoiceDate)}
             </b>
           </span>
           <span className="text-slate-600">
@@ -432,7 +431,7 @@ export default function SaleReturn() {
                   ].map((h) => (
                     <th
                       key={h}
-                      className="px-3 py-2.5 text-xs font-semibold text-slate-500 text-left whitespace-nowrap"
+                      className={`${thAlign(h)} px-3 py-2.5 text-xs font-semibold text-slate-500 whitespace-nowrap`}
                     >
                       {h}
                     </th>
@@ -465,7 +464,7 @@ export default function SaleReturn() {
                       <td className="px-3 py-2.5 text-xs text-slate-500">
                         {row.hsnCode}
                       </td>
-                      <td className="px-3 py-2.5 text-xs font-mono text-blue-700">
+                      <td className="px-3 py-2.5 text-xs font-mono text-blue-700 whitespace-nowrap">
                         {row.batchNo || "-"}
                       </td>
                       <td className="px-3 py-2.5 text-sm text-slate-600 text-center">
@@ -489,7 +488,7 @@ export default function SaleReturn() {
                           className="border text-center border-slate-200 rounded-md text-xs w-full px-2 py-1.5 outline-none focus:border-red-400 bg-white disabled:bg-slate-100"
                         />
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-slate-600 text-center">
+                      <td className="px-3 py-2.5 text-xs text-slate-600 num">
                         ₹{fmt(row.rate)}
                       </td>
                       <td className="px-3 py-2.5 text-xs text-slate-600 text-center">

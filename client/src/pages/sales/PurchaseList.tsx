@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { Link } from "react-router-dom";
-import { fmt } from "../../utils/invoice.utils";
+import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { authFetch } from "../../utils/api";
 import {
   Button,
@@ -213,7 +214,7 @@ export default function PurchaseList() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
+                        className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap`}
                       >
                         {h}
                       </th>
@@ -226,22 +227,22 @@ export default function PurchaseList() {
                       key={p.id}
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm">
+                      <td className="px-4 py-3 font-mono font-bold text-blue-700 text-sm whitespace-nowrap">
                         #{p.purchaseNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        {new Date(p.purchaseDate).toLocaleDateString("en-IN")}
+                        {fmtDate(p.purchaseDate)}
                       </td>
                       <td className="px-4 py-3 text-sm font-medium text-slate-800">
                         {p.supplier.name}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-700">
+                      <td className="px-4 py-3 text-sm text-slate-700 num num">
                         ₹{fmt(p.totalTaxable)}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-slate-600 num num">
                         ₹{fmt(p.totalTax)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-slate-800">
+                      <td className="px-4 py-3 text-sm font-bold text-slate-800 num num">
                         ₹{fmt(p.grandTotal)}
                       </td>
                       <td className="px-4 py-3">

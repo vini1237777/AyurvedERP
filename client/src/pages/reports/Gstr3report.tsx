@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { fmt } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
 import { authFetch } from "../../utils/api";
@@ -102,7 +103,7 @@ export default function GstR3Report() {
                       ].map((h) => (
                         <th
                           key={h}
-                          className="text-left text-xs font-semibold text-slate-500 px-5 py-3"
+                          className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-5 py-3`}
                         >
                           {h}
                         </th>
@@ -115,12 +116,12 @@ export default function GstR3Report() {
                         Outward taxable supplies (other than zero rated, nil and
                         exempted)
                       </td>
-                      <td className="px-5 py-4 text-sm font-bold text-slate-800">
+                      <td className="px-5 py-4 text-sm font-bold text-slate-800 num num">
                         ₹{fmt(s.taxable)}
                       </td>
-                      <td className="px-5 py-4 text-sm">₹{fmt(s.igst)}</td>
-                      <td className="px-5 py-4 text-sm">₹{fmt(s.cgst)}</td>
-                      <td className="px-5 py-4 text-sm">₹{fmt(s.sgst)}</td>
+                      <td className="px-5 py-4 text-sm num num">₹{fmt(s.igst)}</td>
+                      <td className="px-5 py-4 text-sm num num">₹{fmt(s.cgst)}</td>
+                      <td className="px-5 py-4 text-sm num num">₹{fmt(s.sgst)}</td>
                       <td className="px-5 py-4 text-sm text-slate-400">
                         ₹0.00
                       </td>
@@ -129,16 +130,16 @@ export default function GstR3Report() {
                   <tfoot>
                     <tr className="bg-blue-50 font-bold">
                       <td className="px-5 py-3 text-sm">Total</td>
-                      <td className="px-5 py-3 text-sm text-blue-700">
+                      <td className="px-5 py-3 text-sm text-blue-700 num num">
                         ₹{fmt(s.taxable)}
                       </td>
-                      <td className="px-5 py-3 text-sm text-blue-700">
+                      <td className="px-5 py-3 text-sm text-blue-700 num num">
                         ₹{fmt(s.igst)}
                       </td>
-                      <td className="px-5 py-3 text-sm text-blue-700">
+                      <td className="px-5 py-3 text-sm text-blue-700 num num">
                         ₹{fmt(s.cgst)}
                       </td>
-                      <td className="px-5 py-3 text-sm text-blue-700">
+                      <td className="px-5 py-3 text-sm text-blue-700 num num">
                         ₹{fmt(s.sgst)}
                       </td>
                       <td className="px-5 py-3 text-sm text-slate-400">
@@ -172,7 +173,7 @@ export default function GstR3Report() {
                       ].map((h) => (
                         <th
                           key={h}
-                          className="text-left text-xs font-semibold text-slate-500 px-5 py-3"
+                          className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-5 py-3`}
                         >
                           {h}
                         </th>
@@ -184,16 +185,16 @@ export default function GstR3Report() {
                       <td className="px-5 py-4 text-sm font-medium">
                         ITC available · inward supplies
                       </td>
-                      <td className="px-5 py-4 text-sm font-bold text-slate-800">
+                      <td className="px-5 py-4 text-sm font-bold text-slate-800 num num">
                         ₹{fmt(data.itc.taxable)}
                       </td>
-                      <td className="px-5 py-4 text-sm">
+                      <td className="px-5 py-4 text-sm num num">
                         ₹{fmt(data.itc.igst)}
                       </td>
-                      <td className="px-5 py-4 text-sm">
+                      <td className="px-5 py-4 text-sm num num">
                         ₹{fmt(data.itc.cgst)}
                       </td>
-                      <td className="px-5 py-4 text-sm">
+                      <td className="px-5 py-4 text-sm num num">
                         ₹{fmt(data.itc.sgst)}
                       </td>
                     </tr>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { thAlign } from "../../components/ui/tableAlign";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
 import api from "../../utils/api";
 
@@ -131,7 +132,7 @@ export default function CustomerCategoryReport() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3"
+                        className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3`}
                       >
                         {h}
                       </th>

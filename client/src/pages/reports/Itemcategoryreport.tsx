@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fmt } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen, Input } from "../../components/ui";
 import api from "../../utils/api";
 
@@ -157,7 +158,7 @@ export default function ItemCategoryReport() {
                   {visibleCats.map((c) => (
                     <th
                       key={c}
-                      className="text-center text-xs font-semibold text-blue-600 px-3 py-3 min-w-[80px]"
+                      className="text-right text-xs font-semibold text-slate-600 px-4 py-3 min-w-[80px]"
                     >
                       Cat {c}
                     </th>
@@ -184,7 +185,7 @@ export default function ItemCategoryReport() {
                       const isEditing =
                         editing?.itemId === item.id && editing.category === cat;
                       return (
-                        <td key={cat} className="px-2 py-2 text-center">
+                        <td key={cat} className="px-2 py-2 num">
                           {isEditing ? (
                             <div className="flex gap-1 items-center">
                               <input
@@ -201,11 +202,13 @@ export default function ItemCategoryReport() {
                                   if (e.key === "Enter") savePrice();
                                   if (e.key === "Escape") setEditing(null);
                                 }}
-                                className="w-20 border rounded px-1 py-0.5 text-xs text-center"
+                                aria-label={`Category ${cat} rate for ${item.name}`}
+                                className="w-20 border rounded px-1 py-1 text-sm text-right"
                               />
                               <button
                                 onClick={savePrice}
-                                className="text-xs text-blue-600"
+                                aria-label="Save rate"
+                                className="w-7 h-7 text-sm text-blue-700"
                               >
                                 ✓
                               </button>
@@ -219,9 +222,10 @@ export default function ItemCategoryReport() {
                                   price: String(p?.price || ""),
                                 })
                               }
-                              className={`text-xs px-2 py-1 rounded w-full text-center hover:bg-blue-50 ${p?.price ? "text-slate-800 font-medium" : "text-slate-300"}`}
+                              aria-label={`Edit category ${cat} rate for ${item.name}`}
+                              className={`text-sm px-2 min-h-[30px] rounded w-full text-right hover:bg-blue-50 ${p?.price ? "text-slate-800 font-medium" : "text-slate-500"}`}
                             >
-                              {p?.price ? `₹${p.price}` : "-"}
+                              {p?.price ? `₹${fmt(p.price)}` : "-"}
                             </button>
                           )}
                         </td>

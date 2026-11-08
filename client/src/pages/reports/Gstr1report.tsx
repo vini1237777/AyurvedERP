@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { fmt } from "../../utils/invoice.utils";
+import { thAlign } from "../../components/ui/tableAlign";
+import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
 import { authFetch } from "../../utils/api";
 
@@ -52,7 +53,7 @@ export default function GstR1Report() {
     ];
     const csvRows = rows.map((r: any) => [
       r.invoiceNo,
-      new Date(r.invoiceDate).toLocaleDateString("en-IN"),
+      fmtDate(r.invoiceDate),
       r.customer?.name || "",
       r.customerGstin || "",
       r.totalTaxable,
@@ -166,7 +167,7 @@ export default function GstR1Report() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="text-left text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap"
+                        className={`${thAlign(h)} text-xs font-semibold text-slate-500 px-4 py-3 whitespace-nowrap`}
                       >
                         {h}
                       </th>
@@ -179,11 +180,11 @@ export default function GstR1Report() {
                       key={inv.id}
                       className="border-b border-slate-50 hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3 font-mono text-blue-700 text-sm">
+                      <td className="px-4 py-3 font-mono text-blue-700 text-sm whitespace-nowrap">
                         #{inv.invoiceNo}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-600">
-                        {new Date(inv.invoiceDate).toLocaleDateString("en-IN")}
+                        {fmtDate(inv.invoiceDate)}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-800">
                         {inv.customer?.name}
@@ -191,16 +192,16 @@ export default function GstR1Report() {
                       <td className="px-4 py-3 text-xs text-slate-500">
                         {inv.customerGstin || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num num">
                         ₹{fmt(inv.totalTaxable)}
                       </td>
-                      <td className="px-4 py-3 text-sm">₹{fmt(inv.cgstAmt)}</td>
-                      <td className="px-4 py-3 text-sm">₹{fmt(inv.sgstAmt)}</td>
-                      <td className="px-4 py-3 text-sm">₹{fmt(inv.igstAmt)}</td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num num">₹{fmt(inv.cgstAmt)}</td>
+                      <td className="px-4 py-3 text-sm num num">₹{fmt(inv.sgstAmt)}</td>
+                      <td className="px-4 py-3 text-sm num num">₹{fmt(inv.igstAmt)}</td>
+                      <td className="px-4 py-3 text-sm num num">
                         ₹{fmt(inv.totalTax)}
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold">
+                      <td className="px-4 py-3 text-sm font-bold num num">
                         ₹{fmt(inv.grandTotal)}
                       </td>
                     </tr>
@@ -222,7 +223,7 @@ export default function GstR1Report() {
                       <td colSpan={4} className="px-4 py-3 text-sm">
                         Total ({rows.length} invoices)
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num">
                         ₹
                         {fmt(
                           rows.reduce(
@@ -231,31 +232,31 @@ export default function GstR1Report() {
                           ),
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num">
                         ₹
                         {fmt(
                           rows.reduce((s: number, r: any) => s + r.cgstAmt, 0),
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num">
                         ₹
                         {fmt(
                           rows.reduce((s: number, r: any) => s + r.sgstAmt, 0),
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num">
                         ₹
                         {fmt(
                           rows.reduce((s: number, r: any) => s + r.igstAmt, 0),
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm num">
                         ₹
                         {fmt(
                           rows.reduce((s: number, r: any) => s + r.totalTax, 0),
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm text-blue-700">
+                      <td className="px-4 py-3 text-sm text-blue-700 num">
                         ₹
                         {fmt(
                           rows.reduce(
