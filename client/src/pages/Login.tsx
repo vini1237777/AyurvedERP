@@ -4,7 +4,31 @@ import { useAuth } from "../auth/AuthContext";
 import { DEMO_ROLES } from "../auth/demoAccounts";
 
 const fieldClass =
-  "w-full border border-slate-200 rounded-lg bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-50 transition-all";
+  "boxed w-full h-11 border-2 border-ink bg-[#FBFDF7] px-3 text-base text-ink outline-none focus:border-pen";
+
+// The medicine cabinet: real stock in this demo, one label to a drawer.
+const DRAWERS = [
+  "Chyawanprash",
+  "Brahmi Vati",
+  "Moringa",
+  "Septilin",
+  "Bhringraj Tel",
+  "Triphala Churna",
+  "Neem Tab",
+  "Avipattikar",
+  "Swarna Bhasma",
+  "Drakshasava",
+  "Mahanarayan Tel",
+  "Giloy Vati",
+  "Cystone",
+  "Ashwagandha",
+  "Anu Tail",
+  "Kumaryasava",
+  "Tulsi Drops",
+  "Akik Pishti",
+  "Karela Jamun",
+  "Triphala Tab",
+];
 
 function signInError(err: any): string {
   if (err?.response?.status === 401) return "That email and password don't match.";
@@ -44,106 +68,118 @@ export default function Login() {
   const busy = busyAs !== null;
 
   return (
-    <main className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 py-8">
-      <div className="flex items-center gap-2.5 mb-6">
-        <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-          A
-        </div>
-        <span className="font-bold text-slate-800 text-base">
-          Aushadhi <span className="text-blue-600 font-semibold">ERP</span>
-        </span>
+    <div className="min-h-screen flex bg-paper text-ink">
+      <div
+        aria-hidden="true"
+        className="hidden md:grid flex-[3] min-w-0 p-3.5 gap-1.5 bg-cloth grid-cols-[repeat(auto-fill,minmax(140px,1fr))] auto-rows-fr"
+      >
+        {DRAWERS.map((name) => (
+          <div
+            key={name}
+            className="flex flex-col items-center justify-center gap-2.5 p-2.5 bg-[#B12A41]"
+          >
+            <span className="block w-full px-2 py-1.5 bg-paper text-ink border border-ink outline outline-1 outline-offset-1 outline-paper text-base font-semibold leading-tight text-center">
+              {name}
+            </span>
+            <span className="w-5 h-5 rounded-full bg-thread border-2 border-[#A97B10]" />
+          </div>
+        ))}
       </div>
 
-      <div className="w-full max-w-[400px] bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-        <h1 className="text-xl font-bold text-slate-800 mb-5">Sign in</h1>
+      <main className="flex-[2] min-w-0 flex flex-col justify-center gap-6 px-6 md:px-14 py-8">
+        <div>
+          <p
+            lang="hi"
+            className="font-deva font-extrabold text-[76px] leading-[1.15] text-cloth"
+          >
+            औषधि
+          </p>
+          <p className="text-xl font-medium">
+            Billing, stock and GST for Ayurvedic medicine traders
+          </p>
+        </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            signIn(email, password);
-          }}
-          className="space-y-4"
-        >
-          <div>
-            <label
-              htmlFor="login-email"
-              className="block text-xs font-semibold text-slate-600 mb-1.5"
-            >
-              Email
-            </label>
-            <input
-              id="login-email"
-              type="email"
-              autoComplete="username"
-              required
-              autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className={fieldClass}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="login-password"
-              className="block text-xs font-semibold text-slate-600 mb-1.5"
-            >
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="login-password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={`${fieldClass} pr-16`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-pressed={showPassword}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md text-xs font-medium text-slate-600 hover:bg-slate-100"
+        <div className="w-full max-w-[420px]">
+          <h1 className="text-[28px] leading-tight font-bold mb-3">Sign in</h1>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              signIn(email, password);
+            }}
+            className="space-y-3.5"
+          >
+            <div>
+              <label
+                htmlFor="login-email"
+                className="block text-sm font-medium mb-1"
               >
-                {showPassword ? "Hide" : "Show"}
-              </button>
+                Email
+              </label>
+              <input
+                id="login-email"
+                type="email"
+                autoComplete="username"
+                required
+                autoFocus
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={fieldClass}
+              />
             </div>
-          </div>
 
-          {error && (
-            <p
-              role="alert"
-              className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2"
-            >
-              {error}
-            </p>
-          )}
+            <div>
+              <label
+                htmlFor="login-password"
+                className="block text-sm font-medium mb-1"
+              >
+                Password
+              </label>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`${fieldClass} pr-16`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-pressed={showPassword}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 text-sm font-medium text-ink hover:bg-slate-50"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-semibold rounded-lg transition-colors flex items-center justify-center gap-2"
-          >
-            {busyAs === email && (
-              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            {error && (
+              <p role="alert" className="text-sm font-medium text-red-700">
+                {error}
+              </p>
             )}
-            {busyAs === email ? "Signing in" : "Sign in"}
-          </button>
-        </form>
 
-        <section
-          aria-labelledby="demo-accounts"
-          className="mt-6 pt-5 border-t border-slate-100"
-        >
-          <h2
-            id="demo-accounts"
-            className="text-sm font-semibold text-slate-800"
-          >
-            Try a demo account
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full min-h-[48px] bg-ink hover:bg-blue-700 disabled:opacity-60 text-white text-lg font-semibold transition-colors flex items-center justify-center gap-2"
+            >
+              {busyAs === email && (
+                <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {busyAs === email ? "Signing in" : "Sign in"}
+            </button>
+          </form>
+        </div>
+
+        <section aria-labelledby="demo-accounts" className="w-full max-w-[420px]">
+          <h2 id="demo-accounts" className="text-lg font-bold">
+            Looking around? Open a demo account
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5 mb-3">
+          <p className="text-sm text-slate-600 mb-2">
             Signs you in straight away. All the data is made up.
           </p>
           <div className="grid grid-cols-2 gap-2">
@@ -153,19 +189,19 @@ export default function Login() {
                 type="button"
                 disabled={busy}
                 onClick={() => signIn(account.email, account.password)}
-                className="text-left px-3 py-2 rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-200 disabled:opacity-60 transition-colors"
+                className="min-h-[44px] text-left px-3 py-1.5 border-2 border-ink hover:bg-slate-50 disabled:opacity-60 transition-colors"
               >
-                <span className="block text-sm font-medium text-slate-800">
+                <span className="block text-base font-semibold leading-tight">
                   {busyAs === account.email ? "Signing in" : account.label}
                 </span>
-                <span className="block text-xs text-slate-500">
+                <span className="block text-xs text-slate-600">
                   {account.hint}
                 </span>
               </button>
             ))}
           </div>
         </section>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }
