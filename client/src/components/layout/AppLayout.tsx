@@ -69,6 +69,48 @@ const NAV: { group: string; roles?: Role[]; items: NavItem[] }[] = [
   },
 ];
 
+// Line icons, one per screen, so the collapsed sidebar stays readable.
+const ICON_PATHS: Record<string, string[]> = {
+  "/dashboard": ["M3 3h7v7H3z", "M14 3h7v7h-7z", "M14 14h7v7h-7z", "M3 14h7v7H3z"],
+  "/sales/new": ["M12 5v14", "M5 12h14"],
+  "/sales": ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z", "M14 2v6h6", "M8 13h8", "M8 17h8"],
+  "/sales/return": ["M9 14 4 9l5-5", "M4 9h11a5 5 0 0 1 0 10h-3"],
+  "/purchases/new": ["M21 8l-9-5-9 5 9 5 9-5z", "M3 8v8l9 5 9-5V8", "M12 13v8"],
+  "/purchases": ["M8 6h13", "M8 12h13", "M8 18h13", "M3 6h.01", "M3 12h.01", "M3 18h.01"],
+  "/masters/customers": ["M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2", "M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M22 21v-2a4 4 0 0 0-3-3.87", "M16 3.13a4 4 0 0 1 0 7.75"],
+  "/masters/items": ["M20 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z", "M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"],
+  "/masters/batches": ["M12 2 2 7l10 5 10-5-10-5z", "M2 17l10 5 10-5", "M2 12l10 5 10-5"],
+  "/reports/sale-register": ["M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15z", "M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"],
+  gst: ["M19 5 5 19", "M6.5 9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z", "M17.5 20a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"],
+  "/reports/stock": ["M4 20V10", "M12 20V4", "M20 20v-6"],
+  "/reports/ledger": ["M2 4h7a3 3 0 0 1 3 3v14a2 2 0 0 0-2-2H2z", "M22 4h-7a3 3 0 0 0-3 3v14a2 2 0 0 1 2-2h8z"],
+  "/reports/trial-balance": ["M12 3v18", "M5 7h14", "M5 7l-3 7a3 3 0 0 0 6 0z", "M19 7l-3 7a3 3 0 0 0 6 0z"],
+  "/reports/item-category": ["M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8z", "M7.5 7.5h.01"],
+  "/reports/customer-category": ["M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"],
+  "/settings/profile": ["M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18", "M2 22h20", "M10 6h4", "M10 10h4", "M10 14h4"],
+};
+
+function NavIcon({ name }: { name: string }) {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="flex-shrink-0"
+      aria-hidden="true"
+    >
+      {(ICON_PATHS[name] || ICON_PATHS.gst).map((d) => (
+        <path key={d} d={d} />
+      ))}
+    </svg>
+  );
+}
+
 function allowed(role: Role | undefined, roles?: Role[]): boolean {
   if (!roles) return true;
   if (!role) return false;
@@ -215,10 +257,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.path}
                       to={to}
+                      aria-label={collapsed ? item.label : undefined}
                       title={
                         itemLocked
                           ? `Requires ${(item.required || group.required)?.join(" or ") || "another"} role`
-                          : undefined
+                          : collapsed
+                            ? item.label
+                            : undefined
                       }
                       className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${
                         itemLocked
@@ -228,7 +273,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                       }`}
                     >
-                      <span className="text-base leading-none w-4 text-center flex-shrink-0" />
+                      <NavIcon name={item.path} />
                       {!collapsed && item.label}
                     </Link>
                   );
@@ -248,10 +293,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <Link
                         key={c.path}
                         to={to}
+                        aria-label={c.label}
                         title={
                           cLocked
                             ? `Requires ${(c.required || item.required || group.required)?.join(" or ") || "another"} role`
-                            : `${item.label} · ${c.label}`
+                            : c.label
                         }
                         className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium mb-0.5 transition-all ${
                           cLocked
@@ -261,7 +307,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                               : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                         }`}
                       >
-                        <span className="text-base leading-none w-4 text-center flex-shrink-0" />
+                        <NavIcon name="gst" />
                       </Link>
                     );
                   });
@@ -281,7 +327,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                             : "text-slate-600 hover:bg-slate-50 hover:text-slate-800"
                       }`}
                     >
-                      <span className="text-base leading-none w-4 text-center flex-shrink-0" />
+                      <NavIcon name="gst" />
                       <span className="flex-1 text-left">{item.label}</span>
                       <span className="text-xs text-slate-400">
                         {open ? "▾" : "▸"}
@@ -328,7 +374,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="p-3 border-t border-slate-100">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="w-full flex items-center justify-center py-1.5 text-slate-400 hover:text-slate-600 text-xs gap-1"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="w-full flex items-center justify-center py-1.5 text-slate-500 hover:text-slate-700 text-xs gap-1"
           >
             {collapsed ? "→" : "← Collapse"}
           </button>
@@ -371,7 +418,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
               >
-                <span className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white font-semibold text-sm">
+                <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm">
                   {(user?.name || businessInitial).charAt(0).toUpperCase()}
                 </span>
                 <svg
@@ -397,7 +444,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 >
                   {/* Identity row — avatar + name/email */}
                   <div className="px-2.5 py-2 flex items-center gap-2.5">
-                    <span className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center text-white text-[13px] font-semibold flex-shrink-0">
+                    <span className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-[13px] font-semibold flex-shrink-0">
                       {(user?.name || businessInitial).charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0 flex-1">
