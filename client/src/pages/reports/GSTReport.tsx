@@ -83,7 +83,7 @@ export default function GSTReport() {
     <div>
       <PageHeader title="GST Report" subtitle="Tax-wise sales summary" />
       <Card className="p-4 mb-4">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <Input type="date" label="From" value={from} onChange={e=>setFrom(e.target.value)}/>
           <Input type="date" label="To"   value={to}   onChange={e=>setTo(e.target.value)}/>
           <div className="flex items-end">
@@ -91,7 +91,7 @@ export default function GSTReport() {
           </div>
         </div>
       </Card>
-      <div className="grid grid-cols-6 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
         {([["Taxable",s.taxableAmount],["CGST",s.cgstAmt],["SGST",s.sgstAmt],["IGST",s.igstAmt],["Total Tax",s.totalTax],["Grand Total",s.grandTotal]] as [string,number][]).map(([label,value])=>(
           <Card key={label} className="p-4"><p className="text-xs text-slate-500 mb-1">{label}</p><p className="text-lg font-bold text-slate-800">₹{fmt(value)}</p></Card>
         ))}

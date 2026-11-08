@@ -70,7 +70,7 @@ export default function GstR3Report() {
       ) : (
         s && (
           <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {[
                 ["Total Invoices", s.totalInvoices],
                 ["Taxable Amount", `₹${fmt(s.taxable)}`],
@@ -210,7 +210,7 @@ export default function GstR3Report() {
               <p className="text-xs text-slate-500 mb-4">
                 Output tax − Eligible ITC (clamped at zero per head)
               </p>
-              <div className="grid grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 {[
                   ["IGST", data.netPayable.igst],
                   ["CGST", data.netPayable.cgst],

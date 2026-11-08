@@ -112,7 +112,7 @@ export default function SaleRegister() {
     <div>
       <PageHeader title="Sale Register" subtitle="Invoice-wise sales report" />
       <Card className="p-4 mb-4">
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Input type="date" label="From" value={from} onChange={e=>setFrom(e.target.value)} />
           <Input type="date" label="To"   value={to}   onChange={e=>setTo(e.target.value)} />
           <Select label="Customer" value={customerId} onChange={e=>setCustomerId(e.target.value)}

@@ -168,6 +168,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [company, setCompany] = useState<Company | null>(null);
   const [forbiddenMsg, setForbiddenMsg] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // On small screens the sidebar slides in, and always shows its labels.
+  const collapsedNow = collapsed && !drawerOpen;
+
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [drawerOpen]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -215,11 +232,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-slate-50">
+      {drawerOpen && (
+        <div
+          aria-hidden="true"
+          onClick={() => setDrawerOpen(false)}
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+        />
+      )}
       <aside
-        className={`${collapsed ? "w-16" : "w-56"} flex-shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-200`}
+        id="app-sidebar"
+        className={`${collapsedNow ? "w-16" : "w-56"} fixed md:static inset-y-0 left-0 z-40 ${drawerOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:translate-x-0 flex-shrink-0 bg-white border-r border-slate-200 flex flex-col transition-all duration-200`}
       >
         <div className="h-14 flex items-center px-4 border-b border-slate-100">
-          {!collapsed ? (
+          {!collapsedNow ? (
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
                 A
@@ -240,7 +265,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-3 px-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           {visibleNav.map((group) => (
             <div key={group.group} className="mb-4">
-              {!collapsed && (
+              {!collapsedNow && (
                 <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-1">
                   {group.group}
                 </div>
@@ -257,11 +282,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.path}
                       to={to}
-                      aria-label={collapsed ? item.label : undefined}
+                      aria-label={collapsedNow ? item.label : undefined}
                       title={
                         itemLocked
                           ? `Requires ${(item.required || group.required)?.join(" or ") || "another"} role`
-                          : collapsed
+                          : collapsedNow
                             ? item.label
                             : undefined
                       }
@@ -274,7 +299,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       }`}
                     >
                       <NavIcon name={item.path} />
-                      {!collapsed && item.label}
+                      {!collapsedNow && item.label}
                     </Link>
                   );
                 }
@@ -282,7 +307,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 const childActive = item.children.some((c) =>
                   isActive(location.pathname, c.path),
                 );
-                if (collapsed) {
+                if (collapsedNow) {
                   return item.children.map((c) => {
                     const cLocked = groupLocked || item.locked || c.locked;
                     const active = isActive(location.pathname, c.path);
@@ -371,20 +396,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="p-3 border-t border-slate-100">
+        <div className="hidden md:block p-3 border-t border-slate-100">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsedNow ? "Expand sidebar" : "Collapse sidebar"}
             className="w-full flex items-center justify-center py-1.5 text-slate-500 hover:text-slate-700 text-xs gap-1"
           >
-            {collapsed ? "→" : "← Collapse"}
+            {collapsedNow ? "→" : "← Collapse"}
           </button>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-6">
-          <div className="text-sm text-slate-500">
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden">
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between gap-3 px-4 md:px-6">
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            aria-label="Open menu"
+            aria-expanded={drawerOpen}
+            aria-controls="app-sidebar"
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
+          >
+            <NavIcon name="/purchases" />
+          </button>
+          <div className="hidden sm:block text-sm text-slate-500 truncate">
             {new Date().toLocaleDateString("en-IN", {
               weekday: "long",
               year: "numeric",
@@ -392,7 +427,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               day: "numeric",
             })}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2">
             <a
               href="https://github.com/vini1237777/AyurvedERP"
               target="_blank"
@@ -535,7 +570,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
       </div>
       {forbiddenMsg && (
         <Toast

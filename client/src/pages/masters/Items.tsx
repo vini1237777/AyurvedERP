@@ -581,7 +581,7 @@ export default function ItemMaster() {
           <div className="text-xs font-semibold text-slate-600 mb-2">
             Category Prices (A-Z), optional
           </div>
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-2">
             {CATEGORIES.map((cat) => (
               <div key={cat}>
                 <label className="text-xs text-slate-500 flex items-center gap-1 mb-1">
@@ -625,7 +625,7 @@ export default function ItemMaster() {
           Set sale rate for each customer category. Leave blank if not
           applicable.
         </p>
-        <div className="grid grid-cols-4 gap-3 max-h-96 overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-96 overflow-y-auto pr-1">
           {CATEGORIES.map((cat) => (
             <div key={cat}>
               <label className="text-xs font-semibold text-slate-600 block mb-1">

@@ -116,7 +116,7 @@ export default function GstR1Report() {
       </div>
 
       {data && (
-        <div className="grid grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
           {[
             ["Total Invoices", data.summary.totalInvoices],
             ["B2B", data.summary.b2bCount],

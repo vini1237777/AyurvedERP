@@ -141,7 +141,7 @@ export default function StockReport() {
         subtitle="Opening, Closing & Batch-wise stock"
       />
 
-      <div className="grid grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
         {[
           ["Total Batches", data.summary.totalBatches],
           ["Opening Qty", fmt(data.summary.totalOpeningQty)],
