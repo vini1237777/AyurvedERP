@@ -141,6 +141,9 @@ model Invoice {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
+  @@index([customerId, invoiceDate])
+  @@index([invoiceDate])
+  @@index([financialYear, invoiceDate])
   @@unique([invoiceNo, financialYear])
 }
 
@@ -170,6 +173,9 @@ model InvoiceItem {
   netValue        Float
   createdAt       DateTime          @default(now())
   salesReturnItem SalesReturnItem[]
+
+  @@index([invoiceId])
+  @@index([batchId])
 }
 
 model SalesReturn {
@@ -238,6 +244,8 @@ model Purchase {
   purchaseReturns   PurchaseReturn[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
+
+  @@index([financialYear, purchaseDate])
 }
 
 model PurchaseItem {
@@ -264,6 +272,8 @@ model PurchaseItem {
   netValue            Float
   createdAt           DateTime             @default(now())
   purchaseReturnItems PurchaseReturnItem[]
+
+  @@index([purchaseId])
 }
 
 model PurchaseReturn {
