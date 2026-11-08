@@ -361,6 +361,11 @@ export default function SaleEntry() {
       p.map((r) => (r.id === id ? calcRow({ ...r, [field]: val }) : r)),
     );
 
+  // Letters in a number field silently became 0 in the totals.
+  const updNum = (id: number, field: string, val: string) => {
+    if (/^\d*\.?\d*$/.test(val)) upd(id, field, val);
+  };
+
   // Typing in a picked row means a different item is wanted, so its batch, rate
   // and tax must not carry over to whatever gets typed.
   function typeItemName(rowId: number, text: string) {
@@ -535,8 +540,6 @@ export default function SaleEntry() {
 
   const inp =
     "border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-300 transition-all";
-  const lock =
-    "border border-slate-100 rounded-lg bg-slate-50 text-sm text-slate-400 cursor-not-allowed";
   const ti =
     "border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all";
 
@@ -546,6 +549,7 @@ export default function SaleEntry() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate("/sales")}
+            aria-label="Back to all invoices"
             className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors text-lg"
           >
             ←
@@ -695,15 +699,12 @@ export default function SaleEntry() {
               </select>
             </div>
             <div className="col-span-2">
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
+              <div className="text-xs font-semibold text-slate-500 mb-1.5">
                 Customer GSTIN
-              </label>
-              <input
-                value={customer?.gstin || ""}
-                readOnly
-                placeholder="Auto-filled from customer"
-                className={`${lock} w-full px-3 py-2.5`}
-              />
+              </div>
+              <div className="px-3 py-2.5 text-sm text-slate-500">
+                {customer ? customer.gstin || "No GSTIN" : "Fills in from the customer"}
+              </div>
             </div>
           </div>
           {lastFilled && (
@@ -815,11 +816,9 @@ export default function SaleEntry() {
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          value={row.hsn}
-                          readOnly
-                          className={`${ti} bg-slate-50/80 text-slate-400 text-center cursor-not-allowed border-transparent`}
-                        />
+<div className="text-xs text-slate-500 text-center">
+                          {row.hsn}
+                        </div>
                       </td>
                       <td className="px-2 py-1.5">
                         <select
@@ -832,6 +831,8 @@ export default function SaleEntry() {
                             );
                             if (b) selectBatch(row.id, b);
                           }}
+                          id={fieldId(row.id, "batch")}
+                          aria-label={`Batch, row ${idx + 1}`}
                           className="border border-slate-200 rounded-md text-xs bg-white outline-none focus:border-blue-400 w-full px-1.5 py-1 cursor-pointer"
                         >
                           <option value="">-- Batch --</option>
@@ -843,65 +844,74 @@ export default function SaleEntry() {
                         </select>
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          value={currBatch?.expiryDate || ""}
-                          readOnly
-                          className={`${ti} bg-slate-50/80 text-slate-400 text-center cursor-not-allowed border-transparent`}
-                        />
+<div className="text-xs text-slate-500 text-center whitespace-nowrap">
+                          {currBatch?.expiryDate || ""}
+                        </div>
+                      </td>
+                      <td className="px-2 py-1.5">
+<div className="num text-xs text-slate-500 px-1.5">
+                          {row.mrp ? fmt(row.mrp) : ""}
+                        </div>
                       </td>
                       <td className="px-2 py-1.5">
                         <input
-                          value={row.mrp ? fmt(row.mrp) : ""}
-                          readOnly
-                          className={`${ti} bg-slate-50/80 text-slate-400 cursor-not-allowed border-transparent`}
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <input
+                          id={fieldId(row.id, "price")}
+                          aria-label={`Rate, row ${idx + 1}`}
+                          inputMode="decimal"
                           value={row.price}
-                          onChange={(e) => upd(row.id, "price", e.target.value)}
-                          className={ti}
+                          onChange={(e) => updNum(row.id, "price", e.target.value)}
+                          className={`${ti} num`}
                           placeholder="0"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          id={fieldId(row.id, "qty")}
+                          aria-label={`Qty, row ${idx + 1}`}
+                          inputMode="decimal"
                           value={row.qty}
-                          onChange={(e) => upd(row.id, "qty", e.target.value)}
-                          className={ti}
+                          onChange={(e) => updNum(row.id, "qty", e.target.value)}
+                          className={`${ti} num`}
                           placeholder="0"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          id={fieldId(row.id, "free")}
+                          aria-label={`Free, row ${idx + 1}`}
+                          inputMode="decimal"
                           value={row.free}
-                          onChange={(e) => upd(row.id, "free", e.target.value)}
-                          className={ti}
+                          onChange={(e) => updNum(row.id, "free", e.target.value)}
+                          className={`${ti} num`}
                           placeholder="0"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          id={fieldId(row.id, "disc")}
+                          aria-label={`Discount percent, row ${idx + 1}`}
+                          inputMode="decimal"
                           value={row.disc}
-                          onChange={(e) => upd(row.id, "disc", e.target.value)}
-                          className={ti}
+                          onChange={(e) => updNum(row.id, "disc", e.target.value)}
+                          className={`${ti} num`}
                           placeholder="0"
                         />
                       </td>
                       <td className="px-2 py-1.5">
                         <input
+                          id={fieldId(row.id, "sDis")}
+                          aria-label={`Special discount percent, row ${idx + 1}`}
+                          inputMode="decimal"
                           value={row.sDis}
-                          onChange={(e) => upd(row.id, "sDis", e.target.value)}
-                          className={ti}
+                          onChange={(e) => updNum(row.id, "sDis", e.target.value)}
+                          className={`${ti} num`}
                           placeholder="0"
                         />
                       </td>
                       <td className="px-2 py-1.5">
-                        <input
-                          value={row.gst || ""}
-                          readOnly
-                          className={`${ti} bg-slate-50/80 text-slate-400 text-center cursor-not-allowed border-transparent`}
-                        />
+<div className="num text-xs text-slate-500 px-1.5">
+                          {row.gst || ""}
+                        </div>
                       </td>
                       <td className="px-3 py-2 text-right text-xs font-medium text-slate-500">
                         {calc.netValue > 0 ? (
@@ -922,6 +932,7 @@ export default function SaleEntry() {
                       <td className="px-2 py-2 text-center">
                         <button
                           onClick={() => delRow(row.id)}
+                          aria-label={`Remove row ${idx + 1}`}
                           className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors mx-auto text-lg leading-none"
                         >
                           ×
