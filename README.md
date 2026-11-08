@@ -9,6 +9,42 @@ ERP built with React, Express, PostgreSQL, and Prisma.
 > demonstrate ERP workflows, GST reports, and inventory behavior. It does not
 > contain real client or business data.
 
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph Client["React + TypeScript client"]
+    UI["Billing, purchases, masters and reports"]
+  end
+
+  subgraph API["Express API, one process or a Node cluster"]
+    Auth["JWT auth and role checks"]
+    Controllers["Business controllers"]
+    Tax["GST calculation"]
+    Stock["Batch stock updates"]
+    Ledger["Double entry posting"]
+    Reports["Report aggregation"]
+  end
+
+  subgraph Data["Data layer"]
+    Prisma["Prisma ORM"]
+    Postgres[("PostgreSQL")]
+    Redis[("Redis cache")]
+  end
+
+  UI -->|"REST + bearer token"| Auth
+  Auth --> Controllers
+  Controllers --> Tax
+  Controllers --> Stock
+  Controllers --> Ledger
+  Controllers --> Reports
+  Stock --> Prisma
+  Ledger --> Prisma
+  Reports --> Prisma
+  Prisma --> Postgres
+  Controllers -.->|"Item, customer and dashboard reads, falls back to Postgres"| Redis
+```
+
 ## Features
 
 - Supports sales invoices, purchase entries, sale returns, cancellation flows,
@@ -24,50 +60,6 @@ ERP built with React, Express, PostgreSQL, and Prisma.
   and company profile data.
 - Ships with demo-ready seeded records so reviewers can inspect billing,
   reporting, and inventory flows without real business data.
-
-## Architecture
-
-```mermaid
-flowchart LR
-  subgraph Browser["React + TypeScript Client"]
-    Dashboard["Dashboard"]
-    Sales["Sales and Returns"]
-    Purchases["Purchases"]
-    Masters["Masters and Pricing"]
-    Reports["GST, Stock, Ledger Reports"]
-    Print["Invoice and Purchase Print Views"]
-  end
-
-  subgraph API["Node.js + Express API"]
-    Routes["REST Routes"]
-    Controllers["Business Controllers"]
-    Tax["GST and Amount Calculation"]
-    Stock["Batch Stock Updates"]
-    ReportLogic["Report Aggregation"]
-  end
-
-  subgraph Data["Data Layer"]
-    Prisma["Prisma ORM"]
-    Postgres["PostgreSQL"]
-  end
-
-  Dashboard --> Routes
-  Sales --> Routes
-  Purchases --> Routes
-  Masters --> Routes
-  Reports --> Routes
-  Sales --> Print
-  Purchases --> Print
-  Routes --> Controllers
-  Controllers --> Tax
-  Controllers --> Stock
-  Controllers --> ReportLogic
-  Controllers --> Prisma
-  Tax --> Prisma
-  Stock --> Prisma
-  ReportLogic --> Prisma
-  Prisma --> Postgres
-```
 
 ## Core Modules
 
@@ -88,6 +80,7 @@ flowchart LR
 | Backend | Node.js, Express, TypeScript |
 | Database | PostgreSQL |
 | ORM | Prisma |
+| Cache | Redis, optional |
 
 ## Data Model
 
@@ -97,6 +90,40 @@ The Prisma schema currently models:
 - Sales invoices with invoice items and sales returns with return items.
 - Purchases with purchase items and purchase returns with return items.
 - Item category pricing for customer-category rate workflows.
+
+## Database Performance
+
+Each index below serves a query the app really runs. Two other candidates were
+tested and dropped: `Batch(itemId, createdAt)` saved about 0.2 ms, and nothing
+in the app filters purchases by supplier.
+
+| Index | Query it serves | Before | After |
+| --- | --- | --- | --- |
+| `Invoice(customerId, invoiceDate)` | Invoice list for one customer, page 1 | 27.89 ms | 0.15 ms |
+| | Party ledger, one customer, one year | 18.24 ms | 0.06 ms |
+| `Invoice(invoiceDate)` | Invoice list, newest first, page 1 | 28.35 ms | 0.04 ms |
+| | Sale register, one month | 30.67 ms | 2.37 ms |
+| `Invoice(financialYear, invoiceDate)` | Invoice list, oldest year, page 1 | 25.16 ms | 0.09 ms |
+| | GST summary, one year and month | 19.37 ms | 1.83 ms |
+| `InvoiceItem(invoiceId)` | Lines of one invoice | 47.54 ms | 0.01 ms |
+| `InvoiceItem(batchId)` | Check an unsold batch before deleting it | 49.38 ms | under 0.01 ms |
+| `Purchase(financialYear, purchaseDate)` | Purchase list, oldest year, page 1 | 2.72 ms | 0.03 ms |
+| `PurchaseItem(purchaseId)` | Lines of one purchase | 5.85 ms | 0.01 ms |
+
+These indexes have a cost and some limits:
+
+- Inserting 1,000 invoices with 4 lines each went from about 92 ms to 106 ms.
+- Index storage on these tables went from 29 MB to 52 MB.
+- The whole-year GST summary reads about a third of the table, so it improves
+  far less (28 ms to 15 ms). The HSN summary improves, but its timing varies a
+  lot between runs (70 to 97 ms before, 10 to 61 ms after).
+
+Measured with `EXPLAIN ANALYZE` on a laptop against synthetic data: 100,000
+invoices, 400,000 invoice lines, 20,000 purchases and 80,000 purchase lines.
+Times are the median of 5 benchmark runs, each taking the median of 9
+executions. Treat them as a before and after comparison, not production numbers.
+
+To reproduce, see [`server/src/scripts/db-benchmark.ts`](server/src/scripts/db-benchmark.ts).
 
 ## API Surface
 
