@@ -13,6 +13,7 @@ import {
   Toast,
   Input,
   Select,
+  ConfirmDialog,
 } from "../../components/ui";
 import { Pagination, usePagination } from "../../components/ui/Pagination";
 import type { Customer, CustomerFormData } from "../../types";
@@ -148,19 +149,35 @@ export default function CustomerMaster() {
     }
   }
 
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
   async function handleDelete(id: number) {
-    if (!confirm("Delete this customer?")) return;
+    setConfirming(true);
     try {
       await customerApi.delete(id);
       setToast({ msg: "Customer deleted", type: "success" });
       load();
     } catch {
       setToast({ msg: "Failed to delete", type: "error" });
+    } finally {
+      setConfirming(false);
+      setPendingId(null);
     }
   }
 
   return (
     <div>
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Delete this customer?"
+        message="They're removed from the customer list. This can't be undone."
+        confirmLabel="Delete customer"
+        cancelLabel="Keep customer"
+        busy={confirming}
+        onConfirm={() => pendingId !== null && handleDelete(pendingId)}
+        onCancel={() => setPendingId(null)}
+      />
       {toast && (
         <Toast
           message={toast.msg}
@@ -253,7 +270,7 @@ export default function CustomerMaster() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(c.id)}
+                              onClick={() => setPendingId(c.id)}
                               className="text-red-500 hover:text-red-700"
                             >
                               Delete

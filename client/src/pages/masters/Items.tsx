@@ -13,6 +13,7 @@ import {
   Toast,
   Input,
   Select,
+  ConfirmDialog,
 } from "../../components/ui";
 import { Pagination, usePagination } from "../../components/ui/Pagination";
 import { fmt } from "../../utils/invoice.utils";
@@ -205,14 +206,20 @@ export default function ItemMaster() {
     }
   }
 
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
   async function handleDelete(id: number) {
-    if (!confirm("Delete this item?")) return;
+    setConfirming(true);
     try {
       await itemApi.delete(id);
       setToast({ msg: "Item deleted", type: "success" });
       load();
     } catch {
       setToast({ msg: "Failed to delete", type: "error" });
+    } finally {
+      setConfirming(false);
+      setPendingId(null);
     }
   }
 
@@ -235,6 +242,16 @@ export default function ItemMaster() {
 
   return (
     <div>
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Delete this item?"
+        message="It's removed from the item list. This can't be undone."
+        confirmLabel="Delete item"
+        cancelLabel="Keep item"
+        busy={confirming}
+        onConfirm={() => pendingId !== null && handleDelete(pendingId)}
+        onCancel={() => setPendingId(null)}
+      />
       {toast && (
         <Toast
           message={toast.msg}
@@ -395,7 +412,7 @@ export default function ItemMaster() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDelete(item.id)}
+                                onClick={() => setPendingId(item.id)}
                                 className="text-red-500"
                               >
                                 Delete

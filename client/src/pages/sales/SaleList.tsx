@@ -11,6 +11,7 @@ import {
   EmptyState,
   LoadingScreen,
   Toast,
+  ConfirmDialog,
 } from "../../components/ui";
 import { Pagination } from "../../components/ui/Pagination";
 import type { Invoice } from "../../types";
@@ -95,14 +96,20 @@ export default function SaleList() {
     setPage(1);
   }, [selectedFY, perPage, query, sortDir]);
 
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
   async function handleCancel(id: number) {
-    if (!confirm("Cancel this invoice? Stock will be reversed.")) return;
+    setConfirming(true);
     try {
       await invoiceApi.cancel(id);
       setToast({ msg: "Invoice cancelled", type: "success" });
       load();
     } catch {
       setToast({ msg: "Failed to cancel", type: "error" });
+    } finally {
+      setConfirming(false);
+      setPendingId(null);
     }
   }
 
@@ -192,6 +199,16 @@ export default function SaleList() {
 
   return (
     <div>
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Cancel this invoice?"
+        message="Its stock goes back to the batches. This can't be undone."
+        confirmLabel="Cancel invoice"
+        cancelLabel="Keep invoice"
+        busy={confirming}
+        onConfirm={() => pendingId !== null && handleCancel(pendingId)}
+        onCancel={() => setPendingId(null)}
+      />
       {toast && (
         <Toast
           message={toast.msg}
@@ -334,7 +351,7 @@ export default function SaleList() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleCancel(inv.id)}
+                              onClick={() => setPendingId(inv.id)}
                               className="text-red-500"
                             >
                               Cancel

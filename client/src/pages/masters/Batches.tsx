@@ -13,6 +13,7 @@ import {
   Toast,
   Input,
   Select,
+  ConfirmDialog,
 } from "../../components/ui";
 import { Pagination, usePagination } from "../../components/ui/Pagination";
 import type { Batch, Item, BatchFormData } from "../../types";
@@ -199,14 +200,20 @@ export default function BatchMaster() {
     }
   }
 
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
   async function handleDelete(id: number) {
-    if (!confirm("Delete this batch?")) return;
+    setConfirming(true);
     try {
       await batchApi.delete(id);
       setToast({ msg: "Deleted", type: "success" });
       load();
     } catch {
       setToast({ msg: "Failed to delete", type: "error" });
+    } finally {
+      setConfirming(false);
+      setPendingId(null);
     }
   }
 
@@ -300,6 +307,16 @@ export default function BatchMaster() {
 
   return (
     <div>
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Delete this batch?"
+        message="It's removed from the batch list. This can't be undone."
+        confirmLabel="Delete batch"
+        cancelLabel="Keep batch"
+        busy={confirming}
+        onConfirm={() => pendingId !== null && handleDelete(pendingId)}
+        onCancel={() => setPendingId(null)}
+      />
       {toast && (
         <Toast
           message={toast.msg}
@@ -423,10 +440,10 @@ export default function BatchMaster() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDelete(b.id)}
+                              onClick={() => setPendingId(b.id)}
                               className="text-red-500"
                             >
-                              Del
+                              Delete
                             </Button>
                           </div>
                         </td>

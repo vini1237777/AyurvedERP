@@ -11,6 +11,7 @@ import {
   EmptyState,
   LoadingScreen,
   Toast,
+  ConfirmDialog,
 } from "../../components/ui";
 import { Pagination } from "../../components/ui/Pagination";
 
@@ -72,14 +73,20 @@ export default function PurchaseList() {
     setPage(1);
   }, [selectedFY, perPage]);
 
+  const [pendingId, setPendingId] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
   async function handleCancel(id: number) {
-    if (!confirm("Cancel this purchase?")) return;
+    setConfirming(true);
     try {
       await authFetch(`${API}/purchases/${id}/cancel`, { method: "PATCH" });
       setToast({ msg: "Purchase cancelled", type: "success" });
       load();
     } catch {
       setToast({ msg: "Failed to cancel", type: "error" });
+    } finally {
+      setConfirming(false);
+      setPendingId(null);
     }
   }
 
@@ -146,6 +153,16 @@ export default function PurchaseList() {
 
   return (
     <div>
+      <ConfirmDialog
+        open={pendingId !== null}
+        title="Cancel this purchase?"
+        message="The stock it added comes off the batches. This can't be undone."
+        confirmLabel="Cancel purchase"
+        cancelLabel="Keep purchase"
+        busy={confirming}
+        onConfirm={() => pendingId !== null && handleCancel(pendingId)}
+        onCancel={() => setPendingId(null)}
+      />
       {toast && (
         <Toast
           message={toast.msg}
@@ -275,7 +292,7 @@ export default function PurchaseList() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleCancel(p.id)}
+                              onClick={() => setPendingId(p.id)}
                               className="text-red-500"
                             >
                               Cancel
