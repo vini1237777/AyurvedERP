@@ -46,7 +46,10 @@ export const getNextNo = async (_req: Request, res: Response) => {
 
 export const getAll = async (req: Request, res: Response) => {
   try {
-    const { from, to, customerId, page, limit, financialYear } = req.query;
+    const { from, to, customerId, page, limit, financialYear, q, sort } =
+      req.query;
+    const search = typeof q === "string" ? q.trim() : "";
+    const dir = sort === "asc" ? ("asc" as const) : ("desc" as const);
   
     const requestedLimit = limit !== undefined ? parseInt(String(limit), 10) : 50;
     const limitNum = Number.isFinite(requestedLimit) ? requestedLimit : 50;
@@ -63,6 +66,20 @@ export const getAll = async (req: Request, res: Response) => {
         : {}),
       ...(customerId ? { customerId: parseInt(String(customerId), 10) } : {}),
       ...(financialYear ? { financialYear: String(financialYear) } : {}),
+      ...(search
+        ? {
+            OR: [
+              {
+                invoiceNo: { contains: search, mode: "insensitive" as const },
+              },
+              {
+                customer: {
+                  name: { contains: search, mode: "insensitive" as const },
+                },
+              },
+            ],
+          }
+        : {}),
       status: { not: "CANCELLED" },
     };
 
@@ -78,7 +95,7 @@ export const getAll = async (req: Request, res: Response) => {
         prisma.invoice.findMany({
           where,
           include: includeForList,
-          orderBy: [{ invoiceDate: "desc" }, { id: "desc" }],
+          orderBy: [{ invoiceDate: dir }, { id: dir }],
           skip: (pageNum - 1) * limitNum,
           take: limitNum,
         }),

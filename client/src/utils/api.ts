@@ -251,6 +251,8 @@ export const invoiceApi = {
     financialYear?: string;
     page?: number;
     limit?: number;
+    q?: string;
+    sort?: "asc" | "desc";
   }) =>
     api
       .get<InvoicePage>("/invoices", {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { thAlign } from "../../components/ui/tableAlign";
 import { Link, useLocation } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
@@ -24,27 +24,7 @@ function getCurrentFY(): string {
   return `${y - 1}-${String(y).slice(2)}`;
 }
 
-function normalizeText(value: string) {
-  return (value || "")
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .trim();
-}
 
-function matchesAlphabetMode(invoice: Invoice, query: string) {
-  const q = normalizeText(query);
-  if (!q) return true;
-
-  const invoiceNo = normalizeText(String(invoice.invoiceNo));
-  const customerName = normalizeText(invoice.customer?.name || "");
-
-  if (q.length === 1) {
-    return invoiceNo.startsWith(q) || customerName.startsWith(q);
-  }
-
-  return invoiceNo.includes(q) || customerName.includes(q);
-}
 
 function recentFYs(): string[] {
   const now = new Date();
@@ -69,6 +49,13 @@ export default function SaleList() {
     type: "success" | "error";
   } | null>(null);
 
+  // Wait for a pause in typing, so each key press doesn't hit the server.
+  const [query, setQuery] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -76,6 +63,8 @@ export default function SaleList() {
         financialYear: selectedFY,
         page,
         limit: perPage,
+        q: query || undefined,
+        sort: sortDir,
       });
       setInvoices(res.rows || []);
       setTotal(res.total || 0);
@@ -84,7 +73,7 @@ export default function SaleList() {
     } finally {
       setLoading(false);
     }
-  }, [selectedFY, page, perPage]);
+  }, [selectedFY, page, perPage, query, sortDir]);
 
   useEffect(() => {
     const savedNo = (location.state as { savedInvoiceNo?: string } | null)
@@ -104,7 +93,7 @@ export default function SaleList() {
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1);
-  }, [selectedFY, perPage]);
+  }, [selectedFY, perPage, query, sortDir]);
 
   async function handleCancel(id: number) {
     if (!confirm("Cancel this invoice? Stock will be reversed.")) return;
@@ -117,17 +106,7 @@ export default function SaleList() {
     }
   }
 
-  // Search/sort run client-side within the current server page. For deep
-  // searching across all pages, expand the server endpoint to accept ?q=.
-  const filtered = useMemo(() => {
-    return invoices
-      .filter((i) => matchesAlphabetMode(i, search))
-      .sort((a, b) => {
-        const diff =
-          new Date(a.invoiceDate).getTime() - new Date(b.invoiceDate).getTime();
-        return sortDir === "desc" ? -diff : diff;
-      });
-  }, [invoices, search, sortDir]);
+  const filtered = invoices;
 
   const totalSales = filtered.reduce((s, i) => s + i.grandTotal, 0);
   const from = total === 0 ? 0 : (page - 1) * perPage + 1;
@@ -223,13 +202,14 @@ export default function SaleList() {
 
       <PageHeader
         title="All Invoices"
-        subtitle={`${total} invoices in FY ${selectedFY} · Page total ₹${fmt(totalSales)}`}
+        subtitle={`${total} invoices in FY ${selectedFY}, ₹${fmt(totalSales)} on this page`}
         actions={
           <>
             <input
+              aria-label="Search invoice or customer"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search invoice or party..."
+              placeholder="Search invoice or customer..."
               className="border border-slate-200 rounded-lg px-3 py-2 text-sm w-64 outline-none focus:border-blue-500"
             />
             <button
