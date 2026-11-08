@@ -40,14 +40,14 @@ export default function NoAccess() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-slate-500">Your role</span>
-            <span className="font-mono text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
               {currentRole}
             </span>
           </div>
           {required.length > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Required role</span>
-              <span className="font-mono text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-100 text-blue-700">
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700">
                 {required.join(" or ")}
               </span>
             </div>

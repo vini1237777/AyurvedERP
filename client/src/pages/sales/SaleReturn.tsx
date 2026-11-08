@@ -177,7 +177,7 @@ export default function SaleReturn() {
 
   if (done) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+      <div className="min-h-screen bg-paper flex items-center justify-center">
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-10 text-center max-w-md">
           <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
             ✓
@@ -219,7 +219,7 @@ export default function SaleReturn() {
 
   if (step === "select") {
     return (
-      <div className="min-h-screen bg-[#f8fafc]">
+      <div className="min-h-screen bg-paper">
         <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4 sticky top-0 z-50 shadow-sm">
           <button
             onClick={() => navigate("/sales")}
@@ -318,7 +318,7 @@ export default function SaleReturn() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc]">
+    <div className="min-h-screen flex flex-col bg-paper">
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <button

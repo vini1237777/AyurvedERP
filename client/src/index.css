@@ -5,20 +5,110 @@
 * { box-sizing: border-box; }
 
 body {
-  font-family: 'Inter', Arial, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+  font-family: 'Anek Latin', Arial, sans-serif;
+  font-variant-numeric: lining-nums;
+  background: #F2F6EC;
+  color: #14256B;
   margin: 0;
   padding: 0;
 }
 
 input, select, textarea {
-  font-family: 'Inter', Arial, sans-serif;
+  font-family: 'Anek Latin', Arial, sans-serif;
+}
+
+/* Fields are lines to write on, as in an account book. */
+input:not([type="checkbox"], [type="radio"], .boxed),
+select:not(.boxed),
+textarea:not(.boxed) {
+  border-width: 0 0 1.5px;
+  border-style: solid;
+  border-color: #14256B;
+  background-color: transparent;
+  padding-inline: 2px;
+}
+input:not([type="checkbox"], [type="radio"], .boxed):focus,
+select:not(.boxed):focus,
+textarea:not(.boxed):focus {
+  border-bottom-color: #C8102E;
+  border-bottom-width: 2px;
+  box-shadow: none;
+  background-color: #FBFDF7;
+}
+[aria-invalid="true"]:not(.boxed) {
+  border-bottom-color: #C8102E;
+}
+/* Inside a ruled table the row already gives the line. */
+table input:not([type="checkbox"], [type="radio"]) {
+  border-bottom-color: transparent;
+}
+table select {
+  border-bottom-color: #BCCCE0;
+}
+
+/* Ruled rows and red column lines. */
+table thead th {
+  background-color: #F2F6EC !important;
+  box-shadow: inset 0 1.5px 0 #14256B, inset 0 -1.5px 0 #14256B;
+}
+table tbody td {
+  border-bottom: 1px solid #BCCCE0;
+}
+table th + th,
+table td + td {
+  border-left: 1px solid #E79AA6;
+}
+
+/* Something to look at, circled in red pen. */
+.pen-ring {
+  display: inline-block;
+  padding: 0 0.5em;
+  border: 1.75px solid #C8102E;
+  border-radius: 52% 46% 50% 48%;
+  color: #B00D27;
+  font-weight: 600;
+  white-space: nowrap;
+  transform: rotate(-2deg);
+}
+
+/* A total, closed the way accountants close one. */
+.ledger-total {
+  border-top: 1.5px solid #14256B;
+  border-bottom: 4px double #14256B;
+}
+
+/* The page's double red margin. */
+.ledger-page {
+  background-image:
+    linear-gradient(#C8102E, #C8102E), linear-gradient(#C8102E, #C8102E);
+  background-size: 1px 100%, 1px 100%;
+  background-position: 10px 0, 14px 0;
+  background-repeat: no-repeat;
+  padding-left: 26px;
+}
+@media (min-width: 768px) {
+  .ledger-page {
+    background-position: 28px 0, 32px 0;
+    padding-left: 48px;
+  }
+}
+
+/* A full-screen sheet: the stitched cover edge, then the same margin. */
+.ledger-sheet {
+  background-color: #F2F6EC;
+  background-image:
+    repeating-linear-gradient(to bottom, #F4C95D 0 7px, transparent 7px 12px),
+    linear-gradient(#9E1B32, #9E1B32),
+    linear-gradient(#C8102E, #C8102E), linear-gradient(#C8102E, #C8102E);
+  background-size: 2px 100%, 18px 100%, 1px 100%, 1px 100%;
+  background-position: 8px 0, 0 0, 30px 0, 34px 0;
+  background-repeat: no-repeat;
+  padding-left: 22px;
 }
 
 /* Keyboard users always see where they are. Mouse clicks don't show the ring. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #C8102E;
   outline-offset: 1px;
 }
 
@@ -39,7 +129,6 @@ input, select, textarea {
   position: sticky;
   top: 0;
   z-index: 2;
-  background: #f8fafc;
 }
 .frozen-table tbody td:first-child,
 .frozen-table tfoot td:first-child,
@@ -47,11 +136,10 @@ input, select, textarea {
   position: sticky;
   left: 0;
   z-index: 1;
-  background: #fff;
+  background: #F2F6EC;
 }
 .frozen-table thead th:first-child {
   z-index: 3;
-  background: #f8fafc;
 }
 @media print {
   .frozen-table { overflow: visible; max-height: none; }
@@ -59,9 +147,9 @@ input, select, textarea {
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #f1f5f9; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-track { background: #E8EEE0; }
+::-webkit-scrollbar-thumb { background: #9AADCB; }
+::-webkit-scrollbar-thumb:hover { background: #5B6993; }
 
 /* Print */
 @media print {

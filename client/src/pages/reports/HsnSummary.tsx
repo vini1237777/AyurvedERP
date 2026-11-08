@@ -182,7 +182,7 @@ export default function HsnSummary() {
                   ].map((h, i) => (
                     <th
                       key={h}
-                      className={`px-4 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wider ${i >= 3 ? "text-right" : "text-left"}`}
+                      className={`px-4 py-2.5 font-semibold text-slate-600 text-xs ${i >= 3 ? "text-right" : "text-left"}`}
                     >
                       {h}
                     </th>

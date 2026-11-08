@@ -121,19 +121,19 @@ export default function TrialBalance() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs">
                     Code
                   </th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs">
                     Account
                   </th>
-                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                  <th className="text-left px-4 py-2.5 font-semibold text-slate-600 text-xs">
                     Type
                   </th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                  <th className="text-right px-4 py-2.5 font-semibold text-slate-600 text-xs">
                     Debit (Dr)
                   </th>
-                  <th className="text-right px-4 py-2.5 font-semibold text-slate-600 text-xs uppercase tracking-wider">
+                  <th className="text-right px-4 py-2.5 font-semibold text-slate-600 text-xs">
                     Credit (Cr)
                   </th>
                 </tr>

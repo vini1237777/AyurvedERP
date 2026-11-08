@@ -44,7 +44,7 @@ export default function Login() {
   const busy = busyAs !== null;
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center px-4 py-8">
+    <main className="min-h-screen bg-paper flex flex-col items-center justify-center px-4 py-8">
       <div className="flex items-center gap-2.5 mb-6">
         <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
           A

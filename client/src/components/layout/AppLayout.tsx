@@ -266,7 +266,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {visibleNav.map((group) => (
             <div key={group.group} className="mb-4">
               {!collapsedNow && (
-                <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-2 mb-1">
+                <div className="text-xs font-semibold text-slate-400 px-2 mb-1">
                   {group.group}
                 </div>
               )}
@@ -503,7 +503,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         .replace(/\b\w/g, (c) => c.toUpperCase())}
                     </span>
                     {(user as any)?.role && (
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                      <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                         {(user as any).role}
                       </span>
                     )}

@@ -357,7 +357,7 @@ export default function PurchaseEntry() {
     "border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white transition-all";
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc]">
+    <div className="min-h-screen flex flex-col bg-paper">
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <button
@@ -710,7 +710,7 @@ export default function PurchaseEntry() {
             key={l}
             className={`flex-1 text-center px-2 ${i < a.length - 1 ? "border-r border-slate-700" : ""}`}
           >
-            <div className="text-[10px] text-slate-500 uppercase">{l}</div>
+            <div className="text-[10px] text-slate-500">{l}</div>
             <div
               className={`text-sm font-bold ${i === a.length - 1 ? "text-blue-400" : "text-white"}`}
             >

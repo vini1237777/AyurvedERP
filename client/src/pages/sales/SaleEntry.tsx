@@ -661,7 +661,7 @@ export default function SaleEntry() {
     "border border-transparent rounded-md bg-transparent text-sm outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all";
 
   return (
-    <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden">
+    <div className="h-screen flex flex-col bg-paper overflow-hidden">
       {/* The form comes first in the page so Tab reaches Save after the fields,
           and order-first keeps the actions visually at the top. */}
       <main className="order-2 flex-1 min-h-0 overflow-auto px-6 py-3 flex flex-col gap-3">
