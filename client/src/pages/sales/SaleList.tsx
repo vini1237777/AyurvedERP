@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
 import { fmt } from "../../utils/invoice.utils";
 import {
@@ -62,6 +62,7 @@ export default function SaleList() {
   const [search, setSearch] = useState("");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
+  const location = useLocation();
   const [toast, setToast] = useState<{
     msg: string;
     type: "success" | "error";
@@ -83,6 +84,17 @@ export default function SaleList() {
       setLoading(false);
     }
   }, [selectedFY, page, perPage]);
+
+  useEffect(() => {
+    const savedNo = (location.state as { savedInvoiceNo?: string } | null)
+      ?.savedInvoiceNo;
+    if (!savedNo) return;
+    setToast({ msg: `Invoice ${savedNo} saved`, type: "success" });
+    // A refresh shouldn't announce the same save again.
+    window.history.replaceState({ ...window.history.state, usr: null }, "");
+    // Only the arrival from the billing screen matters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     load();

@@ -99,8 +99,13 @@ function sortBatches<T extends { currentQty: number; expiryDate?: string | null 
 }
 
 const fieldId = (rowId: number, field: string) => `row-${rowId}-${field}`;
-const focusField = (id: string) =>
-  requestAnimationFrame(() => document.getElementById(id)?.focus());
+// Move at once when the field exists, so fast typing can't land in the old field.
+// A row that was just added only exists after the next render.
+const focusField = (id: string) => {
+  const el = document.getElementById(id);
+  if (el) el.focus();
+  else requestAnimationFrame(() => document.getElementById(id)?.focus());
+};
 
 const newRow = (id: number): ExtRow => ({
   id,
@@ -329,7 +334,6 @@ export default function SaleEntry() {
   const [rows, setRows] = useState<ExtRow[]>([newRow(1)]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
   // State updates are async, so a fast double click would pass a state check.
   const savingRef = useRef(false);
 
@@ -574,12 +578,14 @@ export default function SaleEntry() {
         })),
       };
       const created = await invoiceApi.create(payload);
-      setSaved(true);
       // Print the number the server assigned, which can differ from the preview
       // number if someone else saved first.
       if (andPrint) handlePrint(created?.invoiceNo);
       // Leaving the form is what stops a second click billing the same sale.
-      navigate("/sales");
+      navigate("/sales", {
+        replace: true,
+        state: { savedInvoiceNo: created?.invoiceNo },
+      });
     } catch (err: any) {
       setError(
         err.response?.data?.error ||
@@ -650,82 +656,24 @@ export default function SaleEntry() {
   }, []);
 
   const inp =
-    "border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-300 transition-all";
+    "border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-400 transition-all";
   const ti =
-    "border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all";
+    "border border-transparent rounded-md bg-transparent text-sm outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all";
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f8fafc]">
-      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigate("/sales")}
-            aria-label="Back to all invoices"
-            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors text-lg"
-          >
-            ←
-          </button>
-          <div>
-            <div className="font-bold text-slate-800 text-[15px] leading-tight">
-              Create Invoice
-            </div>
-            <div className="text-xs text-slate-400">
-              {COMPANY.name}, Tasgaon
-            </div>
-          </div>
-          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-1.5 ml-1 flex items-center gap-1">
-            <span className="text-sm font-bold text-blue-700">{invoiceNo}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 text-xs px-3 py-1.5 rounded-lg font-medium">
-              {error}
-            </div>
-          )}
-          {saved && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs px-3 py-1.5 rounded-lg font-medium">
-              ✓ Saved
-            </div>
-          )}
-          <button
-            onClick={() => handlePrint()}
-            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium"
-          >
-            Preview & Print
-          </button>
-          <button
-            onClick={() => handleSave(true)}
-            disabled={saving}
-            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-medium disabled:opacity-50"
-          >
-            Save & Print
-          </button>
-          <button
-            onClick={() => handleSave(false)}
-            disabled={saving}
-            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
-          >
-            {saving && (
-              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            )}
-            Save →
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-auto px-6 py-5 flex flex-col gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <div className="px-5 py-3.5 border-b border-slate-100">
-            <h2 className="font-semibold text-slate-700 text-sm">
-              Invoice Details
-            </h2>
-          </div>
-          <div className="px-5 py-4 grid grid-cols-4 gap-4">
-            <div className="col-span-2">
+    <div className="h-screen flex flex-col bg-[#f8fafc] overflow-hidden">
+      {/* The form comes first in the page so Tab reaches Save after the fields,
+          and order-first keeps the actions visually at the top. */}
+      <main className="order-2 flex-1 min-h-0 overflow-auto px-6 py-3 flex flex-col gap-3">
+        <section
+          aria-label="Invoice details"
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-3"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            <div className="md:col-span-5">
               <label
                 htmlFor="sale-customer"
-                className="text-xs font-semibold text-slate-500 block mb-1.5"
+                className="text-xs font-semibold text-slate-600 block mb-1"
               >
                 Customer *
               </label>
@@ -735,73 +683,54 @@ export default function SaleEntry() {
                 onSelect={(c) => setCustomer(c)}
                 onPicked={() => focusField(fieldId(rows[0].id, "item"))}
               />
-              {customer && (
-                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      customer.balance < 0
-                        ? "bg-red-50 text-red-600"
-                        : "bg-emerald-50 text-emerald-600"
-                    }`}
-                  >
-                    Bal: ₹{Math.abs(customer.balance).toLocaleString("en-IN")}{" "}
-                    {customer.balance < 0 ? "Dr." : "Cr."}
-                  </span>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600">
-                    {taxType === "CGST_SGST" ? "CGST + SGST" : "IGST"}
-                  </span>
-                  {customer.gstin ? (
-                    <span className="text-xs font-mono px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">
-                      ✓ {customer.gstin}
-                    </span>
-                  ) : (
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-600">
-                      B2C, No GSTIN
-                    </span>
-                  )}
-                  {customer.category && (
-                    <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">
-                      Category: {customer.category}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
-                Invoice Date
+            <div className="md:col-span-2">
+              <label
+                htmlFor="sale-date"
+                className="text-xs font-semibold text-slate-600 block mb-1"
+              >
+                Invoice date
               </label>
               <input
+                id="sale-date"
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className={`${inp} w-full px-3 py-2.5`}
+                className={`${inp} w-full px-3 py-2`}
               />
             </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
+            <div className="md:col-span-2">
+              <label
+                htmlFor="sale-terms"
+                className="text-xs font-semibold text-slate-600 block mb-1"
+              >
                 Terms
               </label>
               <select
+                id="sale-terms"
                 value={terms}
                 onChange={(e) => setTerms(e.target.value)}
-                className={`${inp} w-full px-3 py-2.5 cursor-pointer`}
+                className={`${inp} w-full px-3 py-2 cursor-pointer`}
               >
                 <option>Credit</option>
                 <option>Cash</option>
                 <option>Advance</option>
               </select>
             </div>
-            <div className="col-span-2">
-              <label className="text-xs font-semibold text-slate-500 block mb-1.5">
-                Agent Name
+            <div className="md:col-span-3">
+              <label
+                htmlFor="sale-agent"
+                className="text-xs font-semibold text-slate-600 block mb-1"
+              >
+                Agent
               </label>
               <select
+                id="sale-agent"
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
-                className={`${inp} w-full px-3 py-2.5 cursor-pointer`}
+                className={`${inp} w-full px-3 py-2 cursor-pointer`}
               >
-                <option value="">-- Select Agent --</option>
+                <option value="">No agent</option>
                 {agents.map((a) => (
                   <option key={a.id} value={a.id}>
                     {a.name}
@@ -809,81 +738,81 @@ export default function SaleEntry() {
                 ))}
               </select>
             </div>
-            <div className="col-span-2">
-              <div className="text-xs font-semibold text-slate-500 mb-1.5">
-                Customer GSTIN
-              </div>
-              <div className="px-3 py-2.5 text-sm text-slate-500">
-                {customer ? customer.gstin || "No GSTIN" : "Fills in from the customer"}
-              </div>
-            </div>
           </div>
-          {lastFilled && (
-            <div className="mx-5 mb-4 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 flex items-center gap-5 text-xs flex-wrap">
-              <span className="text-slate-400">Last item:</span>
-              <span className="font-semibold text-slate-700">
-                {lastFilled.itemName}
+          {/* Always one line tall, so choosing a customer doesn't move the grid. */}
+          <div className="mt-2 min-h-[20px] flex flex-wrap items-center gap-x-5 text-xs text-slate-600">
+            {customer ? (
+              <>
+                <span>
+                  Balance{" "}
+                  <b
+                    className={
+                      customer.balance < 0 ? "text-red-600" : "text-slate-800"
+                    }
+                  >
+                    ₹{Math.abs(customer.balance).toLocaleString("en-IN")}{" "}
+                    {customer.balance < 0 ? "Dr" : "Cr"}
+                  </b>
+                </span>
+                <span>
+                  Tax{" "}
+                  <b className="text-slate-800">
+                    {taxType === "CGST_SGST" ? "CGST and SGST" : "IGST"}
+                  </b>
+                </span>
+                <span>
+                  GSTIN{" "}
+                  <b className="text-slate-800 font-mono">
+                    {customer.gstin || "None, billed as B2C"}
+                  </b>
+                </span>
+                {customer.category && (
+                  <span>
+                    Rate category{" "}
+                    <b className="text-slate-800">{customer.category}</b>
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-slate-500">
+                Balance, tax type and GSTIN show here once you choose a customer.
               </span>
-              <span className="text-slate-400">
-                Cost: <b className="text-slate-600">₹{fmt(lastCost)}</b>
-              </span>
-              <span className="text-slate-400">
-                Value:{" "}
-                <b className="text-slate-600">₹{fmt(lastFilled.netValue)}</b>
-              </span>
-              <span className="text-slate-400">
-                Profit:{" "}
-                <b
-                  className={
-                    lastProfit >= 0 ? "text-emerald-600" : "text-red-500"
-                  }
-                >
-                  ₹{fmt(lastProfit)}
-                </b>
-              </span>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </section>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-          <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-semibold text-slate-700 text-sm">
-              Products & Items
-            </h2>
-            <span className="text-xs text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full font-medium">
-              {filledRows.length} item(s)
-            </span>
-          </div>
-          <div
-            className="overflow-x-auto"
-            style={{ overflowX: "auto", overflowY: "visible" }}
-          >
-            <table className="w-full" style={{ minWidth: 1280 }}>
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100">
+        <section
+          aria-label="Items"
+          className="flex-1 min-h-[260px] flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+        >
+          <div className="flex-1 min-h-0 overflow-auto">
+            <table className="w-full" style={{ minWidth: 1246 }}>
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-slate-50 border-b border-slate-200">
                   {(
                     [
-                      ["#", 36, "center"],
-                      ["Item Name", 200, "left"],
-                      ["HSN", 80, "center"],
-                      ["Batch", 120, "center"],
-                      ["Exp", 72, "center"],
-                      ["MRP", 72, "right"],
-                      ["Rate", 80, "right"],
-                      ["Qty", 64, "right"],
-                      ["Free", 56, "right"],
-                      ["Dis %", 64, "right"],
-                      ["S Dis %", 68, "right"],
-                      ["GST %", 60, "right"],
-                      ["Taxable", 90, "right"],
-                      ["Total", 90, "right"],
-                      ["", 36, "center"],
+                      ["#", 36, "text-center"],
+                      ["Item", 240, "text-left"],
+                      ["HSN", 76, "text-center"],
+                      ["Batch", 236, "text-left"],
+                      ["Expiry", 76, "text-center"],
+                      ["MRP", 72, "text-right"],
+                      ["Rate", 80, "text-right"],
+                      ["Qty", 64, "text-right"],
+                      ["Free", 56, "text-right"],
+                      ["Dis %", 60, "text-right"],
+                      ["S Dis %", 64, "text-right"],
+                      ["GST %", 56, "text-right"],
+                      ["Taxable", 90, "text-right"],
+                      ["Total", 96, "text-right"],
+                      ["", 36, "text-center"],
                     ] as [string, number, string][]
                   ).map(([label, w, align]) => (
                     <th
                       key={label}
+                      scope="col"
                       style={{ width: w, minWidth: w }}
-                      className={`px-2 py-2.5 text-xs font-semibold text-slate-500 text-${align} whitespace-nowrap select-none`}
+                      className={`px-2 py-2 text-xs font-semibold text-slate-600 ${align} whitespace-nowrap select-none`}
                     >
                       {label}
                     </th>
@@ -912,7 +841,7 @@ export default function SaleEntry() {
                           : "bg-slate-50/20 hover:bg-slate-50/60"
                       }`}
                     >
-                      <td className="px-2 py-2 text-center text-xs text-slate-300 font-semibold">
+                      <td className="px-2 py-2 text-center text-xs text-slate-500 font-semibold">
                         {idx + 1}
                       </td>
                       <td className="px-2 py-1.5">
@@ -1055,27 +984,27 @@ export default function SaleEntry() {
                           {row.gst || ""}
                         </div>
                       </td>
-                      <td className="px-3 py-2 text-right text-xs font-medium text-slate-500">
+                      <td className="px-3 py-2 num text-xs font-medium text-slate-600">
                         {calc.netValue > 0 ? (
                           `₹${fmt(r2(calc.basicAmt - calc.discAmt))}`
                         ) : (
-                          <span className="text-slate-200">-</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2 num">
                         {calc.netValue > 0 ? (
                           <span className="text-sm font-bold text-slate-800">
                             ₹{fmt(calc.netValue)}
                           </span>
                         ) : (
-                          <span className="text-slate-200 text-xs">-</span>
+                          <span className="text-slate-400 text-xs">-</span>
                         )}
                       </td>
                       <td className="px-2 py-2 text-center">
                         <button
                           onClick={() => delRow(row.id)}
                           aria-label={`Remove row ${idx + 1}`}
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors mx-auto text-lg leading-none"
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors mx-auto text-lg leading-none"
                         >
                           ×
                         </button>
@@ -1086,74 +1015,118 @@ export default function SaleEntry() {
               </tbody>
             </table>
           </div>
-          <div className="px-5 py-3 border-t border-slate-100">
-            <button
-              onClick={addRow}
-              className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 font-medium border border-dashed border-blue-200 rounded-xl px-4 py-2 hover:bg-blue-50/50 hover:border-blue-300 transition-all"
-            >
-              <span className="text-lg leading-none">+</span> Add Item
-            </button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h2 className="font-semibold text-slate-700 text-sm mb-3">
-              Notes (Optional)
-            </h2>
-            <textarea
-              id="sale-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              aria-label="Notes"
-              placeholder="Add notes or special instructions..."
-              className={`${inp} w-full px-3 py-2.5 resize-none h-24`}
-            />
-          </div>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h2 className="font-semibold text-slate-700 text-sm mb-4">
-              Invoice Summary
-            </h2>
-            <div className="space-y-2.5 text-sm">
-              {(
-                [
-                  ["Total Discount", `₹${fmt(totDisc)}`],
-                  ["Taxable Amount", `₹${fmt(totTaxable)}`],
-                  ...(taxType === "CGST_SGST"
-                    ? [
-                        ["CGST", `₹${fmt(totCgst)}`],
-                        ["SGST", `₹${fmt(totSgst)}`],
-                      ]
-                    : [["IGST", `₹${fmt(totIgst)}`]]),
-                  ["Total Tax", `₹${fmt(totTax)}`],
-                ] as [string, string][]
-              ).map(([label, value]) => (
-                <div key={label} className="flex justify-between">
-                  <span className="text-slate-500">{label}</span>
-                  <span className="font-medium text-slate-700">{value}</span>
-                </div>
-              ))}
-              <div className="border-t border-slate-100 pt-3 flex justify-between items-baseline">
-                <span className="font-bold text-slate-800 text-base">
-                  Grand Total
-                </span>
-                <span className="font-bold text-blue-600 text-2xl">
-                  ₹{fmt(grand)}
-                </span>
-              </div>
+          <div className="border-t border-slate-200 px-5 py-2.5">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={addRow}
+                className="whitespace-nowrap flex items-center gap-1.5 text-sm text-blue-700 hover:text-blue-800 font-medium border border-dashed border-blue-300 rounded-xl px-3 py-1.5 hover:bg-blue-50/50 transition-all"
+              >
+                <span className="text-lg leading-none">+</span> Add item
+              </button>
+              <label htmlFor="sale-notes" className="sr-only">
+                Notes
+              </label>
+              <input
+                id="sale-notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Notes, printed on the invoice (optional)"
+                className={`${inp} flex-1 min-w-0 px-3 py-1.5`}
+              />
             </div>
-            <button
-              onClick={() => handlePrint()}
-              className="mt-4 w-full py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm active:scale-95"
-            >
-              Preview & Print →
-            </button>
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-5 text-xs text-slate-500">
+              <span>
+                Enter moves to the next field. Ctrl+S saves. Ctrl+P saves and
+                prints.
+              </span>
+              {lastFilled && (
+                <span>
+                  {lastFilled.itemName}: cost{" "}
+                  <b className="text-slate-700">₹{fmt(lastCost)}</b>, value{" "}
+                  <b className="text-slate-700">₹{fmt(lastFilled.netValue)}</b>,
+                  profit{" "}
+                  <b
+                    className={
+                      lastProfit >= 0 ? "text-slate-700" : "text-red-600"
+                    }
+                  >
+                    ₹{fmt(lastProfit)}
+                  </b>
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <header className="order-1 bg-white border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center gap-4 min-w-0">
+          <button
+            onClick={() => navigate("/sales")}
+            aria-label="Back to all invoices"
+            className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-700 transition-colors text-lg"
+          >
+            ←
+          </button>
+          <div className="min-w-0">
+            <h1 className="font-bold text-slate-800 text-[15px] leading-tight">
+              Create invoice
+            </h1>
+            <div className="text-xs text-slate-500 truncate">
+              {COMPANY.name}, Tasgaon
+            </div>
+          </div>
+          <div
+            title="The final number is set when you save"
+            className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-1.5 flex items-center gap-1"
+          >
+            <span className="text-sm font-bold text-blue-700 whitespace-nowrap">
+              {invoiceNo}
+            </span>
           </div>
         </div>
-        <div className="h-16" />
-      </div>
+        {error && (
+          <div
+            role="alert"
+            className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-1.5 rounded-lg font-medium"
+          >
+            {error}
+          </div>
+        )}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => handlePrint()}
+            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-medium whitespace-nowrap"
+          >
+            Preview
+          </button>
+          <button
+            onClick={() => handleSave(true)}
+            disabled={saving}
+            title="Ctrl+P"
+            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-medium disabled:opacity-50 whitespace-nowrap"
+          >
+            Save & Print
+          </button>
+          <button
+            onClick={() => handleSave(false)}
+            disabled={saving}
+            title="Ctrl+S"
+            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
+          >
+            {saving && (
+              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            )}
+            Save
+          </button>
+        </div>
+      </header>
 
-      <div className="bg-slate-900 text-white px-4 py-2.5 flex items-center sticky bottom-0 z-40 shadow-2xl">
+      <div
+        aria-label="Invoice totals"
+        role="group"
+        className="order-3 bg-slate-900 text-white px-4 py-2 flex items-center overflow-x-auto"
+      >
         {(
           [
             ["Items", String(filledRows.length)],
@@ -1162,28 +1135,35 @@ export default function SaleEntry() {
             ["Basic", `₹${fmt(totBasic)}`],
             ["Discount", `₹${fmt(totDisc)}`],
             ["Taxable", `₹${fmt(totTaxable)}`],
-            ["Tax", `₹${fmt(totTax)}`],
-            ["Net Bill", `₹${fmt(grand)}`],
+            ...(taxType === "CGST_SGST"
+              ? [
+                  ["CGST", `₹${fmt(totCgst)}`],
+                  ["SGST", `₹${fmt(totSgst)}`],
+                ]
+              : [["IGST", `₹${fmt(totIgst)}`]]),
+            ["Net bill", `₹${fmt(grand)}`],
           ] as [string, string][]
-        ).map(([label, value], i, arr) => (
-          <div
-            key={label}
-            className={`flex-1 text-center px-2 ${
-              i < arr.length - 1 ? "border-r border-slate-700" : ""
-            }`}
-          >
-            <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide leading-tight">
-              {label}
-            </div>
+        ).map(([label, value], i, arr) => {
+          const net = i === arr.length - 1;
+          return (
             <div
-              className={`text-sm font-bold leading-tight mt-0.5 ${
-                i === arr.length - 1 ? "text-blue-400" : "text-white"
+              key={label}
+              className={`flex-1 text-center px-3 whitespace-nowrap ${
+                net ? "" : "border-r border-slate-700"
               }`}
             >
-              {value}
+              <div className="text-xs text-slate-300 leading-tight">{label}</div>
+              <div
+                aria-live={net ? "polite" : undefined}
+                className={`font-bold leading-tight mt-0.5 [font-variant-numeric:tabular-nums] ${
+                  net ? "text-lg text-blue-300" : "text-sm text-white"
+                }`}
+              >
+                {value}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
