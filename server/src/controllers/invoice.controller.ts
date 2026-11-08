@@ -7,6 +7,8 @@ import {
   reverseEntriesFor,
 } from "../services/posting.service";
 
+const MAX_INVOICE_NO_ATTEMPTS = 5;
+
 class InsufficientStockError extends Error {}
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
@@ -19,8 +21,10 @@ function getCurrentFY(): string {
   return `20${String(y - 1).slice(2)}-${String(y).slice(2)}`;
 }
 
-async function getNextInvoiceNo(): Promise<string> {
-  const faInvoices = await prisma.invoice.findMany({
+async function getNextInvoiceNo(
+  db: Prisma.TransactionClient = prisma,
+): Promise<string> {
+  const faInvoices = await db.invoice.findMany({
     where: { invoiceNo: { startsWith: "FA-" } },
     select: { invoiceNo: true },
   });
@@ -29,6 +33,29 @@ async function getNextInvoiceNo(): Promise<string> {
     ...faInvoices.map((i) => parseInt(i.invoiceNo.replace("FA-", ""), 10) || 0),
   );
   return `FA-${String(maxNum + 1).padStart(2, "0")}`;
+}
+
+function isInvoiceNoCollision(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === "P2002" &&
+    String(err.meta?.target).includes("invoiceNo")
+  );
+}
+
+// Two sales of different batches can read the same highest number. The unique
+// index rejects the slower one, so run its whole transaction again. A sequence
+// would avoid this but would leave gaps in GST invoice numbers after a rollback.
+async function retryOnInvoiceNoCollision<T>(run: () => Promise<T>): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      if (!isInvoiceNoCollision(err) || attempt >= MAX_INVOICE_NO_ATTEMPTS)
+        throw err;
+      await new Promise((r) => setTimeout(r, Math.random() * 50 * attempt));
+    }
+  }
 }
 
 // Takes the stock only if enough is left. Batches go in id order so that two
@@ -180,7 +207,6 @@ export const create = async (req: Request, res: Response) => {
     if (!customer) return res.status(404).json({ error: "Customer not found" });
 
     const taxType = customer.stateCode === "27" ? "CGST_SGST" : "IGST";
-    const invoiceNo = await getNextInvoiceNo();
 
     const invDate = invoiceDate ? new Date(invoiceDate) : new Date();
     const y = invDate.getFullYear();
@@ -231,8 +257,11 @@ export const create = async (req: Request, res: Response) => {
       }
     }
 
-    const invoice = await prisma.$transaction(async (tx) => {
+    const invoice = await retryOnInvoiceNoCollision(() => prisma.$transaction(async (tx) => {
+      // Stock comes first: a buyer who loses the race leaves without using a
+      // number, and sales of one batch are in order by the time they read it.
       await deductStock(tx, calcedRows);
+      const invoiceNo = await getNextInvoiceNo(tx);
 
       const inv = await tx.invoice.create({
         data: {
@@ -292,12 +321,16 @@ export const create = async (req: Request, res: Response) => {
       });
 
       return inv;
-    }, { timeout: 20000, maxWait: 10000 });
+    }, { timeout: 20000, maxWait: 10000 }));
 
     res.status(201).json(invoice);
   } catch (err: any) {
     if (err instanceof InsufficientStockError)
       return res.status(409).json({ error: err.message });
+    if (isInvoiceNoCollision(err))
+      return res
+        .status(503)
+        .json({ error: "Billing is busy right now. Please save again." });
     console.error(err);
     res.status(500).json({ error: err.message || "Failed to create invoice" });
   }
