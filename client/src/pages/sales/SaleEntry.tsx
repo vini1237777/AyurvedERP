@@ -7,7 +7,7 @@ import {
   invoiceApi,
   authFetch,
 } from "../../utils/api";
-import {
+import { expiresSoon,
   fmt,
   fmtExpiry,
   fmtInt,
@@ -278,7 +278,7 @@ function CustomerSearch({
       emptyText="No customers found"
       placeholder="Search by name or GSTIN..."
       minListWidth={420}
-      className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-400 transition-all w-full px-3 py-2"
+      className="border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-400 transition-all w-full py-1.5"
       renderOption={(c) => (
         <div className="px-4 py-2.5 flex justify-between items-center gap-3">
           <div className="min-w-0">
@@ -656,24 +656,24 @@ export default function SaleEntry() {
   }, []);
 
   const inp =
-    "border border-slate-200 rounded-lg bg-white text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-50 placeholder:text-slate-400 transition-all";
+    "text-sm outline-none placeholder:text-slate-400";
   const ti =
-    "border border-transparent rounded-md bg-transparent text-sm outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white focus:ring-1 focus:ring-blue-50 transition-all";
+    "text-sm outline-none w-full py-1 text-right";
 
   return (
-    <div className="h-screen flex flex-col bg-paper overflow-hidden">
+    <div className="ledger-sheet h-screen flex flex-col overflow-hidden">
       {/* The form comes first in the page so Tab reaches Save after the fields,
           and order-first keeps the actions visually at the top. */}
-      <main className="order-2 flex-1 min-h-0 overflow-auto px-6 py-3 flex flex-col gap-3">
+      <main className="order-2 flex-1 min-h-0 overflow-auto pl-7 pr-6 py-2 flex flex-col gap-2">
         <section
           aria-label="Invoice details"
-          className="bg-white rounded-2xl border border-slate-200 shadow-sm px-5 py-3"
+          className=""
         >
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
             <div className="md:col-span-5">
               <label
                 htmlFor="sale-customer"
-                className="text-xs font-semibold text-slate-600 block mb-1"
+                className="text-xs font-medium text-slate-500 block"
               >
                 Customer *
               </label>
@@ -687,7 +687,7 @@ export default function SaleEntry() {
             <div className="md:col-span-2">
               <label
                 htmlFor="sale-date"
-                className="text-xs font-semibold text-slate-600 block mb-1"
+                className="text-xs font-medium text-slate-500 block"
               >
                 Invoice date
               </label>
@@ -696,13 +696,13 @@ export default function SaleEntry() {
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
-                className={`${inp} w-full px-3 py-2`}
+                className={`${inp} w-full py-1.5`}
               />
             </div>
             <div className="md:col-span-2">
               <label
                 htmlFor="sale-terms"
-                className="text-xs font-semibold text-slate-600 block mb-1"
+                className="text-xs font-medium text-slate-500 block"
               >
                 Terms
               </label>
@@ -710,7 +710,7 @@ export default function SaleEntry() {
                 id="sale-terms"
                 value={terms}
                 onChange={(e) => setTerms(e.target.value)}
-                className={`${inp} w-full px-3 py-2 cursor-pointer`}
+                className={`${inp} w-full py-1.5 cursor-pointer`}
               >
                 <option>Credit</option>
                 <option>Cash</option>
@@ -720,7 +720,7 @@ export default function SaleEntry() {
             <div className="md:col-span-3">
               <label
                 htmlFor="sale-agent"
-                className="text-xs font-semibold text-slate-600 block mb-1"
+                className="text-xs font-medium text-slate-500 block"
               >
                 Agent
               </label>
@@ -728,7 +728,7 @@ export default function SaleEntry() {
                 id="sale-agent"
                 value={agentId}
                 onChange={(e) => setAgentId(e.target.value)}
-                className={`${inp} w-full px-3 py-2 cursor-pointer`}
+                className={`${inp} w-full py-1.5 cursor-pointer`}
               >
                 <option value="">No agent</option>
                 {agents.map((a) => (
@@ -783,12 +783,12 @@ export default function SaleEntry() {
 
         <section
           aria-label="Items"
-          className="flex-1 min-h-[260px] flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+          className="flex-1 min-h-[260px] flex flex-col overflow-hidden"
         >
           <div className="flex-1 min-h-0 overflow-auto">
             <table className="w-full" style={{ minWidth: 1246 }}>
               <thead className="sticky top-0 z-10">
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr>
                   {(
                     [
                       ["#", 36, "text-center"],
@@ -835,11 +835,7 @@ export default function SaleEntry() {
                   return (
                     <tr
                       key={row.id}
-                      className={`border-b border-slate-50 transition-colors ${
-                        idx % 2 === 0
-                          ? "bg-white hover:bg-slate-50/40"
-                          : "bg-slate-50/20 hover:bg-slate-50/60"
-                      }`}
+                      className="focus-within:bg-[#FBFDF7]"
                     >
                       <td className="px-2 py-2 text-center text-xs text-slate-500 font-semibold">
                         {idx + 1}
@@ -882,7 +878,7 @@ export default function SaleEntry() {
                             focusField(fieldId(row.id, "qty")),
                           )}
                           aria-label={`Batch, row ${idx + 1}`}
-                          className="border border-slate-200 rounded-md text-xs bg-white outline-none focus:border-blue-400 w-full px-1.5 py-1 cursor-pointer"
+                          className="text-xs outline-none w-full py-1 cursor-pointer"
                         >
                           <option value="">-- Batch --</option>
                           {bList.map((b: any) => (
@@ -902,8 +898,19 @@ export default function SaleEntry() {
                         </select>
                       </td>
                       <td className="px-2 py-1.5">
-<div className="text-xs text-slate-500 text-center whitespace-nowrap">
-                          {currBatch ? fmtExpiry(currBatch.expiryDate) : ""}
+<div className="text-xs text-center whitespace-nowrap">
+                          {currBatch && expiresSoon(currBatch.expiryDate) ? (
+                            <span
+                              className="pen-ring"
+                              title="Expires within 90 days. Sell this one first."
+                            >
+                              {fmtExpiry(currBatch.expiryDate)}
+                            </span>
+                          ) : currBatch ? (
+                            fmtExpiry(currBatch.expiryDate)
+                          ) : (
+                            ""
+                          )}
                         </div>
                       </td>
                       <td className="px-2 py-1.5">
@@ -1015,11 +1022,11 @@ export default function SaleEntry() {
               </tbody>
             </table>
           </div>
-          <div className="border-t border-slate-200 px-5 py-2.5">
+          <div className="py-2">
             <div className="flex items-center gap-3">
               <button
                 onClick={addRow}
-                className="whitespace-nowrap flex items-center gap-1.5 text-sm text-blue-700 hover:text-blue-800 font-medium border border-dashed border-blue-300 rounded-xl px-3 py-1.5 hover:bg-blue-50/50 transition-all"
+                className="whitespace-nowrap flex items-center gap-1.5 text-sm text-ink font-semibold border-[1.5px] border-ink px-3 py-1 hover:bg-slate-50"
               >
                 <span className="text-lg leading-none">+</span> Add item
               </button>
@@ -1031,7 +1038,7 @@ export default function SaleEntry() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Notes, printed on the invoice (optional)"
-                className={`${inp} flex-1 min-w-0 px-3 py-1.5`}
+                className={`${inp} flex-1 min-w-0 py-1.5`}
               />
             </div>
             <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-5 text-xs text-slate-500">
@@ -1059,7 +1066,7 @@ export default function SaleEntry() {
         </section>
       </main>
 
-      <header className="order-1 bg-white border-b border-slate-200 px-6 py-2.5 flex flex-wrap items-center justify-between gap-3 shadow-sm">
+      <header className="order-1 border-b border-rule pl-7 pr-6 py-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 min-w-0">
           <button
             onClick={() => navigate("/sales")}
@@ -1069,34 +1076,39 @@ export default function SaleEntry() {
             ←
           </button>
           <div className="min-w-0">
-            <h1 className="font-bold text-slate-800 text-[15px] leading-tight">
+            <h1 className="font-bold text-ink text-[22px] leading-tight">
               Create invoice
             </h1>
             <div className="text-xs text-slate-500 truncate">
               {COMPANY.name}, Tasgaon
             </div>
           </div>
-          <div
+          <p
             title="The final number is set when you save"
-            className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-1.5 flex items-center gap-1"
+            className="text-[22px] font-bold text-ink whitespace-nowrap"
           >
-            <span className="text-sm font-bold text-blue-700 whitespace-nowrap">
-              {invoiceNo}
-            </span>
-          </div>
+            {invoiceNo}
+          </p>
         </div>
         {error && (
           <div
             role="alert"
-            className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-1.5 rounded-lg font-medium"
+            className="text-red-700 text-sm font-medium"
           >
             {error}
           </div>
         )}
+        <p
+          lang="hi"
+          className="hidden xl:flex gap-8 font-deva font-semibold text-lg text-pen"
+        >
+          <span>शुभ</span>
+          <span>लाभ</span>
+        </p>
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => handlePrint()}
-            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-medium whitespace-nowrap"
+            className="px-4 py-2 text-sm border-[1.5px] border-ink text-ink hover:bg-slate-50 font-semibold whitespace-nowrap"
           >
             Preview
           </button>
@@ -1104,7 +1116,7 @@ export default function SaleEntry() {
             onClick={() => handleSave(true)}
             disabled={saving}
             title="Ctrl+P"
-            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-medium disabled:opacity-50 whitespace-nowrap"
+            className="px-4 py-2 text-sm border-[1.5px] border-ink text-ink hover:bg-slate-50 font-semibold disabled:opacity-50 whitespace-nowrap"
           >
             Save & Print
           </button>
@@ -1112,7 +1124,7 @@ export default function SaleEntry() {
             onClick={() => handleSave(false)}
             disabled={saving}
             title="Ctrl+S"
-            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2 shadow-sm"
+            className="px-5 py-2 text-sm bg-ink border-[1.5px] border-ink text-white font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center gap-2"
           >
             {saving && (
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1125,7 +1137,7 @@ export default function SaleEntry() {
       <div
         aria-label="Invoice totals"
         role="group"
-        className="order-3 bg-slate-900 text-white px-4 py-2 flex items-center overflow-x-auto"
+        className="order-3 border-t-[1.5px] border-ink pl-7 pr-6 py-1.5 flex items-end overflow-x-auto"
       >
         {(
           [
@@ -1148,15 +1160,17 @@ export default function SaleEntry() {
           return (
             <div
               key={label}
-              className={`flex-1 text-center px-3 whitespace-nowrap ${
-                net ? "" : "border-r border-slate-700"
+              className={`whitespace-nowrap ${
+                net
+                  ? "ledger-total ml-auto pl-6 text-right"
+                  : "flex-1 pr-3"
               }`}
             >
-              <div className="text-xs text-slate-300 leading-tight">{label}</div>
+              <div className="text-xs text-slate-500 leading-tight">{label}</div>
               <div
                 aria-live={net ? "polite" : undefined}
-                className={`font-bold leading-tight mt-0.5 [font-variant-numeric:tabular-nums] ${
-                  net ? "text-lg text-blue-300" : "text-sm text-white"
+                className={`font-semibold leading-tight [font-variant-numeric:tabular-nums] ${
+                  net ? "text-[28px] font-bold text-ink" : "text-base text-ink"
                 }`}
               >
                 {value}

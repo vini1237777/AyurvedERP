@@ -131,6 +131,13 @@ export function fmtExpiry(value: string | null | undefined): string {
   return d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
 }
 
+// Not expired yet, but should be sold first.
+export const expiresSoon = (value: string | null | undefined, days = 90, now = new Date()) => {
+  const d = parseExpiry(value)
+  if (!d || d.getTime() < now.getTime()) return false
+  return d.getTime() <= now.getTime() + days * 24 * 60 * 60 * 1000
+}
+
 export const isExpired = (value: string | null | undefined, now = new Date()) => {
   const d = parseExpiry(value)
   return d ? d.getTime() < now.getTime() : false
