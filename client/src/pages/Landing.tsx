@@ -1,6 +1,48 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { DEMO_ADMIN } from "../auth/demoAccounts";
+
+function DemoLoginButton({ className }: { className: string }) {
+  const { login } = useAuth();
+  const nav = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function logIn() {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await login(DEMO_ADMIN.email, DEMO_ADMIN.password);
+      nav("/dashboard");
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={logIn}
+        disabled={busy}
+        className={`${className} disabled:opacity-70 disabled:cursor-wait`}
+      >
+        {busy ? "Logging in..." : "Login as Demo Admin"}
+      </button>
+      {failed && (
+        <p role="alert" className="w-full mt-3 text-sm text-slate-600">
+          The demo didn't open. Please try again or{" "}
+          <Link to="/login" className="font-medium underline underline-offset-4">
+            go to sign in
+          </Link>
+          .
+        </p>
+      )}
+    </>
+  );
+}
 
 // Returns 0..1 progress as the element scrolls through the viewport.
 // 0 = top edge of element just entered the bottom of viewport
@@ -320,13 +362,17 @@ function Hero() {
           </p>
         </Reveal>
         <Reveal delay={240}>
-          <div className="flex items-center justify-center gap-5 text-sm">
-            <Link
-              to={user ? "/dashboard" : "/login"}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-2.5 rounded-full shadow-md shadow-emerald-700/20 transition-colors"
-            >
-              {user ? "Open dashboard" : "Try the demo"}
-            </Link>
+          <div className="flex flex-wrap items-center justify-center gap-5 text-sm">
+            {user ? (
+              <Link
+                to="/dashboard"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-2.5 rounded-full shadow-md shadow-emerald-700/20 transition-colors"
+              >
+                Open dashboard
+              </Link>
+            ) : (
+              <DemoLoginButton className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-5 py-2.5 rounded-full shadow-md shadow-emerald-700/20 transition-colors" />
+            )}
             <a
               href="https://github.com/vini1237777/AyurvedERP"
               target="_blank"
@@ -1744,6 +1790,7 @@ function BillSection() {
 }
 
 function CTA() {
+  const { user } = useAuth();
   const { ref, progress } = useScrollProgress<HTMLDivElement>();
   const scale = 0.92 + 0.1 * Math.min(1, progress * 2);
 
@@ -1782,12 +1829,26 @@ function CTA() {
             <p className="text-slate-500 text-lg sm:text-xl font-light tracking-tight max-w-lg mx-auto mb-10">
               Sign in with any of the four demo roles. No setup. No signup.
             </p>
-            <Link
-              to="/login"
-              className="inline-block bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-7 py-3 rounded-full shadow-md shadow-emerald-700/20 text-base transition-colors"
-            >
-              Go to sign in
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-5">
+              {user ? (
+                <Link
+                  to="/dashboard"
+                  className="inline-block bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-7 py-3 rounded-full shadow-md shadow-emerald-700/20 text-base transition-colors"
+                >
+                  Open dashboard
+                </Link>
+              ) : (
+                <>
+                  <DemoLoginButton className="inline-block bg-emerald-700 hover:bg-emerald-800 text-white font-semibold px-7 py-3 rounded-full shadow-md shadow-emerald-700/20 text-base transition-colors" />
+                  <Link
+                    to="/login"
+                    className="text-slate-700 hover:text-slate-900 font-medium"
+                  >
+                    Choose another role &rsaquo;
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </Reveal>
       </div>

@@ -36,3 +36,5 @@ export const DEMO_ROLES: {
     hint: "Read only catalog",
   },
 ];
+
+export const DEMO_ADMIN = DEMO_ROLES[0];
