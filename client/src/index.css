@@ -46,6 +46,12 @@ table select {
   border-bottom-color: #BCCCE0;
 }
 
+/* Hints stay readable on the ruled page. */
+::placeholder {
+  color: #4F5C87;
+  opacity: 1;
+}
+
 /* Ruled rows and red column lines. */
 table thead th {
   background-color: #F2F6EC !important;

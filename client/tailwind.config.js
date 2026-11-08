@@ -4,7 +4,7 @@
 // Blue and slate become ink, red becomes the red pen, and white becomes the
 // ruled page.
 const ink = {
-  50: '#E4EAF5', 100: '#D6DFF0', 200: '#BCCCE0', 300: '#9AADCB', 400: '#5B6993',
+  50: '#E4EAF5', 100: '#D6DFF0', 200: '#BCCCE0', 300: '#55628C', 400: '#4F5C87',
   500: '#14256B', 600: '#14256B', 700: '#1F2F70', 800: '#0F1C55', 900: '#0F1C55',
 }
 const turmeric = {
@@ -38,7 +38,7 @@ export default {
         blue: ink,
         purple: ink,
         slate: {
-          50: '#E8EEE0', 100: '#DCE5DA', 200: '#BCCCE0', 300: '#9AADCB', 400: '#5B6993',
+          50: '#E8EEE0', 100: '#DCE5DA', 200: '#BCCCE0', 300: '#55628C', 400: '#4F5C87',
           500: '#414E7E', 600: '#333F72', 700: '#1F2F70', 800: '#14256B', 900: '#0F1C55',
         },
         red: {
