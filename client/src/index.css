@@ -29,6 +29,34 @@ input, select, textarea {
   white-space: nowrap;
 }
 
+/* Wide reports scroll inside their own box, keeping the headings and the row's
+   name on screen. */
+.frozen-table {
+  overflow: auto;
+  max-height: calc(100vh - 15rem);
+}
+.frozen-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+}
+.frozen-table tbody td:first-child,
+.frozen-table tfoot td:first-child,
+.frozen-table thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+}
+.frozen-table thead th:first-child {
+  z-index: 3;
+  background: #f8fafc;
+}
+@media print {
+  .frozen-table { overflow: visible; max-height: none; }
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f1f5f9; }

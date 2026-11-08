@@ -164,7 +164,7 @@ export default function HsnSummary() {
 
       {!loading && data && (
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="frozen-table">
             <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>

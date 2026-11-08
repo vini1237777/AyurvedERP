@@ -149,7 +149,7 @@ export default function GstR1Report() {
       ) : (
         data && (
           <Card>
-            <div className="overflow-x-auto">
+            <div className="frozen-table">
               <table className="w-full">
                 <thead>
                   <tr className="border-b bg-slate-50">
