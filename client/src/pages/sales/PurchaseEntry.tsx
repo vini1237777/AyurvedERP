@@ -357,7 +357,7 @@ export default function PurchaseEntry() {
     "border border-transparent rounded-md bg-transparent text-xs outline-none w-full px-1.5 py-1 text-right hover:border-slate-200 hover:bg-white focus:border-blue-400 focus:bg-white transition-all";
 
   return (
-    <div className="min-h-screen flex flex-col bg-paper">
+    <div className="ledger-sheet min-h-screen flex flex-col">
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <button
@@ -408,7 +408,7 @@ export default function PurchaseEntry() {
             {saving && (
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
             )}
-            Save →
+            Save
           </button>
         </div>
       </div>
@@ -699,7 +699,7 @@ export default function PurchaseEntry() {
         <div className="h-16" />
       </div>
 
-      <div className="bg-slate-900 text-white px-4 py-2.5 flex items-center sticky bottom-0 z-40">
+      <div className="bg-paper border-t-[1.5px] border-ink pl-7 pr-6 py-1.5 flex items-end sticky bottom-0 z-40">
         {[
           ["Items", String(filledRows.length)],
           ["Taxable", `₹${fmt(totTaxable)}`],
@@ -708,11 +708,11 @@ export default function PurchaseEntry() {
         ].map(([l, v], i, a) => (
           <div
             key={l}
-            className={`flex-1 text-center px-2 ${i < a.length - 1 ? "border-r border-slate-700" : ""}`}
+            className={i === a.length - 1 ? "ledger-total ml-auto pl-6 text-right" : "flex-1 pr-3"}
           >
-            <div className="text-[10px] text-slate-500">{l}</div>
+            <div className="text-xs text-slate-500">{l}</div>
             <div
-              className={`text-sm font-bold ${i === a.length - 1 ? "text-blue-400" : "text-white"}`}
+              className={`font-bold text-ink ${i === a.length - 1 ? "text-[28px] leading-tight" : "text-base"}`}
             >
               {v}
             </div>

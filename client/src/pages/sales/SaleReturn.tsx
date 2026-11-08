@@ -219,7 +219,7 @@ export default function SaleReturn() {
 
   if (step === "select") {
     return (
-      <div className="min-h-screen bg-paper">
+      <div className="ledger-sheet min-h-screen">
         <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center gap-4 sticky top-0 z-50 shadow-sm">
           <button
             onClick={() => navigate("/sales")}
@@ -294,7 +294,7 @@ export default function SaleReturn() {
                           ₹{fmt(inv.grandTotal)}
                         </div>
                         <div className="text-xs text-slate-400 mt-0.5">
-                          Select →
+                          Select
                         </div>
                       </div>
                     </button>
@@ -318,7 +318,7 @@ export default function SaleReturn() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-paper">
+    <div className="ledger-sheet min-h-screen flex flex-col">
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-4">
           <button
@@ -570,7 +570,7 @@ export default function SaleReturn() {
               {saving && (
                 <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               )}
-              Process Return →
+              Process Return
             </button>
           </div>
         </div>
