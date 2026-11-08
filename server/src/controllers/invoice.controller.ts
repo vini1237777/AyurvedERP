@@ -78,7 +78,7 @@ export const getAll = async (req: Request, res: Response) => {
         prisma.invoice.findMany({
           where,
           include: includeForList,
-          orderBy: { invoiceDate: "desc" },
+          orderBy: [{ invoiceDate: "desc" }, { id: "desc" }],
           skip: (pageNum - 1) * limitNum,
           take: limitNum,
         }),
@@ -97,7 +97,7 @@ export const getAll = async (req: Request, res: Response) => {
     const invoices = await prisma.invoice.findMany({
       where,
       include: includeForAll,
-      orderBy: { invoiceDate: "desc" },
+      orderBy: [{ invoiceDate: "desc" }, { id: "desc" }],
     });
     res.json(invoices);
   } catch (err) {
