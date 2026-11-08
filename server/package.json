@@ -9,6 +9,7 @@
     "start": "UV_THREADPOOL_SIZE=16 node dist/app.js",
     "start:cluster": "UV_THREADPOOL_SIZE=16 node dist/cluster.js",
     "benchmark:reports": "ts-node src/scripts/report-benchmark.ts",
+    "benchmark:db": "ts-node src/scripts/db-benchmark.ts",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:generate": "npx prisma generate",
     "prisma:studio": "npx prisma studio",
