@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { thAlign } from "../../components/ui/tableAlign";
 import { Link, useLocation } from "react-router-dom";
 import { invoiceApi } from "../../utils/api";
+import { listKeys, refreshStockLists } from "../../utils/queryClient";
 import { fmt, fmtDate } from "../../utils/invoice.utils";
 import {
   Button,
@@ -36,11 +38,8 @@ function recentFYs(): string[] {
 }
 
 export default function SaleList() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
@@ -57,24 +56,25 @@ export default function SaleList() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await invoiceApi.getAll({
-        financialYear: selectedFY,
-        page,
-        limit: perPage,
-        q: query || undefined,
-        sort: sortDir,
-      });
-      setInvoices(res.rows || []);
-      setTotal(res.total || 0);
-    } catch {
-      setToast({ msg: "Failed to load invoices", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedFY, page, perPage, query, sortDir]);
+  const params = {
+    financialYear: selectedFY,
+    page,
+    limit: perPage,
+    q: query || undefined,
+    sort: sortDir,
+  };
+  const list = useQuery({
+    queryKey: [...listKeys.invoices, params],
+    queryFn: () => invoiceApi.getAll(params),
+    placeholderData: keepPreviousData,
+  });
+  const invoices: Invoice[] = list.data?.rows ?? [];
+  const total = list.data?.total ?? 0;
+  const loading = list.isPending;
+
+  useEffect(() => {
+    if (list.isError) setToast({ msg: "Failed to load invoices", type: "error" });
+  }, [list.isError]);
 
   useEffect(() => {
     const savedNo = (location.state as { savedInvoiceNo?: string } | null)
@@ -86,10 +86,6 @@ export default function SaleList() {
     // Only the arrival from the billing screen matters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -104,7 +100,7 @@ export default function SaleList() {
     try {
       await invoiceApi.cancel(id);
       setToast({ msg: "Invoice cancelled", type: "success" });
-      load();
+      refreshStockLists();
     } catch {
       setToast({ msg: "Failed to cancel", type: "error" });
     } finally {

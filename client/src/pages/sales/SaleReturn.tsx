@@ -1,3 +1,4 @@
+import { refreshStockLists } from "../../utils/queryClient";
 import { useState, useEffect, useCallback } from "react";
 import { Pagination, usePagination } from "../../components/ui/Pagination";
 import { thAlign } from "../../components/ui/tableAlign";
@@ -164,6 +165,7 @@ export default function SaleReturn() {
           qty: parseFloat(r.returnQty),
         })),
       });
+      refreshStockLists();
       setDone(true);
     } catch (err: any) {
       setError(err?.response?.data?.error || "Failed to process return");
