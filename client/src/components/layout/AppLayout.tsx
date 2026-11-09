@@ -4,6 +4,7 @@ import { companyApi } from "../../utils/api";
 import type { Company } from "../../types";
 import { useAuth } from "../../auth/AuthContext";
 import { Toast } from "../ui";
+import VisitorCount from "../VisitorCount";
 
 type Role = "ADMIN" | "SELLER" | "ACCOUNTANT" | "RETAILER";
 type NavLeaf = { path: string; label: string; roles?: Role[] };
@@ -438,6 +439,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span>लाभ</span>
           </p>
           <div className="ml-auto flex items-center gap-2">
+            <VisitorCount className="hidden sm:block whitespace-nowrap text-slate-500" />
             <a
               href="https://github.com/vini1237777/AyurvedERP"
               target="_blank"
