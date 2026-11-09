@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { listKeys, queryClient } from "../../utils/queryClient";
 import { thAlign } from "../../components/ui/tableAlign";
 import { useSearchParams } from "react-router-dom";
 import { batchApi, itemApi } from "../../utils/api";
@@ -37,9 +39,6 @@ type ListFilter = StockFilter | "below10" | "expiring" | "expired";
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
 export default function BatchMaster() {
-  const [batches, setBatches] = useState<(Batch & { item: Item })[]>([]);
-  const [items, setItems] = useState<Item[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [searchParams] = useSearchParams();
   // The dashboard links straight to a filtered list.
@@ -60,24 +59,28 @@ export default function BatchMaster() {
     type: "success" | "error";
   } | null>(null);
 
-  useEffect(() => {
-    load();
-  }, []);
+  const list = useQuery({
+    queryKey: listKeys.batches,
+    queryFn: () => batchApi.getAll(),
+  });
+  const batches = (list.data ?? []) as (Batch & { item: Item })[];
+  const loading = list.isPending;
+  const itemOptions = useQuery({
+    queryKey: listKeys.items,
+    queryFn: itemApi.getAll,
+    enabled: modal,
+  });
+  const items: Item[] = itemOptions.data ?? [];
+  // A batch changes stock, and the item list shows stock.
+  const load = () => {
+    void queryClient.invalidateQueries({ queryKey: listKeys.batches });
+    void queryClient.invalidateQueries({ queryKey: listKeys.items });
+  };
 
-  async function load() {
-    try {
-      const [bData, iData] = await Promise.all([
-        batchApi.getAll(),
-        itemApi.getAll(),
-      ]);
-      setBatches(bData as any);
-      setItems(iData);
-    } catch {
+  useEffect(() => {
+    if (list.isError || itemOptions.isError)
       setToast({ msg: "Failed to load", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
+  }, [list.isError, itemOptions.isError]);
 
   // Same rules as the dashboard summary, so its counts match these lists.
   function matchesFilter(b: Batch, filter: ListFilter): boolean {
@@ -482,7 +485,10 @@ export default function BatchMaster() {
                 setForm((p) => ({ ...p, itemId: e.target.value }))
               }
               options={[
-                { value: "", label: "-- Select Item --" },
+                {
+                  value: "",
+                  label: itemOptions.isPending ? "Loading items" : "Select item",
+                },
                 ...items.map((i) => ({ value: String(i.id), label: i.name })),
               ]}
             />

@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { listKeys, queryClient } from "../../utils/queryClient";
 import { thAlign } from "../../components/ui/tableAlign";
 import { customerApi } from "../../utils/api";
 import { validateGstin } from "../../utils/invoice.utils";
@@ -44,8 +46,6 @@ const EMPTY: CustomerFormData = {
 };
 
 export default function CustomerMaster() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
@@ -57,19 +57,17 @@ export default function CustomerMaster() {
     type: "success" | "error";
   } | null>(null);
 
-  useEffect(() => {
-    load();
-  }, []);
+  const list = useQuery({
+    queryKey: listKeys.customers,
+    queryFn: customerApi.getAll,
+  });
+  const customers: Customer[] = list.data ?? [];
+  const loading = list.isPending;
+  const load = () => queryClient.invalidateQueries({ queryKey: listKeys.customers });
 
-  async function load() {
-    try {
-      setCustomers(await customerApi.getAll());
-    } catch {
-      setToast({ msg: "Failed to load customers", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    if (list.isError) setToast({ msg: "Failed to load customers", type: "error" });
+  }, [list.isError]);
 
   const filtered = customers.filter(
     (c) =>
