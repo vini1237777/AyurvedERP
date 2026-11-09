@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { authApi, type AuthUser } from "../utils/api";
+import { queryClient } from "../utils/queryClient";
 
 type AuthState = {
   user: AuthUser | null;
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
+    queryClient.clear();
     localStorage.setItem("authToken", res.accessToken);
     if (res.refreshToken)
       localStorage.setItem("refreshToken", res.refreshToken);
@@ -48,6 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    queryClient.clear();
     localStorage.removeItem("authToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("authUser");
