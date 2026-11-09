@@ -1,3 +1,4 @@
+import VisitorCount from "../components/VisitorCount";
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -200,6 +201,7 @@ export default function Login() {
               </button>
             ))}
           </div>
+          <VisitorCount />
         </section>
       </main>
     </div>
