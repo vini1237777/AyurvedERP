@@ -177,9 +177,9 @@ Each row links to the code and to what checks it.
 | Prisma ACID transactions | [invoice.controller.ts](server/src/controllers/invoice.controller.ts), [purchase.controller.ts](server/src/controllers/purchase.controller.ts) | [last strip race script](server/load-tests/04-last-strip-race.js) |
 | JWT and role checks | [secrets.ts](server/src/utils/secrets.ts) | [85 route guard tests](server/test/rbac.test.ts) |
 | TanStack Query list caching | [queryClient.ts](client/src/utils/queryClient.ts) | [Playwright list cache spec](client/e2e/list-cache.spec.ts) |
-| Docker stack | [server/Dockerfile](server/Dockerfile), [client/Dockerfile](client/Dockerfile), [docker-compose.yml](docker-compose.yml) | Image sizes are not listed until they are measured |
+| Docker stack | [server/Dockerfile](server/Dockerfile), [client/Dockerfile](client/Dockerfile), [docker-compose.yml](docker-compose.yml) | `docker compose up --build` |
 
-The load tests read from a small local dataset on a laptop, so they compare setups and do not predict production numbers.
+The load tests run locally on a laptop with a small dataset and compare the three setups.
 
 ## Local Setup
 
