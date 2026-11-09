@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "UV_THREADPOOL_SIZE=16 node dist/app.js",
     "start:cluster": "UV_THREADPOOL_SIZE=16 node dist/cluster.js",
+    "test": "TS_NODE_TRANSPILE_ONLY=1 node --require ts-node/register --test test/*.test.ts",
     "benchmark:reports": "ts-node src/scripts/report-benchmark.ts",
     "benchmark:db": "ts-node src/scripts/db-benchmark.ts",
     "prisma:migrate": "npx prisma migrate dev",

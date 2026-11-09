@@ -3,10 +3,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../utils/prisma";
 
-const LEGACY_SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || LEGACY_SECRET;
-const JWT_REFRESH_SECRET =
-  process.env.JWT_REFRESH_SECRET || LEGACY_SECRET + "_refresh";
+import { JWT_ACCESS_SECRET, JWT_REFRESH_SECRET } from "../utils/secrets";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = "30d";
