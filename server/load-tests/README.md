@@ -1,6 +1,6 @@
 # Load tests
 
-Three k6 scripts to demonstrate the system's scaling story end-to-end.
+k6 scripts to demonstrate the system's scaling story end-to-end.
 
 ## Setup
 
@@ -57,7 +57,19 @@ first, then check the final stock in SQL, because k6 only counts responses.
 k6 run -e BATCH_ID=1 -e ITEM_ID=1 -e CUSTOMER_ID=1 -e CASHIERS=20 load-tests/04-last-strip-race.js
 ```
 
-## Measured results (4-core MacBook, local Postgres + Redis + cluster)
+### 5. Setup comparison (`run-compare.sh`)
+
+Runs one load against one process without Redis, one process with Redis, and 4 workers with Redis. It only runs against a local database.
+
+```bash
+./load-tests/run-compare.sh
+```
+
+Latest results and raw output: [`results/results.md`](results/results.md).
+
+## Earlier user journey results
+
+Recorded on a local machine with Postgres, Redis and the cluster. The raw output was not kept, so treat these as notes and prefer the comparison above.
 
 | Scenario             | VUs  | Throughput  | p95     | Error rate |
 | -------------------- | ---- | ----------- | ------- | ---------- |
@@ -69,7 +81,4 @@ k6 run -e BATCH_ID=1 -e ITEM_ID=1 -e CUSTOMER_ID=1 -e CASHIERS=20 load-tests/04-
 The saturation knee sits at ~2000 VUs / ~1150 req/s. Past that, DB connection
 pool contention drives throughput down and errors up.
 
-At 0.075 req/s per active user (the journey's traffic profile), 1146 req/s maps
-to ~15,300 active concurrent users per 4-core box. Reaching 100k active users
-requires ~7 boxes behind a load balancer with shared Redis and Postgres read
-replicas.
+At 0.075 req/s per active user, the journey's traffic profile, 1146 req/s works out to about 15,300 active users. That is a calculation, not a test with that many users.

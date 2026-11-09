@@ -125,6 +125,18 @@ executions. Treat them as a before and after comparison, not production numbers.
 
 To reproduce, see [`server/src/scripts/db-benchmark.ts`](server/src/scripts/db-benchmark.ts).
 
+## Load Testing
+
+The same k6 load ran against three setups on a laptop, with no failed requests. Raw output and limits are in [`server/load-tests/results/results.md`](server/load-tests/results/results.md).
+
+| Setup | Median req/s | Median p95 |
+|---|---|---|
+| One process, no Redis | 118 | 1,230 ms |
+| One process, Redis | 506 | 251 ms |
+| 4 workers, Redis | 1,145 | 128 ms |
+
+These are read requests on a small local dataset. Run it again with `./load-tests/run-compare.sh` from `server`.
+
 ## API Surface
 
 | Base Route | Responsibility |
