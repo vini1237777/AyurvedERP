@@ -201,7 +201,7 @@ export default function Login() {
               </button>
             ))}
           </div>
-          <VisitorCount className="mt-3 text-slate-600" />
+          <VisitorCount className="mt-4" />
         </section>
       </main>
     </div>

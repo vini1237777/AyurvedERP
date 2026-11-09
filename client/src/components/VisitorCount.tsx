@@ -14,8 +14,14 @@ export default function VisitorCount({ className = "" }: { className?: string })
   if (visitors === null) return null;
 
   return (
-    <p className={`text-sm ${className}`} data-testid="visitor-count">
-      {visitors.toLocaleString("en-IN")} {visitors === 1 ? "visitor" : "visitors"}
+    <p
+      className={`flex items-center gap-2 whitespace-nowrap ${className}`}
+      data-testid="visitor-count"
+    >
+      <span className="text-sm text-ink">Profile visits</span>
+      <span className="ledger-total px-1.5 text-base font-bold leading-tight tabular-nums text-ink">
+        {visitors.toLocaleString("en-IN")}
+      </span>
     </p>
   );
 }

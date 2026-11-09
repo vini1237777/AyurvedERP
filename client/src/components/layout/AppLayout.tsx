@@ -439,7 +439,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span>लाभ</span>
           </p>
           <div className="ml-auto flex items-center gap-2">
-            <VisitorCount className="hidden sm:block whitespace-nowrap text-slate-500" />
+            <VisitorCount className="mr-1" />
             <a
               href="https://github.com/vini1237777/AyurvedERP"
               target="_blank"
