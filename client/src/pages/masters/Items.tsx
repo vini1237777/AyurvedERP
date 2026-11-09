@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { listKeys, queryClient } from "../../utils/queryClient";
 import { thAlign } from "../../components/ui/tableAlign";
 import { itemApi, hsnApi } from "../../utils/api";
 import api from "../../utils/api";
@@ -48,10 +50,22 @@ const EMPTY: ItemFormData = {
 };
 
 export default function ItemMaster() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [hsnList, setHsnList] = useState<HsnCode[]>([]);
-  const [slabs, setSlabs] = useState<TaxSlab[]>([]);
-  const [loading, setLoading] = useState(true);
+  const itemList = useQuery({ queryKey: listKeys.items, queryFn: itemApi.getAll });
+  const hsnQuery = useQuery({ queryKey: listKeys.hsn, queryFn: hsnApi.getAll });
+  const slabQuery = useQuery({
+    queryKey: listKeys.taxSlabs,
+    queryFn: hsnApi.getTaxSlabs,
+  });
+  const items: Item[] = itemList.data ?? [];
+  const hsnList: HsnCode[] = hsnQuery.data ?? [];
+  const slabs: TaxSlab[] = slabQuery.data ?? [];
+  const loading = itemList.isPending || hsnQuery.isPending || slabQuery.isPending;
+  const loadFailed = itemList.isError || hsnQuery.isError || slabQuery.isError;
+  // Item names appear on the batch list, so both load again after a change.
+  const load = () => {
+    void queryClient.invalidateQueries({ queryKey: listKeys.items });
+    void queryClient.invalidateQueries({ queryKey: listKeys.batches });
+  };
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(false);
   const [catModal, setCatModal] = useState<Item | null>(null);
@@ -77,25 +91,8 @@ export default function ItemMaster() {
   const selectedHsn = hsnList.find((h) => String(h.id) === form.hsnId);
 
   useEffect(() => {
-    load();
-  }, []);
-
-  async function load() {
-    try {
-      const [itemsData, hsnData, slabData] = await Promise.all([
-        itemApi.getAll(),
-        hsnApi.getAll(),
-        hsnApi.getTaxSlabs(),
-      ]);
-      setItems(itemsData);
-      setHsnList(hsnData);
-      setSlabs(slabData);
-    } catch {
-      setToast({ msg: "Failed to load", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
+    if (loadFailed) setToast({ msg: "Failed to load", type: "error" });
+  }, [loadFailed]);
 
   function openCreate() {
     setEditing(null);

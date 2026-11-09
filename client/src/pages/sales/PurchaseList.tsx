@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { thAlign } from "../../components/ui/tableAlign";
 import { Link } from "react-router-dom";
 import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { authFetch } from "../../utils/api";
+import { listKeys, refreshStockLists } from "../../utils/queryClient";
 import {
   Button,
   PageHeader,
@@ -37,11 +39,8 @@ function recentFYs(): string[] {
 }
 
 export default function PurchaseList() {
-  const [purchases, setPurchases] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(50);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedFY, setSelectedFY] = useState(getCurrentFY());
   const [toast, setToast] = useState<{
@@ -49,24 +48,22 @@ export default function PurchaseList() {
     type: "success" | "error";
   } | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const url = `${API}/purchases?financialYear=${encodeURIComponent(selectedFY)}&page=${page}&limit=${perPage}`;
-      const res = await authFetch(url);
-      const data = await res.json();
-      setPurchases(data.rows || []);
-      setTotal(data.total || 0);
-    } catch {
-      setToast({ msg: "Failed to load purchases", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedFY, page, perPage]);
+  const list = useQuery({
+    queryKey: [...listKeys.purchases, { selectedFY, page, perPage }],
+    queryFn: async () => {
+      const res = await authFetch(`${API}/purchases?financialYear=${encodeURIComponent(selectedFY)}&page=${page}&limit=${perPage}`);
+      if (!res.ok) throw new Error("Failed to load purchases");
+      return res.json();
+    },
+    placeholderData: keepPreviousData,
+  });
+  const purchases: any[] = list.data?.rows ?? [];
+  const total: number = list.data?.total ?? 0;
+  const loading = list.isPending;
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (list.isError) setToast({ msg: "Failed to load purchases", type: "error" });
+  }, [list.isError]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -81,7 +78,7 @@ export default function PurchaseList() {
     try {
       await authFetch(`${API}/purchases/${id}/cancel`, { method: "PATCH" });
       setToast({ msg: "Purchase cancelled", type: "success" });
-      load();
+      refreshStockLists();
     } catch {
       setToast({ msg: "Failed to cancel", type: "error" });
     } finally {

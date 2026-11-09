@@ -1,3 +1,4 @@
+import { refreshStockLists } from "../../utils/queryClient";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -578,6 +579,7 @@ export default function SaleEntry() {
         })),
       };
       const created = await invoiceApi.create(payload);
+      refreshStockLists();
       // Print the number the server assigned, which can differ from the preview
       // number if someone else saved first.
       if (andPrint) handlePrint(created?.invoiceNo);

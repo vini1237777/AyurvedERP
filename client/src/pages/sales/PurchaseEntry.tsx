@@ -1,3 +1,4 @@
+import { refreshStockLists } from "../../utils/queryClient";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
@@ -292,6 +293,7 @@ export default function PurchaseEntry() {
       });
       if (!res.ok) throw new Error((await res.json()).error || "Failed");
       const created = await res.json();
+      refreshStockLists();
       if (printMode) {
         await openPrint(created.id, printMode);
       }
