@@ -127,15 +127,36 @@ To reproduce, see [`server/src/scripts/db-benchmark.ts`](server/src/scripts/db-b
 
 ## Load Testing
 
-The same k6 load ran against three setups on a laptop, with no failed requests. Raw output and limits are in [`server/load-tests/results/results.md`](server/load-tests/results/results.md).
+The same k6 load ran against three setups on an Apple M2 laptop on 2026-11-09, with no failed requests. Raw k6 summaries are in [`server/load-tests/results`](server/load-tests/results).
 
-| Setup | Median req/s | Median p95 |
+| Setup | Runs | Median req/s | Range req/s | Median p95 |
+|---|---|---|---|---|
+| One process, no Redis | 3 | 118 | 117 to 124 | 1,230 ms |
+| One process, Redis | 3 | 506 | 456 to 545 | 251 ms |
+| 4 workers, Redis | 3 | 1,145 | 1,092 to 1,216 | 128 ms |
+
+**How it was measured**
+
+- 100 virtual users for 30 seconds per run, with no pause between requests.
+- Each request is picked at random from `reports/dashboard-summary`, `customers` and `items`.
+- Redis is emptied before each run, so each run starts with a cold cache.
+- "No Redis" points at a closed port, which is how the app behaves when Redis is down.
+
+**Scope**
+
+These are local numbers, not production numbers. k6, the API, Postgres and Redis shared one 8 core laptop with 8 GB of RAM. The routes are cached reads, on 200 customers, 200 items and 204 invoices. Billing writes are covered by the last strip race script.
+
+**Run the scripts**
+
+Install k6 and Redis, run `npm run build` in `server`, and start the API on port 3000 with `npm run dev`, or `WEB_CONCURRENCY=4 npm run start:cluster` for 4 workers. Then, from `server`:
+
+| Scenario | Load | Command |
 |---|---|---|
-| One process, no Redis | 118 | 1,230 ms |
-| One process, Redis | 506 | 251 ms |
-| 4 workers, Redis | 1,145 | 128 ms |
-
-These are read requests on a small local dataset. Run it again with `./load-tests/run-compare.sh` from `server`.
+| Login burst | 200 virtual users on `/auth/login` | `k6 run load-tests/01-login-burst.js` |
+| User journey | 500 virtual users with 2 to 5 seconds between actions | `k6 run load-tests/02-user-journey.js` |
+| Cache validation | 50 virtual users on the dashboard summary | `k6 run load-tests/03-cache-validation.js` |
+| Last strip race | Many cashiers billing one batch. Check final stock in SQL | `k6 run -e BATCH_ID=1 -e ITEM_ID=1 -e CUSTOMER_ID=1 -e CASHIERS=20 load-tests/04-last-strip-race.js` |
+| Setup comparison | The table above. Local database only | `./load-tests/run-compare.sh` |
 
 ## API Surface
 
@@ -171,7 +192,7 @@ Each row links to the code and to what checks it.
 
 | Claim | Code | Evidence |
 |---|---|---|
-| k6 throughput with Redis and cluster | [05-throughput-compare.js](server/load-tests/05-throughput-compare.js), [run-compare.sh](server/load-tests/run-compare.sh) | [results and raw k6 output](server/load-tests/results/results.md) |
+| k6 throughput with Redis and cluster | [05-throughput-compare.js](server/load-tests/05-throughput-compare.js), [run-compare.sh](server/load-tests/run-compare.sh) | [raw k6 output](server/load-tests/results) |
 | Node cluster workers | [cluster.ts](server/src/cluster.ts) | 4 worker row in the results above |
 | Redis caching | [cache.ts](server/src/utils/cache.ts) | [cache validation script](server/load-tests/03-cache-validation.js) |
 | Prisma ACID transactions | [invoice.controller.ts](server/src/controllers/invoice.controller.ts), [purchase.controller.ts](server/src/controllers/purchase.controller.ts) | [last strip race script](server/load-tests/04-last-strip-race.js) |
