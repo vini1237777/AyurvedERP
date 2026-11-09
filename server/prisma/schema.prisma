@@ -356,3 +356,9 @@ model JournalLine {
   @@index([accountId])
   @@index([entryId])
 }
+
+// One row per unique visitor. The id is a keyed hash, so no address is stored.
+model SiteVisitor {
+  id          String   @id
+  firstSeenAt DateTime @default(now())
+}

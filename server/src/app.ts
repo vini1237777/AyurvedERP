@@ -36,6 +36,7 @@ app.use(compression({ level: 3 }));
 app.use(express.json());
 
 import prisma from "./utils/prisma";
+import visitRoutes from "./routes/visit.routes";
 
 app.get("/health", async (_req, res) => {
   const hasDbUrl = !!process.env.DATABASE_URL;
@@ -53,6 +54,7 @@ app.get("/health", async (_req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/visits", visitRoutes);
 // Sales-facing: SELLER + ADMIN write; ACCOUNTANT + RETAILER read-only
 app.use(
   "/api/customers",
