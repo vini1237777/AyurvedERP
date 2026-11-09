@@ -25,6 +25,9 @@ const corsMiddleware = cors({
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Seed-Token"],
+  // The client and API are on different origins, so browsers ask permission
+  // before each request. Remember the answer instead (Chrome caps this at 2h).
+  maxAge: 7200,
 });
 
 app.use(corsMiddleware);
