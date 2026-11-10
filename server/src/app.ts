@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import compression from "compression";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 import customerRoutes from "./routes/customer.routes";
@@ -45,6 +46,7 @@ app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 app.use(compression({ level: 3 }));
 app.use(express.json());
+app.use(cookieParser());
 
 import prisma from "./utils/prisma";
 import visitRoutes from "./routes/visit.routes";

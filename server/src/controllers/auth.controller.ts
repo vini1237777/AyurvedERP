@@ -13,6 +13,34 @@ import {
 
 const ACCESS_TOKEN_TTL = "15m";
 
+// The refresh token lives only in this cookie. httpOnly keeps it away from
+// page scripts, SameSite=Strict keeps other sites from sending it, and the
+// path limits it to the auth routes.
+export const REFRESH_COOKIE = "aushadhi_rt";
+const refreshCookie = {
+  httpOnly: true,
+  // COOKIE_SECURE=false for a production build served over plain http,
+  // such as docker compose on localhost.
+  secure: process.env.COOKIE_SECURE
+    ? process.env.COOKIE_SECURE === "true"
+    : process.env.NODE_ENV === "production" || !!process.env.VERCEL,
+  sameSite: "strict" as const,
+  path: "/api/auth",
+};
+const REFRESH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;
+
+function setRefreshCookie(res: Response, token: string) {
+  res.cookie(REFRESH_COOKIE, token, {
+    ...refreshCookie,
+    maxAge: REFRESH_COOKIE_MAX_AGE,
+  });
+}
+
+const readRefreshCookie = (req: Request): string | undefined => {
+  const value = req.cookies?.[REFRESH_COOKIE];
+  return typeof value === "string" && value ? value : undefined;
+};
+
 type SafeUser = { id: number; email: string; name: string; role: string };
 
 function signAccessToken(user: SafeUser) {
@@ -45,13 +73,8 @@ export const login = async (req: Request, res: Response) => {
       role: user.role,
     };
     const accessToken = signAccessToken(safe);
-    const refreshToken = await issueRefreshToken(user.id);
-
-    res.json({
-      accessToken,
-      refreshToken,
-      user: safe,
-    });
+    setRefreshCookie(res, await issueRefreshToken(user.id));
+    res.json({ accessToken, user: safe });
   } catch (err: any) {
     console.error("[auth:login]", err);
     res.status(500).json({ error: "Login failed" });
@@ -60,11 +83,12 @@ export const login = async (req: Request, res: Response) => {
 
 export const refresh = async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.body || {};
-    if (!refreshToken || typeof refreshToken !== "string")
-      return res.status(400).json({ error: "Refresh token required" });
+    const refreshToken = readRefreshCookie(req);
+    if (!refreshToken)
+      return res.status(401).json({ error: "Not signed in" });
 
     const rotated = await rotateRefreshToken(refreshToken);
+    setRefreshCookie(res, rotated.token);
     const user = await prisma.user.findUnique({
       where: { id: rotated.userId },
       select: { id: true, email: true, name: true, role: true, isActive: true },
@@ -78,14 +102,12 @@ export const refresh = async (req: Request, res: Response) => {
       name: user.name,
       role: user.role,
     };
-    res.json({
-      accessToken: signAccessToken(safe),
-      refreshToken: rotated.token,
-      user: safe,
-    });
+    res.json({ accessToken: signAccessToken(safe), user: safe });
   } catch (err: any) {
-    if (err instanceof SessionError)
+    if (err instanceof SessionError) {
+      if (err.status === 401) res.clearCookie(REFRESH_COOKIE, refreshCookie);
       return res.status(err.status).json({ error: err.message });
+    }
     console.error("[auth:refresh]", err);
     res.status(500).json({ error: "Refresh failed" });
   }
@@ -95,9 +117,9 @@ export const refresh = async (req: Request, res: Response) => {
 // so signing out works even after the access token has expired.
 export const logout = async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.body || {};
-    if (typeof refreshToken === "string" && refreshToken)
-      await revokeByToken(refreshToken);
+    const refreshToken = readRefreshCookie(req);
+    if (refreshToken) await revokeByToken(refreshToken);
+    res.clearCookie(REFRESH_COOKIE, refreshCookie);
     res.status(204).end();
   } catch (err: any) {
     console.error("[auth:logout]", err);
