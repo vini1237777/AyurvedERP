@@ -281,7 +281,7 @@ export const create = async (req: Request, res: Response) => {
         const batch = await prisma.batch.findUnique({
           where: { id: parseInt(row.batchId) },
         });
-        if (!batch)
+        if (!batch || batch.itemId !== Number(row.itemId))
           return res
             .status(400)
             .json({ error: `Batch not found for ${row.itemName}` });
