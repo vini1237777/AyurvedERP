@@ -63,7 +63,12 @@ async function seedUsers() {
       update: { name: u.name, role: u.role, isActive: true },
       create: { email: u.email, name: u.name, passwordHash, role: u.role },
     });
-    console.log(`✔ ${u.role.padEnd(11)} ${u.email} (password: ${u.password})`);
+    // Only the public demo passwords are printed, never one set through ADMIN_PASSWORD.
+    const shown =
+      u.role === "ADMIN" && process.env.ADMIN_PASSWORD
+        ? "(password from ADMIN_PASSWORD)"
+        : `(password: ${u.password})`;
+    console.log(`✔ ${u.role.padEnd(11)} ${u.email} ${shown}`);
   }
 }
 
