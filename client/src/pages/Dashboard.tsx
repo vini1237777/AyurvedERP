@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { invoiceApi, salesReturnApi, authFetch } from "../utils/api";
+import { invoiceApi, salesReturnApi, authFetch, API_BASE_URL } from "../utils/api";
 import { fmt, fmtDate, fmtExpiry, fmtQty } from "../utils/invoice.utils";
 import { Badge, LoadingScreen } from "../components/ui";
 import { useAuth } from "../auth/AuthContext";
 import type { Invoice } from "../types";
 
-const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-).trim();
+const API = API_BASE_URL;
 
 interface SalesReturn {
   id: number;

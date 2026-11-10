@@ -65,8 +65,6 @@ services:
   client:
     build:
       context: ./client
-      args:
-        VITE_API_URL: http://localhost:5080/api
     ports:
       - "8080:80"
     depends_on:

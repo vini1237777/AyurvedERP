@@ -17,8 +17,10 @@ import type {
   SaleRegisterRow,
 } from "../types";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL?.trim() || "http://localhost:5000/api";
+// The site forwards /api to the backend (vercel.json, nginx.conf, Vite's
+// proxy), so the browser only talks to its own origin and the refresh cookie
+// stays first party.
+export const API_BASE_URL = "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,

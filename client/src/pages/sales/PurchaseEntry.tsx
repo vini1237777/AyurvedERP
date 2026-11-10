@@ -4,12 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { fmt } from "../../utils/invoice.utils";
 import { Combobox } from "../../components/ui";
 import type { Customer, Item } from "../../types";
-import { customerApi, itemApi, authFetch } from "../../utils/api";
+import { customerApi, itemApi, authFetch, API_BASE_URL } from "../../utils/api";
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
-const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).trim();
+const API = API_BASE_URL;
 
 type PRow = {
   id: number;

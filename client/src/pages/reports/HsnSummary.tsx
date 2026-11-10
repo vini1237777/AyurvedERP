@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
 import { fmt, fmtInt } from "../../utils/invoice.utils";
-import { authFetch } from "../../utils/api";
+import { authFetch, API_BASE_URL } from "../../utils/api";
 
-const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-).trim();
+const API = API_BASE_URL;
 
 type Row = {
   hsnCode: string;
