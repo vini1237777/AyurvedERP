@@ -13,10 +13,7 @@ router.post("/", async (req, res) => {
   if (!secret) return res.status(503).json({ message: "Unavailable" });
 
   try {
-    const forwarded = req.headers["x-forwarded-for"];
-    const ip = (Array.isArray(forwarded) ? forwarded[0] : forwarded)
-      ?.split(",")[0]
-      ?.trim();
+    const ip = req.ip;
 
     const userAgent = req.get("user-agent");
     if (ip && userAgent && !isbot(userAgent)) {
