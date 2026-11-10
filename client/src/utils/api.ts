@@ -34,23 +34,30 @@ api.interceptors.request.use((config) => {
 
 let refreshInflight: Promise<string | null> | null = null;
 
-async function tryRefreshAccessToken(): Promise<string | null> {
+// Each refresh returns a new refresh token and retires the old one. A 409
+// means another tab refreshed with the same token a moment ago, so try once
+// more with the token that tab saved.
+async function tryRefreshAccessToken(retried = false): Promise<string | null> {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) return null;
   try {
-    const res = await axios.post<{ accessToken: string; user: AuthUser }>(
+    const res = await axios.post<RefreshResponse>(
       `${API_BASE_URL}/auth/refresh`,
       { refreshToken },
     );
     const next = res.data.accessToken;
-    if (next) {
-      localStorage.setItem("authToken", next);
-      if (res.data.user)
-        localStorage.setItem("authUser", JSON.stringify(res.data.user));
-      return next;
+    if (!next) return null;
+    localStorage.setItem("authToken", next);
+    if (res.data.refreshToken)
+      localStorage.setItem("refreshToken", res.data.refreshToken);
+    if (res.data.user)
+      localStorage.setItem("authUser", JSON.stringify(res.data.user));
+    return next;
+  } catch (err: any) {
+    if (err?.response?.status === 409 && !retried) {
+      await new Promise((r) => setTimeout(r, 300));
+      return tryRefreshAccessToken(true);
     }
-    return null;
-  } catch {
     return null;
   }
 }
@@ -163,6 +170,8 @@ export type LoginResponse = {
   refreshToken: string;
   user: AuthUser;
 };
+
+type RefreshResponse = LoginResponse;
 
 export const authApi = {
   login: (email: string, password: string) =>
