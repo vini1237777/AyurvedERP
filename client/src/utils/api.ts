@@ -178,14 +178,12 @@ export const authApi = {
     api
       .post<LoginResponse>("/auth/login", { email, password })
       .then((r) => r.data),
-  refresh: () => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    return api
-      .post<{ accessToken: string; user: AuthUser }>("/auth/refresh", {
-        refreshToken,
-      })
-      .then((r) => r.data);
-  },
+  // Ends the session on the server. Failures are ignored: the browser
+  // forgets the tokens either way.
+  logout: (refreshToken: string) =>
+    axios
+      .post(`${API_BASE_URL}/auth/logout`, { refreshToken })
+      .catch(() => undefined),
   me: () => api.get<AuthUser>("/auth/me").then((r) => r.data),
 };
 
