@@ -18,6 +18,7 @@ import authRoutes from "./routes/auth.routes";
 import { requireAuth, readOnlyForRoles } from "./middleware/auth";
 import { requestId } from "./middleware/requestId";
 import { HttpError, sendError } from "./utils/httpError";
+import { options as customerOptions } from "./controllers/customer.controller";
 
 dotenv.config();
 
@@ -67,6 +68,8 @@ app.get("/health", async (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/visits", visitRoutes);
+// Customer names for filters on pages every role can open, such as Sale Register.
+app.get("/api/customers/options", requireAuth, customerOptions);
 // Sales-facing: SELLER + ADMIN write; ACCOUNTANT + RETAILER read-only
 app.use(
   "/api/customers",

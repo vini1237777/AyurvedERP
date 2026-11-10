@@ -5,6 +5,20 @@ import { cache } from '../utils/cache'
 const CUSTOMERS_CACHE_KEY = 'customers:list:v1'
 const CUSTOMERS_CACHE_TTL = 300 
 
+// Names only, for filters on pages every role can open.
+export const options = async (_req: Request, res: Response) => {
+  try {
+    const customers = await prisma.customer.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' },
+    })
+    res.json(customers)
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch customers' })
+  }
+}
+
 export const getAll = async (_req: Request, res: Response) => {
   try {
     const customers = await cache.wrap(CUSTOMERS_CACHE_KEY, CUSTOMERS_CACHE_TTL, () =>
