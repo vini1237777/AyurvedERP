@@ -8,8 +8,20 @@ const COMPANY = {
   stateCode: "27",
 };
 
-const data = JSON.parse(
-  localStorage.getItem("erp_purchase_print") || "null",
+// Every saved value ends up inside innerHTML, so escape all strings once here.
+function escapeAll(value) {
+  if (typeof value === "string")
+    return value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+  if (Array.isArray(value)) return value.map(escapeAll);
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, escapeAll(v)]),
+    );
+  return value;
+}
+
+const data = escapeAll(
+  JSON.parse(localStorage.getItem("erp_purchase_print") || "null"),
 );
 
 function fmt(n) {
@@ -110,7 +122,7 @@ function renderVoucher(d) {
     </div>
     ${
       d.notes
-        ? `<div class="notes-box"><div class="notes-label">NOTES</div>${escapeHtml(d.notes)}</div>`
+        ? `<div class="notes-box"><div class="notes-label">NOTES</div>${d.notes}</div>`
         : ""
     }
     <div class="signatory">
@@ -159,7 +171,7 @@ function renderGRN(d) {
     </table>
     ${
       d.notes
-        ? `<div class="notes-box"><div class="notes-label">NOTES</div>${escapeHtml(d.notes)}</div>`
+        ? `<div class="notes-box"><div class="notes-label">NOTES</div>${d.notes}</div>`
         : ""
     }
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:36px;font-size:11px;">
@@ -172,16 +184,6 @@ function renderGRN(d) {
         <div class="line">Authorised Signatory</div>
       </div>
     </div>`;
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  })[c]);
 }
 
 if (!data) {

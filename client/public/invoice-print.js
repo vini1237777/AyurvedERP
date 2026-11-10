@@ -1,5 +1,17 @@
+// Every saved value ends up inside innerHTML, so escape all strings once here.
+function escapeAll(value) {
+  if (typeof value === "string")
+    return value.replace(/[&<>"']/g, (ch) => `&#${ch.charCodeAt(0)};`);
+  if (Array.isArray(value)) return value.map(escapeAll);
+  if (value && typeof value === "object")
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, escapeAll(v)]),
+    );
+  return value;
+}
+
 const raw = localStorage.getItem("erp_print_data");
-const D = raw ? JSON.parse(raw) : null;
+const D = raw ? escapeAll(JSON.parse(raw)) : null;
 const COPIES = [
   { id: "cb-customer", label: "Original For Buyer" },
   { id: "cb-transport", label: "Duplicate For Transporter" },
@@ -161,12 +173,6 @@ function getBatchNo(row) {
 }
 
 function renderInvoice(copyLabel) {
-  const escapeHtml = (text) =>
-    String(text).replace(
-      /[&<>"']/g,
-      (c) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
-    );
   if (!D)
     return '<p style="padding:20px;text-align:center;color:#999">No data.</p>';
   const {
@@ -339,7 +345,7 @@ Input Tax Credit is Not Available to a taxable person against this copy
     D.notes
       ? `<tr style="border-bottom:${B}">
     <td style="border:none;font-size:6.5px;padding:2px 5px;vertical-align:middle">
-      <b>Notes :</b> ${escapeHtml(D.notes)}
+      <b>Notes :</b> ${D.notes}
     </td>
   </tr>`
       : ""
