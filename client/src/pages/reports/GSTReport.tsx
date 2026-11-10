@@ -5,6 +5,7 @@ import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, LoadingScreen, PageHeader, Input } from "../../components/ui";
 import { Pagination, usePagination } from "../../components/ui/Pagination";
 import type { GstReportResponse } from "../../types";
+import { escapeHtml } from "../../utils/escapeHtml";
 
 const emptyData: GstReportResponse = {
   rows:[], summary:{taxableAmount:0,cgstAmt:0,sgstAmt:0,igstAmt:0,totalTax:0,grandTotal:0},
@@ -37,7 +38,7 @@ function exportCSV(data: GstReportResponse) {
 function exportPDF(data: GstReportResponse) {
   const win=window.open("","_blank")!
   const s=data.summary
-  const trs=data.rows.map(r=>`<tr><td>${r.invoiceNo}</td><td>${fmtDate(r.invoiceDate)}</td><td>${r.customerName}</td><td>${r.customerGstin||"-"}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.taxableAmount)}</td><td>₹${fmt(r.cgstAmt)}</td><td>₹${fmt(r.sgstAmt)}</td><td>₹${fmt(r.igstAmt)}</td><td>₹${fmt(r.grandTotal)}</td></tr>`).join("")
+  const trs=data.rows.map(r=>`<tr><td>${escapeHtml(r.invoiceNo)}</td><td>${fmtDate(r.invoiceDate)}</td><td>${escapeHtml(r.customerName)}</td><td>${escapeHtml(r.customerGstin||"-")}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.taxableAmount)}</td><td>₹${fmt(r.cgstAmt)}</td><td>₹${fmt(r.sgstAmt)}</td><td>₹${fmt(r.igstAmt)}</td><td>₹${fmt(r.grandTotal)}</td></tr>`).join("")
   win.document.write(`<html><head><title>GST Report</title><style>body{font-family:Arial;font-size:11px;padding:20px}table{width:100%;border-collapse:collapse}th{background:#f1f5f9;border:1px solid #cbd5e1;padding:6px 8px;font-size:10px;text-align:left}td{border:1px solid #e2e8f0;padding:5px 8px}tr:nth-child(even){background:#f8fafc}.sum{display:flex;gap:12px;margin-bottom:12px}.sc{background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:6px 10px}.sl{font-size:9px;color:#64748b}.sv{font-size:12px;font-weight:bold}</style></head><body><h2>GST Report</h2><div class="sum"><div class="sc"><div class="sl">Taxable</div><div class="sv">₹${fmt(s.taxableAmount)}</div></div><div class="sc"><div class="sl">CGST</div><div class="sv">₹${fmt(s.cgstAmt)}</div></div><div class="sc"><div class="sl">SGST</div><div class="sv">₹${fmt(s.sgstAmt)}</div></div><div class="sc"><div class="sl">Total Tax</div><div class="sv">₹${fmt(s.totalTax)}</div></div><div class="sc"><div class="sl">Grand Total</div><div class="sv">₹${fmt(s.grandTotal)}</div></div></div><table><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>GSTIN</th><th>Tax Type</th><th>Taxable</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th></tr></thead><tbody>${trs}</tbody></table></body></html>`)
   win.document.close(); win.print()
 }
