@@ -15,7 +15,7 @@ import reportRoutes from "./routes/report.routes";
 import categoryPriceRoutes from "./routes/categoryprice.routes";
 import companyRoutes from "./routes/company.routes";
 import authRoutes from "./routes/auth.routes";
-import { requireAuth, readOnlyForRoles } from "./middleware/auth";
+import { requireAuth, readOnlyForRoles, allowRoles } from "./middleware/auth";
 import { requestId } from "./middleware/requestId";
 import { HttpError, sendError } from "./utils/httpError";
 import { options as customerOptions } from "./controllers/customer.controller";
@@ -68,46 +68,59 @@ app.get("/health", async (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/visits", visitRoutes);
+// Each resource first limits which roles may use it at all (matching the menu
+// in client/src/components/layout/AppLayout.tsx), then which of them may write.
+// ADMIN passes both.
+
 // Customer names for filters on pages every role can open, such as Sale Register.
 app.get("/api/customers/options", requireAuth, customerOptions);
-// Sales-facing: SELLER + ADMIN write; ACCOUNTANT + RETAILER read-only
+// Customers: SELLER writes; ACCOUNTANT reads
 app.use(
   "/api/customers",
   requireAuth,
+  allowRoles("SELLER", "ACCOUNTANT"),
   readOnlyForRoles("ACCOUNTANT", "RETAILER"),
   customerRoutes,
 );
+// Invoices: everyone reads; SELLER writes
 app.use(
   "/api/invoices",
   requireAuth,
   readOnlyForRoles("ACCOUNTANT", "RETAILER"),
   invoiceRoutes,
 );
-// Masters: ADMIN-only writes (everyone else read)
+// Items and HSN codes: SELLER and ACCOUNTANT read
 app.use(
   "/api/items",
   requireAuth,
+  allowRoles("SELLER", "ACCOUNTANT"),
   readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
   itemRoutes,
 );
+// Batches: ACCOUNTANT reads
 app.use(
   "/api/batches",
   requireAuth,
+  allowRoles("ACCOUNTANT"),
   readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
   batchRoutes,
 );
+// Agents: SELLER reads, for the sale screen
 app.use(
   "/api/agents",
   requireAuth,
+  allowRoles("SELLER"),
   readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
   agentRoutes,
 );
 app.use(
   "/api/hsn",
   requireAuth,
+  allowRoles("SELLER", "ACCOUNTANT"),
   readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
   hsnRoutes,
 );
+// Category prices and the company profile: everyone reads
 app.use(
   "/api/category-prices",
   requireAuth,
@@ -120,14 +133,25 @@ app.use(
   readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
   companyRoutes,
 );
-// Purchases: ADMIN-only writes
+// Purchases: ACCOUNTANT reads
 app.use(
   "/api/purchases",
   requireAuth,
+  allowRoles("ACCOUNTANT"),
   readOnlyForRoles("SELLER", "ACCOUNTANT", "RETAILER"),
   purchaseRoutes,
 );
-// Reports: read for everyone authenticated
+// Reports: everyone reads, except the accounts below, for ACCOUNTANT only
+app.use(
+  [
+    "/api/reports/ledger",
+    "/api/reports/trial-balance",
+    "/api/reports/profit-loss",
+    "/api/reports/journal",
+  ],
+  requireAuth,
+  allowRoles("ACCOUNTANT"),
+);
 app.use("/api/reports", requireAuth, reportRoutes);
 
 app.get("/", (_req, res) => {
