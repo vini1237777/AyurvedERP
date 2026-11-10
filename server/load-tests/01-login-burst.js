@@ -1,4 +1,6 @@
 // k6: burst-login scenario. Simulates a 9am login storm.
+// Every virtual user shares one address, so start the API with
+// LOGIN_LIMIT_PER_IP=1000000 for this test.
 
 import http from "k6/http";
 import { check, sleep } from "k6";

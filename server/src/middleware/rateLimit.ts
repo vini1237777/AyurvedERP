@@ -3,7 +3,8 @@ import type { NextFunction, Request, Response } from "express";
 import { cache } from "../utils/cache";
 
 const WINDOW_SECONDS = 15 * 60;
-const MAX_ATTEMPTS_PER_IP = 100;
+// The login load test raises this, since all its users share one address.
+const MAX_ATTEMPTS_PER_IP = Number(process.env.LOGIN_LIMIT_PER_IP) || 100;
 const MAX_FAILURES_PER_ACCOUNT = 10;
 
 type Window = { count: number; ttl: number };
