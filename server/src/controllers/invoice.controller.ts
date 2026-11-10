@@ -7,6 +7,7 @@ import {
   postSalesReturn,
   reverseEntriesFor,
 } from "../services/posting.service";
+import { checkSaleLine } from "../services/saleLines";
 
 const ITEMS_CACHE_KEY = "items:list:v1";
 const DASHBOARD_CACHE_KEY = "dashboard:summary:v1";
@@ -214,12 +215,8 @@ export const create = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Customer and items are required" });
 
     for (const row of rows) {
-      const qty = parseFloat(row.qty) || 0;
-      const freeQty = parseFloat(row.freeQty) || 0;
-      if (qty < 0 || freeQty < 0 || qty + freeQty <= 0)
-        return res
-          .status(400)
-          .json({ error: `Enter a valid quantity for ${row.itemName}` });
+      const problem = checkSaleLine(row);
+      if (problem) return res.status(400).json({ error: problem });
     }
 
     const customer = await prisma.customer.findUnique({
