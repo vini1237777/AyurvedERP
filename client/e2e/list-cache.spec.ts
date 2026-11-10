@@ -82,6 +82,8 @@ test("the next person to sign in loads their own list", async ({ page }) => {
 test("a cancelled invoice leaves the cached list at once", async ({ page }) => {
   await signIn(page, /^Admin/);
   await openFromApp(page, "/sales");
+  // The heading reads 0 until the list arrives, so wait for a row first.
+  await expect(page.locator("table tbody tr").first()).toBeVisible();
   const heading = page.getByText(/\d+ invoices in FY/);
   await expect(heading).toBeVisible();
   const before = Number((await heading.innerText()).match(/\d+/)?.[0]);
