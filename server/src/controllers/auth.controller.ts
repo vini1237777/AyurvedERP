@@ -6,6 +6,7 @@ import prisma from "../utils/prisma";
 import { JWT_ACCESS_SECRET } from "../utils/secrets";
 import {
   issueRefreshToken,
+  revokeByToken,
   rotateRefreshToken,
   SessionError,
 } from "../services/refreshTokens";
@@ -87,6 +88,20 @@ export const refresh = async (req: Request, res: Response) => {
       return res.status(err.status).json({ error: err.message });
     console.error("[auth:refresh]", err);
     res.status(500).json({ error: "Refresh failed" });
+  }
+};
+
+// Ends the session the refresh token belongs to. It needs no access token,
+// so signing out works even after the access token has expired.
+export const logout = async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body || {};
+    if (typeof refreshToken === "string" && refreshToken)
+      await revokeByToken(refreshToken);
+    res.status(204).end();
+  } catch (err: any) {
+    console.error("[auth:logout]", err);
+    res.status(500).json({ error: "Logout failed" });
   }
 };
 
