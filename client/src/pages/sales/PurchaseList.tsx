@@ -129,7 +129,7 @@ export default function PurchaseList() {
         grandTotal: full.grandTotal || 0,
         notes: full.notes || "",
       };
-      localStorage.setItem("erp_purchase_print", JSON.stringify(data));
+      sessionStorage.setItem("erp_purchase_print", JSON.stringify(data));
       window.open("/purchase-print.html", "_blank");
     } catch {
       setToast({ msg: "Failed to open purchase", type: "error" });

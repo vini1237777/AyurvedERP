@@ -182,7 +182,7 @@ export default function SaleList() {
         grand: full.grandTotal || 0,
       };
 
-      localStorage.setItem("erp_print_data", JSON.stringify(data));
+      sessionStorage.setItem("erp_print_data", JSON.stringify(data));
       const url =
         action === "pdf" ? "/invoice-print.html?pdf=1" : "/invoice-print.html";
       window.open(url, "_blank");
