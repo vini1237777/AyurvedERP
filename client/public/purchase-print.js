@@ -194,3 +194,13 @@ if (!data) {
   if (data.mode === "grn") renderGRN(data);
   else renderVoucher(data);
 }
+
+// Buttons are wired here rather than with onclick attributes, which the
+// site's Content Security Policy blocks.
+const ACTIONS = {
+  close: () => window.close(),
+  print: () => window.print(),
+};
+document.querySelectorAll("[data-action]").forEach((button) => {
+  button.addEventListener("click", () => ACTIONS[button.dataset.action]?.());
+});

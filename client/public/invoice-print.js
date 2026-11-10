@@ -447,3 +447,17 @@ window.addEventListener("DOMContentLoaded", () => {
     setTimeout(() => downloadPDF(), 300);
   }
 });
+
+// Buttons are wired here rather than with onclick attributes, which the
+// site's Content Security Policy blocks.
+const ACTIONS = {
+  close: () => window.close(),
+  print: () => window.print(),
+  pdf: () => downloadPDF(),
+};
+document.querySelectorAll("[data-action]").forEach((button) => {
+  button.addEventListener("click", () => ACTIONS[button.dataset.action]?.());
+});
+COPIES.forEach(({ id }) =>
+  document.getElementById(id)?.addEventListener("change", renderAll),
+);
