@@ -27,47 +27,62 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+// The access token is kept in memory only. The refresh token is in an
+// httpOnly cookie that page scripts can't read; a reload gets a new access
+// token from it.
+let accessToken: string | null = null;
+export const setAccessToken = (token: string | null) => {
+  accessToken = token;
+};
+
+// Earlier versions stored tokens in localStorage. Remove any left behind.
+try {
+  for (const key of ["authToken", "refreshToken", "authUser"])
+    localStorage.removeItem(key);
+} catch {
+  /* storage unavailable */
+}
+
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("authToken");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
 });
 
+type Session = { accessToken: string; user: AuthUser };
+let refreshInflight: Promise<Session | null> | null = null;
 
-let refreshInflight: Promise<string | null> | null = null;
-
-// Each refresh returns a new refresh token and retires the old one. A 409
-// means another tab refreshed with the same token a moment ago, so try once
-// more with the token that tab saved.
-async function tryRefreshAccessToken(retried = false): Promise<string | null> {
-  const refreshToken = localStorage.getItem("refreshToken");
-  if (!refreshToken) return null;
+// Each refresh rotates the cookie. A 409 means another tab refreshed with the
+// same cookie a moment ago, so try once more with the cookie it received.
+async function refreshSession(retried = false): Promise<Session | null> {
   try {
-    const res = await axios.post<RefreshResponse>(
-      `${API_BASE_URL}/auth/refresh`,
-      { refreshToken },
-    );
-    const next = res.data.accessToken;
-    if (!next) return null;
-    localStorage.setItem("authToken", next);
-    if (res.data.refreshToken)
-      localStorage.setItem("refreshToken", res.data.refreshToken);
-    if (res.data.user)
-      localStorage.setItem("authUser", JSON.stringify(res.data.user));
-    return next;
+    const res = await axios.post<Session>(`${API_BASE_URL}/auth/refresh`);
+    if (!res.data.accessToken) return null;
+    setAccessToken(res.data.accessToken);
+    return res.data;
   } catch (err: any) {
     if (err?.response?.status === 409 && !retried) {
       await new Promise((r) => setTimeout(r, 300));
-      return tryRefreshAccessToken(true);
+      return refreshSession(true);
     }
     return null;
   }
 }
 
+// One refresh at a time, shared by every request that needs it.
+export function restoreSession(): Promise<Session | null> {
+  if (!refreshInflight)
+    refreshInflight = refreshSession().finally(() => {
+      refreshInflight = null;
+    });
+  return refreshInflight;
+}
+
+async function tryRefreshAccessToken(): Promise<string | null> {
+  return (await restoreSession())?.accessToken ?? null;
+}
+
 function clearAuthAndRedirect() {
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("authUser");
+  setAccessToken(null);
   if (window.location.pathname !== "/login") {
     window.location.href = "/login";
   }
@@ -89,9 +104,7 @@ api.interceptors.response.use(
       }
 
       original._retry = true;
-      if (!refreshInflight) refreshInflight = tryRefreshAccessToken();
-      const newToken = await refreshInflight;
-      refreshInflight = null;
+      const newToken = await tryRefreshAccessToken();
 
       if (newToken) {
         original.headers = original.headers || {};
@@ -127,10 +140,9 @@ export async function authFetch(
   init: RequestInit = {},
 ): Promise<Response> {
   const buildHeaders = () => {
-    const token = localStorage.getItem("authToken");
     const h = new Headers(init.headers || {});
-    if (token && !h.has("Authorization")) {
-      h.set("Authorization", `Bearer ${token}`);
+    if (accessToken && !h.has("Authorization")) {
+      h.set("Authorization", `Bearer ${accessToken}`);
     }
     if (!h.has("Content-Type") && init.body) {
       h.set("Content-Type", "application/json");
@@ -146,9 +158,7 @@ export async function authFetch(
     !urlStr.includes("/auth/refresh") &&
     !urlStr.includes("/auth/login")
   ) {
-    if (!refreshInflight) refreshInflight = tryRefreshAccessToken();
-    const newToken = await refreshInflight;
-    refreshInflight = null;
+    const newToken = await tryRefreshAccessToken();
     if (newToken) {
       res = await fetch(input, { ...init, headers: buildHeaders() });
     } else {
@@ -169,11 +179,8 @@ export async function authFetch(
 
 export type LoginResponse = {
   accessToken: string;
-  refreshToken: string;
   user: AuthUser;
 };
-
-type RefreshResponse = LoginResponse;
 
 export const authApi = {
   login: (email: string, password: string) =>
@@ -182,10 +189,8 @@ export const authApi = {
       .then((r) => r.data),
   // Ends the session on the server. Failures are ignored: the browser
   // forgets the tokens either way.
-  logout: (refreshToken: string) =>
-    axios
-      .post(`${API_BASE_URL}/auth/logout`, { refreshToken })
-      .catch(() => undefined),
+  logout: () =>
+    axios.post(`${API_BASE_URL}/auth/logout`).catch(() => undefined),
   me: () => api.get<AuthUser>("/auth/me").then((r) => r.data),
 };
 
