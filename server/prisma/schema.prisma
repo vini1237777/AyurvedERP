@@ -316,6 +316,26 @@ model User {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+}
+
+// One row per refresh token. Only a SHA-256 hash of the token is stored. Each
+// refresh revokes the old row and adds a new one in the same family, so a
+// revoked token that comes back means it was copied, and the family is ended.
+model RefreshToken {
+  id           String    @id
+  userId       Int
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  familyId     String
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  replacedById String?
+  createdAt    DateTime  @default(now())
+
+  @@index([familyId])
+  @@index([userId])
 }
 
 model Account {
