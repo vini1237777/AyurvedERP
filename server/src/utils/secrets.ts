@@ -11,14 +11,9 @@ export function resolveJwtSecrets(env: Env) {
   if (!access && env.NODE_ENV === "production") {
     throw new Error("JWT_ACCESS_SECRET must be set in production");
   }
-  const accessSecret = access || DEV_SECRET;
-  return {
-    accessSecret,
-    refreshSecret: env.JWT_REFRESH_SECRET || `${accessSecret}_refresh`,
-  };
+  return { accessSecret: access || DEV_SECRET };
 }
 
 const secrets = resolveJwtSecrets(process.env);
 
 export const JWT_ACCESS_SECRET = secrets.accessSecret;
-export const JWT_REFRESH_SECRET = secrets.refreshSecret;
