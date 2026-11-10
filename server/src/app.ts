@@ -15,6 +15,8 @@ import categoryPriceRoutes from "./routes/categoryprice.routes";
 import companyRoutes from "./routes/company.routes";
 import authRoutes from "./routes/auth.routes";
 import { requireAuth, readOnlyForRoles } from "./middleware/auth";
+import { requestId } from "./middleware/requestId";
+import { HttpError, sendError } from "./utils/httpError";
 
 dotenv.config();
 
@@ -30,6 +32,7 @@ const corsMiddleware = cors({
   maxAge: 7200,
 });
 
+app.use(requestId);
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 app.use(compression({ level: 3 }));
