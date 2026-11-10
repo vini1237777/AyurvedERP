@@ -41,18 +41,13 @@ app.use(express.json());
 import prisma from "./utils/prisma";
 import visitRoutes from "./routes/visit.routes";
 
-app.get("/health", async (_req, res) => {
-  const hasDbUrl = !!process.env.DATABASE_URL;
+app.get("/health", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ ok: true, db: "connected", hasDbUrl });
-  } catch (err: any) {
-    res.status(500).json({
-      ok: false,
-      db: "error",
-      hasDbUrl,
-      message: err?.message || String(err),
-    });
+    res.json({ ok: true, db: "connected" });
+  } catch (err) {
+    console.error(`[${req.id}] health check`, err);
+    res.status(500).json({ ok: false, db: "error" });
   }
 });
 
