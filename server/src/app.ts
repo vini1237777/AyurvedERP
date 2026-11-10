@@ -129,13 +129,16 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ) => {
-    console.error(err.stack);
     const origin = req.headers.origin;
     if (origin) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Credentials", "true");
     }
-    res.status(500).json({ error: err.message || "Internal server error" });
+    // A body that isn't valid JSON is the client's mistake, not a server error.
+    const status = (err as { status?: number }).status;
+    if (status && status >= 400 && status < 500)
+      return sendError(req, res, new HttpError(status, "The request could not be read."));
+    sendError(req, res, err);
   },
 );
 
