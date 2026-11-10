@@ -43,7 +43,7 @@ export default function SaleRegister() {
   const [totalCount, setTotalCount] = useState(0)
   const [pageNum, setPageNum]     = useState(1)
   const [perPage, setPerPage]     = useState(50)
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customers, setCustomers] = useState<Pick<Customer, "id" | "name">[]>([])
   const [loading, setLoading]     = useState(true)
   const [from, setFrom]           = useState("")
   const [to, setTo]               = useState("")
@@ -69,7 +69,7 @@ export default function SaleRegister() {
   useEffect(() => { load() }, [load])
 
   useEffect(() => {
-    customerApi.getAll().then(setCustomers).catch(() => {})
+    customerApi.options().then(setCustomers).catch(() => {})
   }, [])
 
 
