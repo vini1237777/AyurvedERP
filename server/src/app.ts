@@ -20,11 +20,22 @@ dotenv.config();
 
 const app = express();
 
+// The site reaches the API through its own /api path, so browsers see one
+// origin. Only origins listed here may call the API from another origin, for
+// example a local client on another port.
+const allowedOrigins = (
+  process.env.CORS_ORIGINS ||
+  "http://localhost:5173,http://localhost:5174,http://localhost:8080"
+)
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
 const corsMiddleware = cors({
-  origin: true,
+  origin: allowedOrigins,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Seed-Token"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   // The client and API are on different origins, so browsers ask permission
   // before each request. Remember the answer instead (Chrome caps this at 2h).
   maxAge: 7200,
@@ -127,11 +138,6 @@ app.use(
     _next: express.NextFunction,
   ) => {
     console.error(err.stack);
-    const origin = req.headers.origin;
-    if (origin) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-      res.setHeader("Access-Control-Allow-Credentials", "true");
-    }
     res.status(500).json({ error: err.message || "Internal server error" });
   },
 );
