@@ -234,19 +234,32 @@ export const create = async (req: Request, res: Response) => {
         ? `20${String(y).slice(2)}-${String(y + 1).slice(2)}`
         : `20${String(y - 1).slice(2)}-${String(y).slice(2)}`;
 
+    // GST follows the item's tax slab, whatever the browser sent.
+    const itemIds = [...new Set<number>(rows.map((row: any) => Number(row.itemId)))];
+    const items = await prisma.item.findMany({
+      where: { id: { in: itemIds } },
+      select: { id: true, taxSlab: { select: { rate: true } } },
+    });
+    const gstByItem = new Map(items.map((i) => [i.id, i.taxSlab.rate]));
+    const unknown = rows.find((row: any) => !gstByItem.has(Number(row.itemId)));
+    if (unknown)
+      return res
+        .status(400)
+        .json({ error: `Item not found for ${unknown.itemName || "a line"}` });
+
     const calcedRows = rows.map((row: any) => {
       const rate = parseFloat(row.rate) || 0;
       const qty = parseFloat(row.qty) || 0;
       const disc = parseFloat(row.disc) || 0;
       const sDis = parseFloat(row.sDis) || 0;
-      const gst = parseFloat(row.gst) || 0;
+      const gst = gstByItem.get(Number(row.itemId)) ?? 0;
       const basic = r2(rate * qty);
       const afterDis = r2(basic - (basic * disc) / 100);
       const taxable = r2(afterDis - (afterDis * sDis) / 100);
       const discAmt = r2(basic - taxable);
       const taxAmt = r2((taxable * gst) / 100);
       const netValue = r2(taxable + taxAmt);
-      return { ...row, basic, discAmt, taxable, taxAmt, netValue };
+      return { ...row, gst, basic, discAmt, taxable, taxAmt, netValue };
     });
 
     const totalDiscount = r2(
