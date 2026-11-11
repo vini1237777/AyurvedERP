@@ -97,21 +97,51 @@ describe("writes", () => {
   }
 });
 
+// Who may read each resource, matching the menu in AppLayout.tsx.
+const ALL = ROLES;
+const READ_ACCESS: Record<string, Role[]> = {
+  customers: ["ADMIN", "SELLER", "ACCOUNTANT"],
+  "customers/options": ALL,
+  invoices: ALL,
+  items: ["ADMIN", "SELLER", "ACCOUNTANT"],
+  batches: ["ADMIN", "ACCOUNTANT"],
+  agents: ["ADMIN", "SELLER"],
+  hsn: ["ADMIN", "SELLER", "ACCOUNTANT"],
+  "category-prices/item-report": ALL,
+  company: ALL,
+  purchases: ["ADMIN", "ACCOUNTANT"],
+  "reports/dashboard-summary": ALL,
+  "reports/sale-register": ALL,
+  "reports/stock": ALL,
+  "reports/ledger": ["ADMIN", "ACCOUNTANT"],
+  "reports/trial-balance": ["ADMIN", "ACCOUNTANT"],
+  "reports/profit-loss": ["ADMIN", "ACCOUNTANT"],
+  "reports/journal": ["ADMIN", "ACCOUNTANT"],
+};
+
 describe("reads", () => {
-  for (const resource of [...RESOURCES, "reports/dashboard-summary"]) {
+  for (const [resource, readers] of Object.entries(READ_ACCESS)) {
     for (const role of ROLES) {
-      test(`${role} can read ${resource}`, async () => {
+      const allowed = readers.includes(role);
+      test(`${role} ${allowed ? "can" : "cannot"} read ${resource}`, async () => {
         const res = await call("GET", `/api/${resource}`, tokenFor(role));
         await res.text();
         assert.notEqual(res.status, 401);
-        assert.notEqual(res.status, 403);
+        if (allowed) assert.notEqual(res.status, 403);
+        else assert.equal(res.status, 403);
       });
     }
   }
+
+  test("a single customer is as private as the list", async () => {
+    const res = await call("GET", "/api/customers/1", tokenFor("RETAILER"));
+    await res.text();
+    assert.equal(res.status, 403);
+  });
 });
 
 describe("tokens", () => {
-  const protectedPaths = [...RESOURCES, "reports/dashboard-summary"];
+  const protectedPaths = Object.keys(READ_ACCESS);
 
   test("no token is rejected everywhere", async () => {
     for (const path of protectedPaths) {

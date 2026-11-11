@@ -41,3 +41,16 @@ export function readOnlyForRoles(...readOnlyRoles: Role[]) {
     next();
   };
 }
+
+// Only these roles (and ADMIN) may use the resource at all. Mounted before
+// readOnlyForRoles, so reads match what each role's menu shows.
+export function allowRoles(...roles: Role[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const role = (req as any).userRole as Role | undefined;
+    if (!role) return res.status(401).json({ error: "Unauthorized" });
+    if (role === "ADMIN" || roles.includes(role)) return next();
+    return res
+      .status(403)
+      .json({ error: `${role} cannot view this resource` });
+  };
+}

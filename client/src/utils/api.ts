@@ -182,6 +182,11 @@ export const authApi = {
 
 export const customerApi = {
   getAll: () => api.get<Customer[]>("/customers").then((r) => r.data),
+  // Names only, readable by every role.
+  options: () =>
+    api
+      .get<Pick<Customer, "id" | "name">[]>("/customers/options")
+      .then((r) => r.data),
   getById: (id: number) =>
     api.get<Customer>(`/customers/${id}`).then((r) => r.data),
   search: (q: string) =>
