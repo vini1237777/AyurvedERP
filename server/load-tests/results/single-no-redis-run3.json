@@ -101,7 +101,7 @@
         }
     },
     "setup_data": {
-        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOjEsImVtYWlsIjoiYWRtaW5AYXVzaGFkaGkubG9jYWwiLCJyb2xlIjoiQURNSU4iLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzk0MjAwMzA3LCJleHAiOjE3OTQyMDEyMDd9.OEKZ2rarkPyzbiMuhBcVEmopOo1f0k2LcE30nYn3T1U"
+        "token": "[redacted]"
     },
     "root_group": {
         "checks": {
