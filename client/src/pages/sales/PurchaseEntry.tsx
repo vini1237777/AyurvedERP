@@ -346,7 +346,7 @@ export default function PurchaseEntry() {
         grandTotal: full.grandTotal || 0,
         notes: full.notes || "",
       };
-      localStorage.setItem("erp_purchase_print", JSON.stringify(data));
+      sessionStorage.setItem("erp_purchase_print", JSON.stringify(data));
       window.open("/purchase-print.html", "_blank");
     } catch {
       // print failure shouldn't block save flow

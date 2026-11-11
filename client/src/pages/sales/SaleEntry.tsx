@@ -616,7 +616,7 @@ export default function SaleEntry() {
       totTax,
       grand,
     };
-    localStorage.setItem("erp_print_data", JSON.stringify(data));
+    sessionStorage.setItem("erp_print_data", JSON.stringify(data));
     window.open("/invoice-print.html", "_blank");
   }
 

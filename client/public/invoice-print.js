@@ -10,7 +10,11 @@ function escapeAll(value) {
   return value;
 }
 
-const raw = localStorage.getItem("erp_print_data");
+// The opening tab writes this to sessionStorage, which the browser copies
+// into this window and clears when the tab closes. Older builds used
+// localStorage, so remove anything left there.
+localStorage.removeItem("erp_print_data");
+const raw = sessionStorage.getItem("erp_print_data");
 const D = raw ? escapeAll(JSON.parse(raw)) : null;
 const COPIES = [
   { id: "cb-customer", label: "Original For Buyer" },
