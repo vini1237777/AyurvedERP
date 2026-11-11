@@ -22,6 +22,15 @@ dotenv.config();
 
 const app = express();
 
+// On Vercel one proxy sits in front of the API. Trusting exactly that hop makes
+// req.ip the address the proxy saw, which a client can't forge by sending its
+// own X-Forwarded-For. Without a proxy nothing is trusted. TRUST_PROXY sets the
+// number of hops for other setups.
+app.set(
+  "trust proxy",
+  Number(process.env.TRUST_PROXY ?? (process.env.VERCEL ? 1 : 0)),
+);
+
 const corsMiddleware = cors({
   origin: true,
   credentials: true,

@@ -91,6 +91,40 @@ export const cache = {
     return fresh;
   },
 
+  // Adds 1 to a counter that expires ttlSeconds after its first hit. Returns
+  // null when Redis is unavailable, so the caller can fall back.
+  async incrWindow(
+    key: string,
+    ttlSeconds: number,
+  ): Promise<{ count: number; ttl: number } | null> {
+    const c = getClient();
+    if (!isReady(c)) return null;
+    try {
+      const out = await c.multi().incr(key).ttl(key).exec();
+      const count = Number(out?.[0]?.[1]);
+      let ttl = Number(out?.[1]?.[1]);
+      if (ttl < 0) {
+        await c.expire(key, ttlSeconds);
+        ttl = ttlSeconds;
+      }
+      return { count, ttl };
+    } catch {
+      return null;
+    }
+  },
+
+  // Reads a counter without changing it.
+  async peekWindow(key: string): Promise<{ count: number; ttl: number } | null> {
+    const c = getClient();
+    if (!isReady(c)) return null;
+    try {
+      const out = await c.multi().get(key).ttl(key).exec();
+      return { count: Number(out?.[0]?.[1]) || 0, ttl: Number(out?.[1]?.[1]) };
+    } catch {
+      return null;
+    }
+  },
+
   isHealthy(): boolean {
     return isReady(client);
   },
