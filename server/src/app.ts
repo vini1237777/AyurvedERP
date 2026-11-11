@@ -15,6 +15,8 @@ import categoryPriceRoutes from "./routes/categoryprice.routes";
 import companyRoutes from "./routes/company.routes";
 import authRoutes from "./routes/auth.routes";
 import { requireAuth, readOnlyForRoles } from "./middleware/auth";
+import { requestId } from "./middleware/requestId";
+import { HttpError, sendError } from "./utils/httpError";
 
 dotenv.config();
 
@@ -30,6 +32,7 @@ const corsMiddleware = cors({
   maxAge: 7200,
 });
 
+app.use(requestId);
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 app.use(compression({ level: 3 }));
@@ -38,18 +41,13 @@ app.use(express.json());
 import prisma from "./utils/prisma";
 import visitRoutes from "./routes/visit.routes";
 
-app.get("/health", async (_req, res) => {
-  const hasDbUrl = !!process.env.DATABASE_URL;
+app.get("/health", async (req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.json({ ok: true, db: "connected", hasDbUrl });
-  } catch (err: any) {
-    res.status(500).json({
-      ok: false,
-      db: "error",
-      hasDbUrl,
-      message: err?.message || String(err),
-    });
+    res.json({ ok: true, db: "connected" });
+  } catch (err) {
+    console.error(`[${req.id}] health check`, err);
+    res.status(500).json({ ok: false, db: "error" });
   }
 });
 
@@ -126,13 +124,16 @@ app.use(
     res: express.Response,
     _next: express.NextFunction,
   ) => {
-    console.error(err.stack);
     const origin = req.headers.origin;
     if (origin) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Credentials", "true");
     }
-    res.status(500).json({ error: err.message || "Internal server error" });
+    // A body that isn't valid JSON is the client's mistake, not a server error.
+    const status = (err as { status?: number }).status;
+    if (status && status >= 400 && status < 500)
+      return sendError(req, res, new HttpError(status, "The request could not be read."));
+    sendError(req, res, err);
   },
 );
 

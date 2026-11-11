@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../utils/prisma";
 import { cache } from "../utils/cache";
+import { HttpError, sendError } from "../utils/httpError";
 import {
   postInvoice,
   postSalesReturn,
@@ -408,14 +409,15 @@ export const createReturn = async (req: Request, res: Response) => {
         const qty = Number(row.qty) || 0;
         const invItem = invoiceItemsMap.get(invoiceItemId);
         if (!invItem)
-          throw new Error(`Invoice item ${row.invoiceItemId} not found`);
+          throw new HttpError(400, `Invoice item ${row.invoiceItemId} not found`);
         if (qty <= 0)
-          throw new Error(`Invalid return qty for ${invItem.itemName}`);
+          throw new HttpError(400, `Invalid return qty for ${invItem.itemName}`);
 
         const alreadyReturned = Number(invItem.returnedQty || 0);
         const available = Number(invItem.qty) - alreadyReturned;
         if (qty > available)
-          throw new Error(
+          throw new HttpError(
+            400,
             `Return qty exceeds available qty for ${invItem.itemName}. Available: ${available}`,
           );
 
@@ -484,11 +486,8 @@ export const createReturn = async (req: Request, res: Response) => {
       message: "Sales return processed",
       data: createdReturn,
     });
-  } catch (err: any) {
-    console.error("createReturn error:", err);
-    return res
-      .status(500)
-      .json({ error: err.message || "Failed to process return" });
+  } catch (err) {
+    return sendError(req, res, err);
   }
 };
 

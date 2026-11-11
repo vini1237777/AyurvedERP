@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import { HttpError, sendError } from "../utils/httpError";
 import {
   postPurchase,
   postPurchaseReturn,
@@ -217,8 +218,8 @@ export const create = async (req: Request, res: Response) => {
     }, { timeout: 20000, maxWait: 10000 });
 
     res.status(201).json(purchase);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to create purchase" });
+  } catch (err) {
+    sendError(req, res, err);
   }
 };
 
@@ -292,7 +293,7 @@ export const createReturn = async (req: Request, res: Response) => {
       const returnRows: any[] = [];
       for (const row of items) {
         const invItem = itemMap.get(Number(row.purchaseItemId));
-        if (!invItem) throw new Error(`Item not found`);
+        if (!invItem) throw new HttpError(400, "Item not found");
         const qty = Number(row.qty) || 0;
         const taxableAmt = r2(
           Number(invItem.rate) *
@@ -346,7 +347,7 @@ export const createReturn = async (req: Request, res: Response) => {
       return pr;
     }, { timeout: 20000, maxWait: 10000 });
     res.status(201).json({ success: true, data: ret });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || "Failed to process return" });
+  } catch (err) {
+    sendError(req, res, err);
   }
 };
