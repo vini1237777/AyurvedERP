@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import compression from "compression";
+import helmet from "helmet";
 import dotenv from "dotenv";
 
 import customerRoutes from "./routes/customer.routes";
@@ -42,6 +43,10 @@ const corsMiddleware = cors({
 });
 
 app.use(requestId);
+app.disable("x-powered-by");
+// The API only returns JSON, so helmet's defaults fit: they forbid framing,
+// sniffing and inline content, and hide the server stack.
+app.use(helmet());
 app.use(corsMiddleware);
 app.options("*", corsMiddleware);
 app.use(compression({ level: 3 }));

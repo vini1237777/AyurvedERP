@@ -5,6 +5,7 @@ import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, LoadingScreen, PageHeader, Input, Select, Badge } from "../../components/ui";
 import { Pagination } from "../../components/ui/Pagination";
 import type { Customer, Invoice } from "../../types";
+import { escapeHtml } from "../../utils/escapeHtml";
 
 type SortKey = 'invoiceNo' | 'invoiceDate' | 'customer' | 'totalTaxable' | 'totalTax' | 'grandTotal'
 type SortDir = 'asc' | 'desc'
@@ -32,7 +33,7 @@ function exportCSV(rows: Invoice[]) {
 
 function exportPDF(rows: Invoice[], total: number) {
   const win=window.open("","_blank")!
-  const trs=rows.map(r=>`<tr><td>${r.invoiceNo}</td><td>${fmtDate(r.invoiceDate)}</td><td>${r.customer?.name||""}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.totalTaxable)}</td><td>₹${fmt(r.totalTax)}</td><td>₹${fmt(r.grandTotal)}</td><td>${r.status}</td></tr>`).join("")
+  const trs=rows.map(r=>`<tr><td>${escapeHtml(r.invoiceNo)}</td><td>${fmtDate(r.invoiceDate)}</td><td>${escapeHtml(r.customer?.name)}</td><td>${r.taxType==="CGST_SGST"?"CGST+SGST":"IGST"}</td><td>₹${fmt(r.totalTaxable)}</td><td>₹${fmt(r.totalTax)}</td><td>₹${fmt(r.grandTotal)}</td><td>${escapeHtml(r.status)}</td></tr>`).join("")
   win.document.write(`<html><head><title>Sale Register</title><style>body{font-family:Arial;font-size:11px;padding:20px}table{width:100%;border-collapse:collapse}th{background:#f1f5f9;border:1px solid #cbd5e1;padding:6px 8px;font-size:10px;text-align:left}td{border:1px solid #e2e8f0;padding:5px 8px}tr:nth-child(even){background:#f8fafc}.total{font-weight:bold;margin-top:8px;text-align:right}</style></head><body><h2>Sale Register</h2><table><thead><tr><th>Invoice No</th><th>Date</th><th>Customer</th><th>Tax Type</th><th>Taxable</th><th>Tax</th><th>Amount</th><th>Status</th></tr></thead><tbody>${trs}</tbody></table><div class="total">Grand Total: ₹${fmt(total)}</div></body></html>`)
   win.document.close(); win.print()
 }
