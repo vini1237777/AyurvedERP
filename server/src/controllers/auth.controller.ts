@@ -3,10 +3,15 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import prisma from "../utils/prisma";
 
-import { JWT_ACCESS_SECRET, JWT_REFRESH_SECRET } from "../utils/secrets";
+import { JWT_ACCESS_SECRET } from "../utils/secrets";
+import {
+  issueRefreshToken,
+  revokeByToken,
+  rotateRefreshToken,
+  SessionError,
+} from "../services/refreshTokens";
 
 const ACCESS_TOKEN_TTL = "15m";
-const REFRESH_TOKEN_TTL = "30d";
 
 type SafeUser = { id: number; email: string; name: string; role: string };
 
@@ -16,12 +21,6 @@ function signAccessToken(user: SafeUser) {
     JWT_ACCESS_SECRET,
     { expiresIn: ACCESS_TOKEN_TTL },
   );
-}
-
-function signRefreshToken(userId: number) {
-  return jwt.sign({ sub: userId, type: "refresh" }, JWT_REFRESH_SECRET, {
-    expiresIn: REFRESH_TOKEN_TTL,
-  });
 }
 
 export const login = async (req: Request, res: Response) => {
@@ -46,7 +45,7 @@ export const login = async (req: Request, res: Response) => {
       role: user.role,
     };
     const accessToken = signAccessToken(safe);
-    const refreshToken = signRefreshToken(user.id);
+    const refreshToken = await issueRefreshToken(user.id);
 
     res.json({
       accessToken,
@@ -62,22 +61,12 @@ export const login = async (req: Request, res: Response) => {
 export const refresh = async (req: Request, res: Response) => {
   try {
     const { refreshToken } = req.body || {};
-    if (!refreshToken)
+    if (!refreshToken || typeof refreshToken !== "string")
       return res.status(400).json({ error: "Refresh token required" });
 
-    let payload: any;
-    try {
-      payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-    } catch {
-      return res
-        .status(401)
-        .json({ error: "Invalid or expired refresh token" });
-    }
-    if (payload?.type !== "refresh")
-      return res.status(401).json({ error: "Invalid token type" });
-
+    const rotated = await rotateRefreshToken(refreshToken);
     const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: rotated.userId },
       select: { id: true, email: true, name: true, role: true, isActive: true },
     });
     if (!user || !user.isActive)
@@ -89,11 +78,30 @@ export const refresh = async (req: Request, res: Response) => {
       name: user.name,
       role: user.role,
     };
-    const accessToken = signAccessToken(safe);
-    res.json({ accessToken, user: safe });
+    res.json({
+      accessToken: signAccessToken(safe),
+      refreshToken: rotated.token,
+      user: safe,
+    });
   } catch (err: any) {
+    if (err instanceof SessionError)
+      return res.status(err.status).json({ error: err.message });
     console.error("[auth:refresh]", err);
     res.status(500).json({ error: "Refresh failed" });
+  }
+};
+
+// Ends the session the refresh token belongs to. It needs no access token,
+// so signing out works even after the access token has expired.
+export const logout = async (req: Request, res: Response) => {
+  try {
+    const { refreshToken } = req.body || {};
+    if (typeof refreshToken === "string" && refreshToken)
+      await revokeByToken(refreshToken);
+    res.status(204).end();
+  } catch (err: any) {
+    console.error("[auth:logout]", err);
+    res.status(500).json({ error: "Logout failed" });
   }
 };
 

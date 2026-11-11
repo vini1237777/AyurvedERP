@@ -18,17 +18,23 @@ export const options = {
   },
 };
 
-export function setup() {
+// Refresh tokens rotate, so each VU keeps its own session: it signs in on its
+// first iteration and stores the new refresh token after every refresh. With
+// many VUs signing in from one address, start the API with
+// LOGIN_LIMIT_PER_IP=1000000.
+let session = null;
+
+function login() {
   const res = http.post(
     `${BASE}/auth/login`,
     JSON.stringify({
       email: "admin@aushadhi.local",
       password: "admin123",
     }),
-    { headers: { "Content-Type": "application/json" } },
+    { headers: { "Content-Type": "application/json" }, tags: { name: "login" } },
   );
   if (res.status !== 200) {
-    throw new Error(`Setup login failed: ${res.status} ${res.body}`);
+    throw new Error(`Login failed: ${res.status} ${res.body}`);
   }
   return {
     refreshToken: res.json("refreshToken"),
@@ -36,25 +42,28 @@ export function setup() {
   };
 }
 
-export default function (data) {
-  let accessToken = data.accessToken;
+export default function () {
+  if (!session) session = login();
 
   if (Math.random() < 0.25) {
     group("refresh", () => {
       const r = http.post(
         `${BASE}/auth/refresh`,
-        JSON.stringify({ refreshToken: data.refreshToken }),
+        JSON.stringify({ refreshToken: session.refreshToken }),
         {
           headers: { "Content-Type": "application/json" },
           tags: { name: "refresh" },
         },
       );
       check(r, { "refresh 200": (resp) => resp.status === 200 });
-      const nextToken = r.json("accessToken");
-      if (typeof nextToken === "string") accessToken = nextToken;
+      if (r.status === 200) {
+        session.accessToken = r.json("accessToken");
+        session.refreshToken = r.json("refreshToken");
+      }
     });
   }
 
+  const accessToken = session.accessToken;
   const authHeaders = {
     headers: { Authorization: `Bearer ${accessToken}` },
   };

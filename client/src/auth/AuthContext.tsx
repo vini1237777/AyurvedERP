@@ -7,7 +7,7 @@ type AuthState = {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -49,7 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(res.user);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Wait briefly so leaving the page doesn't cancel the request.
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken)
+      await Promise.race([
+        authApi.logout(refreshToken),
+        new Promise((r) => setTimeout(r, 1500)),
+      ]);
     queryClient.clear();
     localStorage.removeItem("authToken");
     localStorage.removeItem("refreshToken");

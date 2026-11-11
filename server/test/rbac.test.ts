@@ -197,14 +197,6 @@ describe("secrets", () => {
     );
   });
 
-  test("the refresh secret never falls back to the public value", () => {
-    const { refreshSecret } = resolveJwtSecrets({
-      NODE_ENV: "production",
-      JWT_ACCESS_SECRET: "real",
-    });
-    assert.equal(refreshSecret, "real_refresh");
-  });
-
   test("local development still runs without a secret", () => {
     assert.doesNotThrow(() => resolveJwtSecrets({ NODE_ENV: "development" }));
   });
