@@ -7,6 +7,7 @@ import {
   agentApi,
   invoiceApi,
   authFetch,
+  API_BASE_URL,
 } from "../../utils/api";
 import { expiresSoon,
   fmt,
@@ -318,9 +319,7 @@ export default function SaleEntry() {
   const [invoiceNo, setInvoiceNo] = useState("");
 
   useEffect(() => {
-    const base = (
-      import.meta.env.VITE_API_URL || "http://localhost:5000/api"
-    ).trim();
+    const base = API_BASE_URL;
     authFetch(`${base}/invoices/next-no`)
       .then((r) => r.json())
       .then((d) => {

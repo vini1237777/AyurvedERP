@@ -2,11 +2,9 @@ import { useState, useEffect } from "react";
 import { thAlign } from "../../components/ui/tableAlign";
 import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
-import { authFetch } from "../../utils/api";
+import { authFetch, API_BASE_URL } from "../../utils/api";
 
-const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).trim();
+const API = API_BASE_URL;
 function getCurrentFY() {
   const now = new Date();
   const y = now.getFullYear();

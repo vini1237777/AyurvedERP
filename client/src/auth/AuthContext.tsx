@@ -1,6 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { authApi, type AuthUser } from "../utils/api";
+import {
+  authApi,
+  restoreSession,
+  setAccessToken,
+  type AuthUser,
+} from "../utils/api";
 import { queryClient } from "../utils/queryClient";
 
 type AuthState = {
@@ -13,54 +18,31 @@ type AuthState = {
 const AuthCtx = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const raw = localStorage.getItem("authUser");
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
-  });
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // A reload starts with no access token; the refresh cookie gets a new one.
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    authApi
-      .me()
-      .then((u) => {
-        setUser(u);
-        localStorage.setItem("authUser", JSON.stringify(u));
-      })
-      .catch(() => {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("authUser");
-        setUser(null);
-      })
+    restoreSession()
+      .then((session) => setUser(session?.user ?? null))
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
     queryClient.clear();
-    localStorage.setItem("authToken", res.accessToken);
-    if (res.refreshToken)
-      localStorage.setItem("refreshToken", res.refreshToken);
-    localStorage.setItem("authUser", JSON.stringify(res.user));
+    setAccessToken(res.accessToken);
     setUser(res.user);
   };
 
   const logout = async () => {
     // Wait briefly so leaving the page doesn't cancel the request.
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken)
-      await Promise.race([
-        authApi.logout(refreshToken),
-        new Promise((r) => setTimeout(r, 1500)),
-      ]);
+    await Promise.race([
+      authApi.logout(),
+      new Promise((r) => setTimeout(r, 1500)),
+    ]);
+    setAccessToken(null);
     queryClient.clear();
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("authUser");
     setUser(null);
     window.location.href = "/login";
   };

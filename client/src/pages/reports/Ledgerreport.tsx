@@ -2,12 +2,10 @@ import { useState, useEffect } from "react";
 import { thAlign } from "../../components/ui/tableAlign";
 import { fmt, fmtDate } from "../../utils/invoice.utils";
 import { Card, PageHeader, LoadingScreen } from "../../components/ui";
-import { customerApi, authFetch } from "../../utils/api";
+import { customerApi, authFetch, API_BASE_URL } from "../../utils/api";
 import type { Customer } from "../../types";
 
-const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).trim();
+const API = API_BASE_URL;
 
 export default function LedgerReport() {
   const [customers, setCustomers] = useState<Customer[]>([]);

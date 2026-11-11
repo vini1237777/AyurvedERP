@@ -7,6 +7,8 @@ import { check, sleep, group } from "k6";
 const BASE = __ENV.BASE || "http://localhost:3000/api";
 
 export const options = {
+  // Keep each VU's refresh cookie across iterations, like a browser would.
+  noCookiesReset: true,
   stages: [
     { duration: "1m", target: 500 },
     { duration: "3m", target: 500 },
@@ -19,7 +21,7 @@ export const options = {
 };
 
 // Refresh tokens rotate, so each VU keeps its own session: it signs in on its
-// first iteration and stores the new refresh token after every refresh. With
+// first iteration, and k6's per VU cookie jar carries the refresh cookie. With
 // many VUs signing in from one address, start the API with
 // LOGIN_LIMIT_PER_IP=1000000.
 let session = null;
@@ -36,10 +38,7 @@ function login() {
   if (res.status !== 200) {
     throw new Error(`Login failed: ${res.status} ${res.body}`);
   }
-  return {
-    refreshToken: res.json("refreshToken"),
-    accessToken: res.json("accessToken"),
-  };
+  return { accessToken: res.json("accessToken") };
 }
 
 export default function () {
@@ -47,18 +46,12 @@ export default function () {
 
   if (Math.random() < 0.25) {
     group("refresh", () => {
-      const r = http.post(
-        `${BASE}/auth/refresh`,
-        JSON.stringify({ refreshToken: session.refreshToken }),
-        {
-          headers: { "Content-Type": "application/json" },
-          tags: { name: "refresh" },
-        },
-      );
+      const r = http.post(`${BASE}/auth/refresh`, null, {
+        tags: { name: "refresh" },
+      });
       check(r, { "refresh 200": (resp) => resp.status === 200 });
       if (r.status === 200) {
         session.accessToken = r.json("accessToken");
-        session.refreshToken = r.json("refreshToken");
       }
     });
   }

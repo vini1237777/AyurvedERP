@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 async function signIn(page: Page) {
   await page.goto("/login");
   await page.getByRole("button", { name: /^Admin/ }).click();
-  await page.waitForFunction(() => localStorage.getItem("authToken"));
+  await page.waitForURL("**/dashboard");
 }
 
 async function fillOneSale(page: Page, qty: string) {
@@ -19,14 +19,17 @@ async function fillOneSale(page: Page, qty: string) {
   await page.keyboard.type(qty);
 }
 
-const invoiceCount = (page: Page) =>
-  page.evaluate(async () => {
-    const api = "http://localhost:5055/api";
-    const res = await fetch(`${api}/invoices?limit=1`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` },
-    });
-    return (await res.json()).total as number;
+// The app keeps its access token in memory, so sign in separately here.
+const invoiceCount = async (page: Page) => {
+  const login = await page.request.post("/api/auth/login", {
+    data: { email: "admin@aushadhi.local", password: "admin123" },
   });
+  const { accessToken } = await login.json();
+  const res = await page.request.get("/api/invoices?limit=1", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  return (await res.json()).total as number;
+};
 
 test.beforeEach(async ({ page }) => signIn(page));
 

@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { thAlign } from "../../components/ui/tableAlign";
 import { Link } from "react-router-dom";
 import { fmt, fmtDate } from "../../utils/invoice.utils";
-import { authFetch } from "../../utils/api";
+import { authFetch, API_BASE_URL } from "../../utils/api";
 import { listKeys, refreshStockLists } from "../../utils/queryClient";
 import {
   Button,
@@ -17,9 +17,7 @@ import {
 } from "../../components/ui";
 import { Pagination } from "../../components/ui/Pagination";
 
-const API = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api"
-).trim();
+const API = API_BASE_URL;
 
 function getCurrentFY() {
   const now = new Date();
