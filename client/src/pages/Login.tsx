@@ -1,4 +1,6 @@
 import VisitorCount from "../components/VisitorCount";
+import PurposeVideo from "../components/PurposeVideo";
+import { Modal } from "../components/ui";
 import { useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -51,6 +53,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   // The email being signed in, so the right button shows the wait.
   const [busyAs, setBusyAs] = useState<string | null>(null);
+  const [showOverview, setShowOverview] = useState(false);
 
   if (!loading && user) return <Navigate to={from} replace />;
 
@@ -202,8 +205,54 @@ export default function Login() {
             ))}
           </div>
           <VisitorCount className="mt-3 text-slate-600" />
+          <button
+            type="button"
+            onClick={() => setShowOverview(true)}
+            className="mt-3 w-full min-h-[44px] flex items-center gap-3 text-left px-3 py-1.5 border-2 border-ink hover:bg-slate-50 transition-colors"
+          >
+            <span
+              aria-hidden="true"
+              className="grid place-items-center w-8 h-8 shrink-0 bg-ink text-white"
+            >
+              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </span>
+            <span>
+              <span className="block text-base font-semibold leading-tight">
+                What is Aushadhi?
+              </span>
+              <span className="block text-xs text-slate-600">
+                A 19 second overview
+              </span>
+            </span>
+          </button>
         </section>
       </main>
+
+      <Modal
+        open={showOverview}
+        onClose={() => setShowOverview(false)}
+        title="What is Aushadhi?"
+        width="max-w-4xl"
+      >
+        <PurposeVideo />
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              const admin = DEMO_ROLES.find((a) => a.role === "ADMIN");
+              if (!admin) return;
+              setShowOverview(false);
+              signIn(admin.email, admin.password);
+            }}
+            className="min-h-[44px] px-4 bg-ink text-white font-semibold disabled:opacity-60"
+          >
+            Open the Admin demo
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
